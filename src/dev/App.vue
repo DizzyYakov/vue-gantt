@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
 import {
+  addDependency,
   applyMove,
   Gantt,
   GanttDependencies,
@@ -13,9 +14,14 @@ import {
   GanttTaskList,
   GanttTimeline,
   GanttToday,
+  removeDependency,
+  updateTask,
+  type GanttDependencyChange,
+  type GanttDependencyUpdate,
   type GanttGroupData,
   type GanttGroupToggleEvent,
   type GanttMoveEvent,
+  type GanttResizeEvent,
   type GanttRowData,
   type GanttUnit,
 } from '../index'
@@ -45,6 +51,8 @@ const columnWidth = computed(() => {
 // Drag & drop toggles.
 const draggable = ref(true)
 const rowMovable = ref(true)
+const resizable = ref(true)
+const linkable = ref(true)
 
 // Rows are containers; each holds any number of tasks (note multiple bars per row).
 const rows = ref<GanttRowData[]>([
@@ -96,6 +104,18 @@ const manyRows = ref<GanttRowData[]>(
 const onMoveRows = (e: GanttMoveEvent) => (rows.value = applyMove(rows.value, e))
 const onMoveMany = (e: GanttMoveEvent) => (manyRows.value = applyMove(manyRows.value, e))
 
+// Resize + dependency edits — all controlled via the exported utils.
+const onResizeRows = (e: GanttResizeEvent) =>
+  (rows.value = updateTask(rows.value, e.id, { start: e.start, end: e.end }))
+const onCreateDep = (e: GanttDependencyChange) => (rows.value = addDependency(rows.value, e.from, e.to))
+const onRemoveDep = (e: GanttDependencyChange) => (rows.value = removeDependency(rows.value, e.from, e.to))
+const onUpdateDep = (e: GanttDependencyUpdate) =>
+  (rows.value = addDependency(
+    removeDependency(rows.value, e.previous.from, e.previous.to),
+    e.from,
+    e.to,
+  ))
+
 // Imperative scroll API: a template ref to the chart exposes scrollTo* helpers.
 const mainGantt = ref<InstanceType<typeof Gantt>>()
 const scrollToToday = () => mainGantt.value?.scrollToToday()
@@ -140,6 +160,14 @@ const onMoveGrouped = (e: GanttMoveEvent) => (groupedRows.value = applyMove(grou
         <input v-model="rowMovable" type="checkbox" />
         move between rows
       </label>
+      <label class="control__item">
+        <input v-model="resizable" type="checkbox" />
+        resize edges
+      </label>
+      <label class="control__item">
+        <input v-model="linkable" type="checkbox" />
+        edit dependencies
+      </label>
     </fieldset>
 
     <section>
@@ -157,7 +185,13 @@ const onMoveGrouped = (e: GanttMoveEvent) => (groupedRows.value = applyMove(grou
           :height="240"
           :draggable="draggable"
           :row-movable="rowMovable"
+          :resizable="resizable"
+          :linkable="linkable"
           @move="onMoveRows"
+          @resize="onResizeRows"
+          @dependency-create="onCreateDep"
+          @dependency-remove="onRemoveDep"
+          @dependency-update="onUpdateDep"
         />
       </div>
     </section>
