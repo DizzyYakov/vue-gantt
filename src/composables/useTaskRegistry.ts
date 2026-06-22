@@ -1,16 +1,24 @@
 import { computed, onUnmounted, reactive, watch, type MaybeRefOrGetter, toValue } from 'vue'
 import { useGanttContext } from './useGanttContext'
-import type { GanttRow, GanttTask } from '../types'
+import type { GanttGroup, GanttRow, GanttTask } from '../types'
 
 /**
- * Reactive store of declaratively-declared rows and tasks, owned by `GanttRoot`.
- * `Map` preserves insertion order, so rows follow declaration order. Tasks
- * register against a row id and are merged back into their row.
+ * Reactive store of declaratively-declared groups, rows and tasks, owned by
+ * `GanttRoot`. `Map` preserves insertion order, so rows/groups follow
+ * declaration order. Tasks register against a row id and are merged back into
+ * their row; groups are returned as a flat metadata list.
  */
 export function useGanttRegistry() {
+  const groups = reactive(new Map<string, GanttGroup>())
   const rows = reactive(new Map<string, GanttRow>())
   const tasks = reactive(new Map<string, { task: GanttTask; rowId: string }>())
 
+  function registerGroup(group: GanttGroup): void {
+    groups.set(group.id, group)
+  }
+  function unregisterGroup(id: string): void {
+    groups.delete(id)
+  }
   function registerRow(row: GanttRow): void {
     rows.set(row.id, row)
   }
@@ -38,7 +46,31 @@ export function useGanttRegistry() {
     }))
   })
 
-  return { registerRow, unregisterRow, registerTask, unregisterTask, rows: resolvedRows }
+  const resolvedGroups = computed<GanttGroup[]>(() => [...groups.values()])
+
+  return {
+    registerGroup,
+    unregisterGroup,
+    registerRow,
+    unregisterRow,
+    registerTask,
+    unregisterTask,
+    rows: resolvedRows,
+    groups: resolvedGroups,
+  }
+}
+
+/**
+ * Consumer-side helper used by `GanttGroup` in declarative mode: keeps the group
+ * registered with the parent `GanttRoot` and cleans up on unmount.
+ */
+export function useRegisteredGroup(getGroup: MaybeRefOrGetter<GanttGroup>): void {
+  const ctx = useGanttContext()
+  watch(() => toValue(getGroup), (group) => ctx.registerGroup(group), {
+    immediate: true,
+    deep: true,
+  })
+  onUnmounted(() => ctx.unregisterGroup(toValue(getGroup).id))
 }
 
 /**

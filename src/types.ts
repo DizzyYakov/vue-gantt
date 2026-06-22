@@ -51,6 +51,27 @@ export interface GanttRow {
   name?: string
   /** The tasks plotted on this row. */
   tasks?: GanttTask[]
+  /**
+   * Id of the group this row belongs to. Rows sharing a `groupId` are shown
+   * under a collapsible group header; members should be contiguous in `rows`.
+   */
+  groupId?: string
+  /** Arbitrary extra data forwarded to slots untouched. */
+  meta?: Record<string, unknown>
+}
+
+/**
+ * A collapsible group of rows shown as a header band in the sidebar. Membership
+ * is assigned via `GanttRow.groupId`; this entity carries the label and the
+ * initial collapsed state (group order follows the rows' first appearance).
+ */
+export interface GanttGroup {
+  /** Stable unique identifier, referenced by `GanttRow.groupId`. */
+  id: string
+  /** Header label shown in the sidebar. Falls back to `id`. */
+  name?: string
+  /** Initial collapsed state. Collapsing hides the member rows + their bars. */
+  collapsed?: boolean
   /** Arbitrary extra data forwarded to slots untouched. */
   meta?: Record<string, unknown>
 }
@@ -81,12 +102,39 @@ export interface ResolvedRow {
   order: number
   meta: Record<string, unknown>
   tasks: ResolvedTask[]
+  /** Id of the owning group, or '' when the row is ungrouped. */
+  groupId: string
+  /** True when the row's group is collapsed (excluded from layout + render). */
+  hidden: boolean
   /** Number of sub-lanes needed for overlapping tasks (≥1). */
   laneCount: number
   /** Pixel offset of the row's top from the body origin. */
   top: number
   /** Row height in pixels (grows with `laneCount` in `lanes` mode). */
   height: number
+}
+
+/** A group after its rows are laid out: a header band + rolled-up task extent. */
+export interface ResolvedGroup {
+  id: string
+  name: string
+  /** Zero-based group index in render order. */
+  order: number
+  meta: Record<string, unknown>
+  /** Whether the group is currently collapsed. */
+  collapsed: boolean
+  /** Pixel offset of the group header band from the body origin. */
+  top: number
+  /** Header band height in pixels. */
+  height: number
+  /** Ids of the member rows, in render order. */
+  rowIds: string[]
+  /** Earliest start across all member tasks (header date for the summary bar). */
+  start: Date
+  /** Latest end across all member tasks. */
+  end: Date
+  /** Duration-weighted aggregate progress across member tasks, 0–100. */
+  progress: number
 }
 
 /** A span on a row where two or more tasks overlap (for `conflict` mode). */
@@ -127,6 +175,12 @@ export interface GanttRootProps {
   /** Prop-driven data source. Omit to use declarative `GanttRow`/`GanttTask`. */
   rows?: GanttRow[]
   /**
+   * Group metadata (label + initial collapsed state), keyed by id. Optional —
+   * rows can reference a `groupId` that isn't listed here and a header is still
+   * derived. Order/membership come from the rows' first appearance.
+   */
+  groups?: GanttGroup[]
+  /**
    * Pixel-density base granularity (width of one `columnWidth` cell). When
    * `tiers` is given, the finest tier wins and this is ignored.
    */
@@ -140,6 +194,8 @@ export interface GanttRootProps {
   rowHeight?: number
   /** Height of a single timeline header row (per tier). */
   headerRowHeight?: number
+  /** Height of a group header band, in pixels. Defaults to `rowHeight`. */
+  groupHeaderHeight?: number
   /** Width of the frozen task-list sidebar, in pixels. */
   sidebarWidth?: number
   /** How tasks overlapping in time on the same row are displayed. */
@@ -169,6 +225,8 @@ export interface GanttConfig {
   columnWidth: number
   rowHeight: number
   headerRowHeight: number
+  /** Height of a group header band, in pixels. */
+  groupHeaderHeight: number
   /** Width of the (frozen) task-list sidebar, in pixels. */
   sidebarWidth: number
   /** How tasks overlapping on the same row are displayed. */
@@ -202,6 +260,14 @@ export interface GanttMoveEvent {
   task: ResolvedTask
 }
 
+/** Payload emitted when a group is collapsed or expanded. */
+export interface GanttGroupToggleEvent {
+  /** Id of the toggled group. */
+  id: string
+  /** The new collapsed state. */
+  collapsed: boolean
+}
+
 /** Scroll/measurement state of the chart's scroll viewport. */
 export interface GanttViewport {
   scrollLeft: number
@@ -222,6 +288,10 @@ export interface GanttContext {
   rows: ComputedRef<ResolvedRow[]>
   /** Rows intersecting the vertical viewport (all rows when unmeasured). */
   visibleRows: ComputedRef<ResolvedRow[]>
+  /** All groups (header bands), in render order. Empty when nothing is grouped. */
+  groups: ComputedRef<ResolvedGroup[]>
+  /** Group headers intersecting the vertical viewport (all when unmeasured). */
+  visibleGroups: ComputedRef<ResolvedGroup[]>
   /** All tasks flattened across rows, each carrying its row's `order`. */
   tasks: ComputedRef<ResolvedTask[]>
   /** Tasks intersecting the viewport (all tasks when unmeasured). */
@@ -260,6 +330,12 @@ export interface GanttContext {
   registerRow: (row: GanttRow) => void
   /** Remove a previously registered row. */
   unregisterRow: (id: string) => void
+  /** Register a declaratively-declared group (used by `GanttGroup`). */
+  registerGroup: (group: GanttGroup) => void
+  /** Remove a previously registered group. */
+  unregisterGroup: (id: string) => void
+  /** Collapse/expand a group by id (re-emitted as the `group-toggle` event). */
+  toggleGroup: (id: string) => void
   /** Register a declaratively-declared task into a row (used by `GanttTask`). */
   registerTask: (task: GanttTask, rowId: string) => void
   /** Remove a previously registered task. */

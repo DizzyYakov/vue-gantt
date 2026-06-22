@@ -5,6 +5,7 @@ import { useGanttViewport } from '../composables/useGanttViewport'
 import GanttConflicts from './GanttConflicts.vue'
 import GanttDependencies from './GanttDependencies.vue'
 import GanttGrid from './GanttGrid.vue'
+import GanttGroupBar from './GanttGroupBar.vue'
 import GanttMilestone from './GanttMilestone.vue'
 import GanttTask from './GanttTask.vue'
 import GanttTaskList from './GanttTaskList.vue'
@@ -57,6 +58,9 @@ const scrollStyle = computed(() => ({
             <template v-if="$slots.row" #row="rowProps">
               <slot name="row" v-bind="rowProps" />
             </template>
+            <template v-if="$slots.group" #group="groupProps">
+              <slot name="group" v-bind="groupProps" />
+            </template>
           </GanttTaskList>
         </slot>
       </div>
@@ -64,6 +68,14 @@ const scrollStyle = computed(() => ({
       <div class="gantt__body">
         <slot name="grid">
           <GanttGrid />
+        </slot>
+
+        <slot name="group-bars">
+          <GanttGroupBar>
+            <template v-if="$slots.groupBar" #default="groupBarProps">
+              <slot name="groupBar" v-bind="groupBarProps" />
+            </template>
+          </GanttGroupBar>
         </slot>
 
         <template v-for="task in visibleTasks" :key="task.id">

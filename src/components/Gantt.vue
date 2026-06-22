@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed } from 'vue'
-import type { GanttMoveEvent, GanttRootProps } from '../types'
+import type { GanttGroupToggleEvent, GanttMoveEvent, GanttRootProps } from '../types'
 import GanttRoot from './GanttRoot.vue'
 import GanttView from './GanttView.vue'
 
@@ -9,11 +9,16 @@ const props = defineProps<GanttRootProps & {
   height?: number | string
 }>()
 
-const emit = defineEmits<{ move: [event: GanttMoveEvent] }>()
+const emit = defineEmits<{
+  move: [event: GanttMoveEvent]
+  'group-toggle': [event: GanttGroupToggleEvent]
+}>()
 
 defineSlots<{
   sidebar?: () => unknown
   row?: (props: { row: unknown; index: number }) => unknown
+  group?: (props: { group: unknown; collapsed: boolean; toggle: () => void }) => unknown
+  groupBar?: (props: { group: unknown }) => unknown
   corner?: () => unknown
   timeline?: () => unknown
   column?: (props: { column: unknown; tier: unknown }) => unknown
@@ -34,7 +39,11 @@ const rootProps = computed<GanttRootProps>(() => {
 </script>
 
 <template>
-  <GanttRoot v-bind="rootProps" @move="emit('move', $event)">
+  <GanttRoot
+    v-bind="rootProps"
+    @move="emit('move', $event)"
+    @group-toggle="emit('group-toggle', $event)"
+  >
     <GanttView :height="height">
       <template v-if="$slots.corner" #corner><slot name="corner" /></template>
       <template v-if="$slots.timeline" #timeline><slot name="timeline" /></template>
@@ -44,6 +53,8 @@ const rootProps = computed<GanttRootProps>(() => {
       <template v-if="$slots.today" #today><slot name="today" /></template>
       <template v-if="$slots['body-extra']" #body-extra><slot name="body-extra" /></template>
       <template v-if="$slots.row" #row="slotProps"><slot name="row" v-bind="slotProps" /></template>
+      <template v-if="$slots.group" #group="slotProps"><slot name="group" v-bind="slotProps" /></template>
+      <template v-if="$slots.groupBar" #groupBar="slotProps"><slot name="groupBar" v-bind="slotProps" /></template>
       <template v-if="$slots.column" #column="slotProps"><slot name="column" v-bind="slotProps" /></template>
       <template v-if="$slots.bar" #bar="slotProps"><slot name="bar" v-bind="slotProps" /></template>
       <template v-if="$slots.milestone" #milestone="slotProps">
