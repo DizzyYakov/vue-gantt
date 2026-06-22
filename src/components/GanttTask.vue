@@ -16,6 +16,7 @@ const {
   ghost,
   previewLabel,
   overlapping,
+  hidden,
 } = useGanttItem(props, { type: 'task' })
 
 const overlapMode = computed(() => ctx.config.value.overlap)
@@ -40,6 +41,7 @@ const labelStyle = computed(() =>
 
 <template>
   <div
+    v-if="!hidden"
     class="gantt-task"
     :data-id="resolved.id"
     :data-dragging="dragging || undefined"

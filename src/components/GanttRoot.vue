@@ -22,18 +22,21 @@ import { computed, onMounted, onUnmounted, provide, reactive, ref, toRef } from 
 import { useGanttScale } from '../composables/useGanttScale'
 import { useGanttRegistry } from '../composables/useTaskRegistry'
 import { GANTT_CONTEXT, GANTT_DEFAULTS, normalizeRow, toDate } from '../context'
-import { conflictSegments, layoutRows } from '../layout'
+import { conflictSegments, layoutGroups, type GroupMeta } from '../layout'
 import type {
   GanttBand,
   GanttColumn,
   GanttConfig,
   GanttConflict,
   GanttContext,
+  GanttGroup,
+  GanttGroupToggleEvent,
   GanttMoveEvent,
   GanttRootProps,
   GanttRow,
   GanttUnit,
   GanttViewport,
+  ResolvedGroup,
   ResolvedRow,
   ResolvedTask,
 } from '../types'
@@ -43,8 +46,10 @@ const props = withDefaults(defineProps<GanttRootProps>(), {
     unit: GANTT_DEFAULTS.unit,
     tiers: undefined,
     columnWidth: GANTT_DEFAULTS.columnWidth,
+    groups: undefined,
     rowHeight: GANTT_DEFAULTS.rowHeight,
     headerRowHeight: GANTT_DEFAULTS.headerRowHeight,
+    groupHeaderHeight: GANTT_DEFAULTS.groupHeaderHeight,
     sidebarWidth: GANTT_DEFAULTS.sidebarWidth,
     overlap: GANTT_DEFAULTS.overlap,
     draggable: GANTT_DEFAULTS.draggable,
@@ -58,14 +63,20 @@ const props = withDefaults(defineProps<GanttRootProps>(), {
   },
 )
 
-const emit = defineEmits<{ move: [event: GanttMoveEvent] }>()
+const emit = defineEmits<{
+  move: [event: GanttMoveEvent]
+  'group-toggle': [event: GanttGroupToggleEvent]
+}>()
 
 const {
+  registerGroup,
+  unregisterGroup,
   registerRow,
   unregisterRow,
   registerTask,
   unregisterTask,
   rows: registeredRows,
+  groups: registeredGroups,
 } = useGanttRegistry()
 
 // Coarse → fine ranking, used to order tier rows and pick base/coarsest tiers.
@@ -107,14 +118,57 @@ const today = computed(() => (props.today ? toDate(props.today) : now.value))
 
 // Single source of truth: the `rows` prop wins; otherwise declarative children.
 const sourceRows = computed<GanttRow[]>(() => props.rows ?? registeredRows.value)
+const sourceGroups = computed<GanttGroup[]>(() => props.groups ?? registeredGroups.value)
 
-const rows = computed<ResolvedRow[]>(() =>
-  // Resolve, then assign lanes + per-row top/height for the current overlap mode.
-  layoutRows(
+// --- Group collapse state -------------------------------------------------
+// Uncontrolled: a user toggle is recorded as an explicit override that wins over
+// the group's `collapsed` default; without an override the default applies. This
+// is fully derived (no async seeding), so the default takes effect synchronously
+// in both prop-driven and declarative (post-mount registration) modes, and
+// re-renders / dynamic groups never clobber a user toggle. `toggleGroup` flips
+// the override and re-emits as the `group-toggle` event.
+const collapseOverrides = reactive(new Map<string, boolean>())
+
+function isCollapsed(group: GanttGroup): boolean {
+  return collapseOverrides.get(group.id) ?? group.collapsed ?? false
+}
+
+const groupMeta = computed<Map<string, GroupMeta>>(
+  () =>
+    new Map(
+      sourceGroups.value.map((group) => [
+        group.id,
+        {
+          name: group.name ?? group.id,
+          collapsed: isCollapsed(group),
+          meta: group.meta ?? {},
+        },
+      ]),
+    ),
+)
+
+function toggleGroup(id: string): void {
+  const group = sourceGroups.value.find((g) => g.id === id)
+  const current = group ? isCollapsed(group) : (collapseOverrides.get(id) ?? false)
+  collapseOverrides.set(id, !current)
+  emit('group-toggle', { id, collapsed: !current })
+}
+
+// Resolve rows, then inject group header bands + assign lanes/top/height.
+const layout = computed(() =>
+  layoutGroups(
     sourceRows.value.map((row, order) => normalizeRow(row, order)),
-    { mode: props.overlap, rowHeight: props.rowHeight },
+    {
+      mode: props.overlap,
+      rowHeight: props.rowHeight,
+      groupHeaderHeight: props.groupHeaderHeight,
+      groupMeta: groupMeta.value,
+    },
   ),
 )
+
+const rows = computed<ResolvedRow[]>(() => layout.value.rows)
+const groups = computed<ResolvedGroup[]>(() => layout.value.groups)
 
 // All tasks flattened across rows (each carries its row's order + lane).
 const tasks = computed<ResolvedTask[]>(() => rows.value.flatMap((row) => row.tasks))
@@ -154,6 +208,7 @@ const config = computed<GanttConfig>(() => ({
   columnWidth: props.columnWidth,
   rowHeight: props.rowHeight,
   headerRowHeight: props.headerRowHeight,
+  groupHeaderHeight: props.groupHeaderHeight,
   sidebarWidth: props.sidebarWidth,
   overlap: props.overlap,
   draggable: props.draggable || props.rowMovable,
@@ -168,10 +223,7 @@ const config = computed<GanttConfig>(() => ({
 // Row lookup by render index (rows are produced in order).
 const rowByOrder = computed(() => rows.value)
 
-const contentHeight = computed(() => {
-  const last = rows.value[rows.value.length - 1]
-  return last ? last.top + last.height : 0
-})
+const contentHeight = computed(() => layout.value.contentHeight)
 
 const CASCADE_OFFSET = 8 // px vertical step between cascaded lanes
 
@@ -234,13 +286,22 @@ function rowInWindow(order: number): boolean {
   return row.top + row.height >= win.min && row.top <= win.max
 }
 
+function bandInWindow(top: number, height: number): boolean {
+  const win = verticalWindow.value
+  if (!win) return true
+  return top + height >= win.min && top <= win.max
+}
+
+// Collapsed groups hide their member rows: drop `hidden` rows from every view.
 const visibleRows = computed<ResolvedRow[]>(() =>
-  verticalWindow.value ? rows.value.filter((r) => rowInWindow(r.order)) : rows.value,
+  rows.value.filter((r) => !r.hidden && rowInWindow(r.order)),
 )
 
 const visibleTasks = computed<ResolvedTask[]>(() => {
   const h = horizontalWindow.value
   return tasks.value.filter((t) => {
+    const row = rowByOrder.value[t.order]
+    if (row?.hidden) return false
     if (!rowInWindow(t.order)) return false
     if (!h) return true
     const x = scale.dateToX(t.start)
@@ -248,6 +309,10 @@ const visibleTasks = computed<ResolvedTask[]>(() => {
     return x + w >= h.min - MARKER_PAD && x <= h.max + MARKER_PAD
   })
 })
+
+const visibleGroups = computed<ResolvedGroup[]>(() =>
+  groups.value.filter((g) => bandInWindow(g.top, g.height)),
+)
 
 function visibleColumnsFor(tier: GanttUnit): GanttColumn[] {
   const win = horizontalWindow.value
@@ -274,6 +339,8 @@ const context: GanttContext = {
   config,
   rows,
   visibleRows,
+  groups,
+  visibleGroups,
   tasks,
   visibleTasks,
   columns: scale.columns,
@@ -291,6 +358,9 @@ const context: GanttContext = {
   conflicts,
   registerRow,
   unregisterRow,
+  registerGroup,
+  unregisterGroup,
+  toggleGroup,
   registerTask,
   unregisterTask,
   moveTask: (event) => emit('move', event),
@@ -303,6 +373,7 @@ provide(GANTT_CONTEXT, context)
 const rootStyle = computed(() => ({
   '--gantt-column-width': `${props.columnWidth}px`,
   '--gantt-row-height': `${props.rowHeight}px`,
+  '--gantt-group-header-height': `${props.groupHeaderHeight}px`,
   '--gantt-header-row-height': `${props.headerRowHeight}px`,
   '--gantt-header-height': `${headerHeight.value}px`,
   '--gantt-sidebar-width': `${props.sidebarWidth}px`,

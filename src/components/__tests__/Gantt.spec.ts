@@ -256,6 +256,130 @@ describe('drag & drop', () => {
   })
 })
 
+describe('drag ghost across rows (lane offset)', () => {
+  // Pull the px value out of a `translateY(<n>px)` transform.
+  function translateY(el: { attributes: (a: string) => string | undefined }): number {
+    return parseFloat(el.attributes('style')!.match(/translateY\(([-\d.]+)px\)/)![1]!)
+  }
+
+  function startDrag(bar: Element, dy: number): void {
+    fire(bar, 'pointerdown', { button: 0, clientX: 0, clientY: 0, pointerId: 1 })
+    fire(window, 'pointermove', { clientX: 0, clientY: dy })
+  }
+
+  it('lanes: snaps a lower-lane ghost to the target row top, not one lane below', async () => {
+    const wrapper = mount(Gantt, {
+      props: {
+        rows: [
+          {
+            id: 'r1',
+            tasks: [
+              { id: 'a', start: '2026-01-01', end: '2026-01-10' }, // lane 0
+              { id: 'b', start: '2026-01-05', end: '2026-01-15' }, // lane 1
+            ],
+          },
+          { id: 'r2', tasks: [] },
+        ],
+        unit: 'day',
+        rowHeight: 40, // r1 = 80px tall, r2 top = 80
+        overlap: 'lanes',
+        rowMovable: true,
+      },
+    })
+    // b's band: top 40 (lane 1). Dragging 30px puts the band centre (60) into r2.
+    startDrag(wrapper.find('.gantt-bar[data-id="b"]').element, 30)
+    await nextTick()
+    // Ghost base sits at band.top (40); to reach r2's top (80) it must shift +40,
+    // NOT +80 (the old row-top-only delta would drop it a lane below r2).
+    expect(translateY(wrapper.find('.gantt-bar--ghost'))).toBeCloseTo(40, 1)
+    fire(window, 'pointerup', {})
+  })
+
+  it('cascade: offsets a lower-lane ghost to the target row top', async () => {
+    const wrapper = mount(Gantt, {
+      props: {
+        rows: [
+          {
+            id: 'r1',
+            tasks: [
+              { id: 'a', start: '2026-01-01', end: '2026-01-10' },
+              { id: 'b', start: '2026-01-05', end: '2026-01-15' },
+            ],
+          },
+          { id: 'r2', tasks: [] },
+        ],
+        unit: 'day',
+        rowHeight: 40, // cascade rows stay 40px; r2 top = 40
+        overlap: 'cascade',
+        rowMovable: true,
+      },
+    })
+    // b is staggered down by the cascade step (8px), so band.top = 8.
+    startDrag(wrapper.find('.gantt-bar[data-id="b"]').element, 30)
+    await nextTick()
+    // Reach r2's top (40) from band.top (8) → +32.
+    expect(translateY(wrapper.find('.gantt-bar--ghost'))).toBeCloseTo(32, 1)
+    fire(window, 'pointerup', {})
+  })
+
+  it('keeps a lower-lane ghost in place on a horizontal-only move', async () => {
+    const wrapper = mount(Gantt, {
+      props: {
+        rows: [
+          {
+            id: 'r1',
+            tasks: [
+              { id: 'a', start: '2026-01-01', end: '2026-01-10' },
+              { id: 'b', start: '2026-01-05', end: '2026-01-15' },
+            ],
+          },
+        ],
+        unit: 'day',
+        columnWidth: 40,
+        rowHeight: 40,
+        overlap: 'lanes',
+        draggable: true, // horizontal only
+      },
+    })
+    fire(wrapper.find('.gantt-bar[data-id="b"]').element, 'pointerdown', {
+      button: 0,
+      clientX: 0,
+      clientY: 0,
+      pointerId: 1,
+    })
+    fire(window, 'pointermove', { clientX: 80, clientY: 0 }) // move right, same row
+    await nextTick()
+    // Same row → no vertical shift; the ghost stays in lane 1.
+    expect(translateY(wrapper.find('.gantt-bar--ghost'))).toBe(0)
+    fire(window, 'pointerup', {})
+  })
+
+  it('commits the correct target row for a lower-lane task', async () => {
+    const wrapper = mount(Gantt, {
+      props: {
+        rows: [
+          {
+            id: 'r1',
+            tasks: [
+              { id: 'a', start: '2026-01-01', end: '2026-01-10' },
+              { id: 'b', start: '2026-01-05', end: '2026-01-15' },
+            ],
+          },
+          { id: 'r2', tasks: [] },
+        ],
+        unit: 'day',
+        rowHeight: 40,
+        overlap: 'lanes',
+        rowMovable: true,
+      },
+    })
+    await drag(wrapper.find('.gantt-bar[data-id="b"]').element, 0, 30)
+    const payload = wrapper.emitted('move')![0]![0] as { id: string; toRowId: string }
+    expect(payload.id).toBe('b')
+    expect(payload.toRowId).toBe('r2')
+  })
+})
+
 describe('current-time line', () => {
   afterEach(() => vi.useRealTimers())
 
@@ -328,6 +452,63 @@ describe('overlap modes', () => {
     expect(wrapper.find('.gantt-task-list__row[data-id="r"]').attributes('style')).toContain(
       'height: 30px',
     )
+  })
+})
+
+describe('slot forwarding', () => {
+  it('forwards container-replacing slots (corner/timeline/sidebar/grid/…)', () => {
+    const wrapper = mount(Gantt, {
+      props: { rows, today: '2026-01-03' },
+      slots: {
+        corner: () => h('span', { class: 's-corner' }, 'C'),
+        timeline: () => h('div', { class: 's-timeline' }, 'T'),
+        sidebar: () => h('div', { class: 's-sidebar' }, 'S'),
+        grid: () => h('div', { class: 's-grid' }),
+        dependencies: () => h('div', { class: 's-deps' }),
+        today: () => h('div', { class: 's-today' }),
+        'body-extra': () => h('div', { class: 's-extra' }),
+      },
+    })
+
+    for (const cls of ['s-corner', 's-timeline', 's-sidebar', 's-grid', 's-deps', 's-today', 's-extra']) {
+      expect(wrapper.find(`.${cls}`).exists()).toBe(true)
+    }
+  })
+
+  it('forwards per-item slots (row/column/bar/milestone)', () => {
+    const wrapper = mount(Gantt, {
+      props: { rows, today: '2026-01-03' },
+      slots: {
+        row: (p: { row: unknown }) => h('span', { class: 's-row' }, (p.row as { name: string }).name),
+        column: (p: { column: unknown }) =>
+          h('span', { class: 's-col' }, (p.column as { label: string }).label),
+        bar: (p: { task: unknown }) => h('span', { class: 's-bar' }, (p.task as { name: string }).name),
+        milestone: (p: { task: unknown }) =>
+          h('span', { class: 's-ms' }, (p.task as { name: string }).name),
+      },
+    })
+
+    for (const cls of ['s-row', 's-col', 's-bar', 's-ms']) {
+      expect(wrapper.find(`.${cls}`).exists()).toBe(true)
+    }
+  })
+
+  it('applies the height prop to the scroll viewport', () => {
+    const wrapper = mount(Gantt, { props: { rows, height: 250 } })
+    expect(wrapper.find('.gantt').attributes('style')).toContain('max-height: 250px')
+  })
+
+  it('re-emits a move event from the inner GanttRoot', async () => {
+    const wrapper = mount(Gantt, {
+      props: {
+        rows: [{ id: 'r1', tasks: [{ id: 'a', start: '2026-01-01', end: '2026-01-05' }] }],
+        unit: 'day',
+        columnWidth: 40,
+        draggable: true,
+      },
+    })
+    await drag(wrapper.find('.gantt-bar').element, 80, 0)
+    expect(wrapper.emitted('move')).toHaveLength(1)
   })
 })
 

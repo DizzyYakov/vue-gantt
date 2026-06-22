@@ -8,6 +8,8 @@ export { default as GanttRoot } from './components/GanttRoot.vue'
 export { default as GanttView } from './components/GanttView.vue'
 export { default as GanttTimeline } from './components/GanttTimeline.vue'
 export { default as GanttTaskList } from './components/GanttTaskList.vue'
+export { default as GanttGroup } from './components/GanttGroup.vue'
+export { default as GanttGroupBar } from './components/GanttGroupBar.vue'
 export { default as GanttRow } from './components/GanttRow.vue'
 export { default as GanttTask } from './components/GanttTask.vue'
 export { default as GanttMilestone } from './components/GanttMilestone.vue'
@@ -29,8 +31,9 @@ export { useGanttViewport } from './composables/useGanttViewport'
 export { useGanttDrag } from './composables/useGanttDrag'
 
 // Context primitives + layout helpers
-export { GANTT_CONTEXT, GANTT_ROW, GANTT_DEFAULTS, normalizeRow, normalizeTask, toDate } from './context'
-export { assignLanes, layoutRows, conflictSegments } from './layout'
+export { GANTT_CONTEXT, GANTT_ROW, GANTT_GROUP, GANTT_DEFAULTS, normalizeRow, normalizeTask, toDate } from './context'
+export { assignLanes, layoutRows, layoutGroups, conflictSegments } from './layout'
+export type { GroupMeta, GroupedLayout, LayoutGroupsOptions } from './layout'
 
 // Types
 export type {
@@ -39,6 +42,8 @@ export type {
   GanttConfig,
   GanttConflict,
   GanttContext,
+  GanttGroup as GanttGroupData,
+  GanttGroupToggleEvent,
   GanttItemType,
   GanttMoveEvent,
   GanttOverlapMode,
@@ -47,6 +52,7 @@ export type {
   GanttTask as GanttTaskData,
   GanttUnit,
   GanttViewport,
+  ResolvedGroup,
   ResolvedRow,
   ResolvedTask,
 } from './types'

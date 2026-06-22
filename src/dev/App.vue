@@ -4,6 +4,7 @@ import {
   Gantt,
   GanttDependencies,
   GanttGrid,
+  GanttGroup,
   GanttMilestone,
   GanttRoot,
   GanttRow,
@@ -11,6 +12,8 @@ import {
   GanttTaskList,
   GanttTimeline,
   GanttToday,
+  type GanttGroupData,
+  type GanttGroupToggleEvent,
   type GanttMoveEvent,
   type GanttRowData,
   type GanttTaskData,
@@ -108,6 +111,23 @@ function applyMove(list: Ref<GanttRowData[]>, e: GanttMoveEvent) {
 
 const onMoveRows = (e: GanttMoveEvent) => applyMove(rows, e)
 const onMoveMany = (e: GanttMoveEvent) => applyMove(manyRows, e)
+
+// Row grouping: rows reference a group via `groupId`; groups carry the labels.
+const groups = ref<GanttGroupData[]>([
+  { id: 'g-be', name: 'Backend' },
+  { id: 'g-fe', name: 'Frontend', collapsed: true },
+])
+const groupedRows = ref<GanttRowData[]>([
+  { id: 'gr-api', name: 'API', groupId: 'g-be', tasks: [{ id: 'g-api', name: 'API', start: '2026-06-01', end: '2026-06-10', progress: 80 }] },
+  { id: 'gr-db', name: 'Database', groupId: 'g-be', tasks: [{ id: 'g-db', name: 'Schema', start: '2026-06-06', end: '2026-06-14', progress: 40 }] },
+  { id: 'gr-ui', name: 'UI', groupId: 'g-fe', tasks: [{ id: 'g-ui', name: 'Components', start: '2026-06-10', end: '2026-06-20', progress: 20 }] },
+  { id: 'gr-ux', name: 'UX', groupId: 'g-fe', tasks: [{ id: 'g-ux', name: 'Flows', start: '2026-06-12', end: '2026-06-18', progress: 0 }] },
+])
+const lastToggle = ref('')
+const onGroupToggle = (e: GanttGroupToggleEvent) => {
+  lastToggle.value = `${e.id} → ${e.collapsed ? 'collapsed' : 'expanded'}`
+}
+const onMoveGrouped = (e: GanttMoveEvent) => applyMove(groupedRows, e)
 </script>
 
 <template>
@@ -198,6 +218,61 @@ const onMoveMany = (e: GanttMoveEvent) => applyMove(manyRows, e)
     </section>
 
     <section>
+      <h2>5. Row grouping — collapsible groups + rollup bars</h2>
+      <p class="hint">
+        Rows reference a group via <code>groupId</code>; click a group header to
+        collapse/expand. Last toggle: <strong>{{ lastToggle || '—' }}</strong>
+      </p>
+      <div class="card">
+        <Gantt
+          :rows="groupedRows"
+          :groups="groups"
+          :tiers="tiers"
+          :column-width="columnWidth"
+          :height="300"
+          :draggable="draggable"
+          :row-movable="rowMovable"
+          @group-toggle="onGroupToggle"
+          @move="onMoveGrouped"
+        />
+      </div>
+    </section>
+
+    <section>
+      <h2>6. Row grouping — declarative <code>&lt;GanttGroup&gt;</code></h2>
+      <div class="card">
+        <GanttRoot :tiers="tiers" :column-width="columnWidth">
+          <div class="manual">
+            <div class="manual__side">
+              <div class="manual__corner" />
+              <GanttTaskList />
+            </div>
+            <div class="manual__main">
+              <GanttTimeline />
+              <div class="manual__body">
+                <GanttGrid />
+                <GanttGroup id="dg-be" name="Backend">
+                  <GanttRow id="dg-api" name="API">
+                    <GanttTask id="dt-api" name="API" start="2026-06-01" end="2026-06-09" :progress="60" />
+                  </GanttRow>
+                  <GanttRow id="dg-db" name="Database">
+                    <GanttTask id="dt-db" name="Schema" start="2026-06-05" end="2026-06-12" :progress="30" />
+                  </GanttRow>
+                </GanttGroup>
+                <GanttGroup id="dg-fe" name="Frontend" :collapsed="true">
+                  <GanttRow id="dg-ui" name="UI">
+                    <GanttTask id="dt-ui" name="Components" start="2026-06-10" end="2026-06-18" />
+                  </GanttRow>
+                </GanttGroup>
+                <GanttToday />
+              </div>
+            </div>
+          </div>
+        </GanttRoot>
+      </div>
+    </section>
+
+    <section>
       <h2>4. Virtualized: 40 rows of tasks, sticky header/sidebar, grid</h2>
       <div class="card">
         <Gantt
@@ -249,6 +324,12 @@ const onMoveMany = (e: GanttMoveEvent) => applyMove(manyRows, e)
   border-radius: 8px;
   padding: 12px;
   overflow: hidden;
+}
+
+.hint {
+  margin: 0 0 8px;
+  font-size: 0.85em;
+  color: #64748b;
 }
 
 .manual {
