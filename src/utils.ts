@@ -130,6 +130,26 @@ export function getDependents(rows: GanttRow[], id: string): string[] {
 }
 
 /**
+ * Add a finish-to-start dependency (`to.dependencies` gains `from`). Immutable;
+ * a no-op for a self-link, an unknown successor, or an existing duplicate.
+ */
+export function addDependency(rows: GanttRow[], from: string, to: string): GanttRow[] {
+  if (from === to) return rows
+  const target = findTask(rows, to)
+  if (!target || (target.task.dependencies ?? []).includes(from)) return rows
+  return updateTask(rows, to, { dependencies: [...(target.task.dependencies ?? []), from] })
+}
+
+/** Remove the finish-to-start dependency `from → to`. Immutable; no-op if absent. */
+export function removeDependency(rows: GanttRow[], from: string, to: string): GanttRow[] {
+  const target = findTask(rows, to)
+  if (!target || !(target.task.dependencies ?? []).includes(from)) return rows
+  return updateTask(rows, to, {
+    dependencies: (target.task.dependencies ?? []).filter((d) => d !== from),
+  })
+}
+
+/**
  * Detect circular dependencies. Returns one array of ids per cycle found
  * (empty when the dependency graph is acyclic).
  */

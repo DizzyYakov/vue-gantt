@@ -19,6 +19,7 @@ import {
   startOfYear,
 } from 'date-fns'
 import { computed, onMounted, onUnmounted, provide, reactive, ref, toRef } from 'vue'
+import { useGanttLink } from '../composables/useGanttLink'
 import { useGanttScale } from '../composables/useGanttScale'
 import { useGanttRegistry } from '../composables/useTaskRegistry'
 import { GANTT_CONTEXT, GANTT_DEFAULTS, normalizeRow, toDate } from '../context'
@@ -31,11 +32,15 @@ import type {
   GanttConfig,
   GanttConflict,
   GanttContext,
+  GanttDependencyChange,
   GanttDependencyEvent,
+  GanttDependencyUpdate,
   GanttEventMap,
   GanttGroup,
   GanttGroupToggleEvent,
   GanttMoveEvent,
+  GanttProgressEvent,
+  GanttResizeEvent,
   GanttRootProps,
   GanttRow,
   GanttRowEvent,
@@ -60,8 +65,12 @@ const props = withDefaults(defineProps<GanttRootProps>(), {
     overlap: GANTT_DEFAULTS.overlap,
     draggable: GANTT_DEFAULTS.draggable,
     rowMovable: GANTT_DEFAULTS.rowMovable,
+    resizable: GANTT_DEFAULTS.resizable,
+    progressDraggable: GANTT_DEFAULTS.progressDraggable,
+    linkable: GANTT_DEFAULTS.linkable,
     snapToGrid: GANTT_DEFAULTS.snapToGrid,
     dragLabelFormat: GANTT_DEFAULTS.dragLabelFormat,
+    dragLabel: undefined,
     startDate: undefined,
     endDate: undefined,
     today: undefined,
@@ -71,7 +80,12 @@ const props = withDefaults(defineProps<GanttRootProps>(), {
 
 const emit = defineEmits<{
   move: [event: GanttMoveEvent]
+  resize: [event: GanttResizeEvent]
+  progress: [event: GanttProgressEvent]
   'group-toggle': [event: GanttGroupToggleEvent]
+  'dependency-create': [event: GanttDependencyChange]
+  'dependency-remove': [event: GanttDependencyChange]
+  'dependency-update': [event: GanttDependencyUpdate]
   'task-click': [event: GanttTaskEvent]
   'task-dblclick': [event: GanttTaskEvent]
   'task-contextmenu': [event: GanttTaskEvent]
@@ -238,8 +252,12 @@ const config = computed<GanttConfig>(() => ({
   overlap: props.overlap,
   draggable: props.draggable || props.rowMovable,
   rowMovable: props.rowMovable,
+  resizable: props.resizable,
+  progressDraggable: props.progressDraggable,
+  linkable: props.linkable,
   snapToGrid: props.snapToGrid,
   dragLabelFormat: props.dragLabelFormat,
+  dragLabel: props.dragLabel,
   start: start.value,
   end: end.value,
   today: today.value,
@@ -407,6 +425,12 @@ const conflicts = computed<GanttConflict[]>(() => {
   return out
 })
 
+// Interactive dependency creation / re-routing (emits intents; data is controlled).
+const { linkDraft, beginLink, endLink } = useGanttLink({
+  dispatch,
+  tasks: () => tasks.value,
+})
+
 const context: GanttContext = {
   config,
   rows,
@@ -436,6 +460,11 @@ const context: GanttContext = {
   registerTask,
   unregisterTask,
   moveTask: (event) => emit('move', event),
+  resizeTask: (event) => emit('resize', event),
+  progressTask: (event) => emit('progress', event),
+  linkDraft,
+  beginLink,
+  endLink,
   dispatch,
   setScroller,
   scrollToDate,

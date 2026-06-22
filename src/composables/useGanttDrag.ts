@@ -10,12 +10,17 @@ export interface DragOptions {
   baseLeft: ComputedRef<number>
 }
 
+/** Whether a pointer drag moves the bar, resizes an edge, or edits progress. */
+export type DragMode = 'move' | 'resize-start' | 'resize-end' | 'progress'
+
 /** Where the task would land if the drag ended now. */
 export interface DragPreview {
   start: Date
   end: Date
   order: number
   rowId: string
+  /** Live progress (unchanged except in `progress` mode), 0–100. */
+  progress: number
 }
 
 /**
@@ -32,12 +37,13 @@ export function useGanttDrag(options: DragOptions) {
   // genuine drag from a click (the synthetic click fires right after pointerup,
   // before the next pointerdown resets this).
   const moved = ref(false)
+  const mode = ref<DragMode>('move')
   const dx = ref(0)
   const dy = ref(0)
 
   const MOVE_THRESHOLD = 3 // px before a press counts as a drag, not a click
 
-  /** Drag is available if either axis is unlocked. */
+  /** Move drag is available if either axis is unlocked. */
   const enabled = computed(() => ctx.config.value.draggable || ctx.config.value.rowMovable)
 
   let originX = 0
@@ -45,8 +51,12 @@ export function useGanttDrag(options: DragOptions) {
   let capturedEl: HTMLElement | null = null
   let capturedId = 0
 
-  function onPointerDown(event: PointerEvent): void {
-    if (event.button !== 0 || !enabled.value) return
+  function onPointerDown(event: PointerEvent, dragMode: DragMode = 'move'): void {
+    const cfg = ctx.config.value
+    const allowed =
+      dragMode === 'move' ? enabled.value : dragMode === 'progress' ? cfg.progressDraggable : cfg.resizable
+    if (event.button !== 0 || !allowed) return
+    mode.value = dragMode
     dragging.value = true
     moved.value = false
     originX = event.clientX
@@ -69,8 +79,14 @@ export function useGanttDrag(options: DragOptions) {
 
   function onPointerMove(event: PointerEvent): void {
     if (!dragging.value) return
-    dx.value = ctx.config.value.draggable ? event.clientX - originX : 0
-    dy.value = ctx.config.value.rowMovable ? event.clientY - originY : 0
+    if (mode.value === 'move') {
+      dx.value = ctx.config.value.draggable ? event.clientX - originX : 0
+      dy.value = ctx.config.value.rowMovable ? event.clientY - originY : 0
+    } else {
+      // Resize is always horizontal, regardless of the move toggles.
+      dx.value = event.clientX - originX
+      dy.value = 0
+    }
     if (Math.abs(dx.value) > MOVE_THRESHOLD || Math.abs(dy.value) > MOVE_THRESHOLD) {
       moved.value = true
     }
@@ -94,6 +110,29 @@ export function useGanttDrag(options: DragOptions) {
     if (!dragging.value) return null
     const task = options.resolved.value
     const config = ctx.config.value
+
+    // Progress: map the horizontal drag onto 0–100 across the bar's width.
+    if (mode.value === 'progress') {
+      const barWidth = ctx.widthBetween(task.start, task.end)
+      const delta = barWidth > 0 ? (dx.value / barWidth) * 100 : 0
+      const progress = Math.round(Math.min(100, Math.max(0, task.progress + delta)))
+      return { start: task.start, end: task.end, order: task.order, rowId: task.rowId, progress }
+    }
+
+    // Resize: drag one edge; the other stays fixed. Using min/max of the fixed
+    // and dragged dates makes the sides flip automatically when the dragged edge
+    // crosses the fixed one — the user then keeps dragging the other side.
+    if (mode.value !== 'move') {
+      const isStart = mode.value === 'resize-start'
+      const baseX = ctx.dateToX(isStart ? task.start : task.end)
+      const draggedRaw = ctx.xToDate(baseX + dx.value)
+      const dragged = config.snapToGrid ? ctx.snap(draggedRaw) : draggedRaw
+      const fixed = isStart ? task.end : task.start
+      const start = dragged < fixed ? dragged : fixed
+      const end = dragged < fixed ? fixed : dragged
+      return { start, end, order: task.order, rowId: task.rowId, progress: task.progress }
+    }
+
     let start = task.start
     let end = task.end
     let order = task.order
@@ -130,14 +169,22 @@ export function useGanttDrag(options: DragOptions) {
       rowId = rows[order]?.id ?? task.rowId
     }
 
-    return { start, end, order, rowId }
+    return { start, end, order, rowId, progress: task.progress }
   })
 
   const previewLabel = computed(() => {
     const p = preview.value
     if (!p) return ''
+    const task = options.resolved.value
+    const kind = mode.value === 'progress' ? 'progress' : mode.value === 'move' ? 'move' : 'resize'
+    // A consumer-supplied formatter wins for every drag kind.
+    const formatter = ctx.config.value.dragLabel
+    if (formatter) {
+      return formatter({ mode: kind, task, start: p.start, end: p.end, progress: p.progress })
+    }
+    if (kind === 'progress') return `${p.progress}%`
     const fmt = ctx.config.value.dragLabelFormat
-    if (options.resolved.value.type === 'milestone') return format(p.start, fmt)
+    if (task.type === 'milestone') return format(p.start, fmt)
     return `${format(p.start, fmt)} → ${format(p.end, fmt)}`
   })
 
@@ -145,11 +192,17 @@ export function useGanttDrag(options: DragOptions) {
     const p = preview.value
     const task = options.resolved.value
     if (p) {
-      const changed =
-        p.start.getTime() !== task.start.getTime() ||
-        p.end.getTime() !== task.end.getTime() ||
-        p.rowId !== task.rowId
-      if (changed) {
+      const datesChanged =
+        p.start.getTime() !== task.start.getTime() || p.end.getTime() !== task.end.getTime()
+      if (mode.value === 'progress') {
+        if (p.progress !== task.progress) {
+          ctx.progressTask({ id: task.id, progress: p.progress, task })
+        }
+      } else if (mode.value !== 'move') {
+        if (datesChanged) {
+          ctx.resizeTask({ id: task.id, start: p.start, end: p.end, task })
+        }
+      } else if (datesChanged || p.rowId !== task.rowId) {
         ctx.moveTask({
           id: task.id,
           start: p.start,

@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import {
+  addDependency,
   addTask,
   applyMove,
   autoSchedule,
@@ -9,6 +10,7 @@ import {
   findTask,
   flattenTasks,
   getDependents,
+  removeDependency,
   removeTask,
   rollupProgress,
   tasksExtent,
@@ -89,6 +91,20 @@ describe('dates & progress', () => {
 describe('dependencies', () => {
   it('getDependents returns reverse links', () => {
     expect(getDependents(sample(), 'a')).toEqual(['b'])
+  })
+
+  it('addDependency / removeDependency are immutable and guarded', () => {
+    const rows = sample() // b already depends on a
+    // add a new dep a→? none yet; add b as dep of a (a.dependencies += b)
+    const added = addDependency(rows, 'b', 'a')
+    expect(findTask(added, 'a')?.task.dependencies).toEqual(['b'])
+    expect(findTask(rows, 'a')?.task.dependencies ?? []).toEqual([]) // original untouched
+    // self-link + duplicate are no-ops (same reference back)
+    expect(addDependency(rows, 'a', 'a')).toBe(rows)
+    expect(addDependency(rows, 'a', 'b')).toBe(rows) // b already depends on a
+    // remove
+    expect(findTask(removeDependency(rows, 'a', 'b'), 'b')?.task.dependencies).toEqual([])
+    expect(removeDependency(rows, 'x', 'b')).toBe(rows) // absent → no-op
   })
 
   it('detectCycles finds a cycle and ignores acyclic graphs', () => {

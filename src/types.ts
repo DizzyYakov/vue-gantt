@@ -204,10 +204,18 @@ export interface GanttRootProps {
   draggable?: boolean
   /** Also allow dragging a task into another row (implies dragging). */
   rowMovable?: boolean
+  /** Allow resizing bars by dragging their left/right edge. */
+  resizable?: boolean
+  /** Allow editing a task's progress by dragging a handle on the bar. */
+  progressDraggable?: boolean
+  /** Allow creating/editing dependencies by dragging between tasks. */
+  linkable?: boolean
   /** Snap dragged dates to the base-unit grid. Off by default (full precision). */
   snapToGrid?: boolean
   /** date-fns format for the live date label shown while dragging. */
   dragLabelFormat?: string
+  /** Override the drag tooltip text (move / resize / progress). */
+  dragLabel?: (info: GanttDragLabelInfo) => string
   /** Explicit axis bounds. Auto-derived from the tasks when omitted. */
   startDate?: Date | string | number
   endDate?: Date | string | number
@@ -235,10 +243,18 @@ export interface GanttConfig {
   draggable: boolean
   /** Whether bars can be dragged between rows. */
   rowMovable: boolean
+  /** Whether bars can be resized by dragging an edge. */
+  resizable: boolean
+  /** Whether progress can be edited by dragging a handle. */
+  progressDraggable: boolean
+  /** Whether dependencies can be created/edited by dragging. */
+  linkable: boolean
   /** Whether dragged dates snap to the base-unit grid. */
   snapToGrid: boolean
   /** date-fns format for the live drag date label. */
   dragLabelFormat: string
+  /** Optional override for the drag tooltip text (move / resize / progress). */
+  dragLabel?: (info: GanttDragLabelInfo) => string
   start: Date
   end: Date
   today: Date
@@ -258,6 +274,56 @@ export interface GanttMoveEvent {
   toRowId: string
   /** The task as it was before the move. */
   task: ResolvedTask
+}
+
+/** Payload emitted when a task is resized by dragging an edge (same row). */
+export interface GanttResizeEvent {
+  /** Id of the resized task. */
+  id: string
+  /** New start (after any side-flip + snapping). */
+  start: Date
+  /** New end. */
+  end: Date
+  /** The task as it was before the resize. */
+  task: ResolvedTask
+}
+
+/** Payload emitted when a task's progress is changed by dragging. */
+export interface GanttProgressEvent {
+  /** Id of the task. */
+  id: string
+  /** New progress, 0–100. */
+  progress: number
+  /** The task as it was before the change. */
+  task: ResolvedTask
+}
+
+/** Info passed to a `dragLabel` formatter to override the live drag tooltip. */
+export interface GanttDragLabelInfo {
+  /** Which kind of drag is in progress. */
+  mode: 'move' | 'resize' | 'progress'
+  /** The task being dragged. */
+  task: ResolvedTask
+  /** Live start (after move/resize). */
+  start: Date
+  /** Live end (after move/resize). */
+  end: Date
+  /** Live progress, 0–100. */
+  progress: number
+}
+
+/** Payload for creating or removing a finish-to-start dependency. */
+export interface GanttDependencyChange {
+  /** Predecessor task id (arrow tail). */
+  from: string
+  /** Successor task id (arrow head; `to.dependencies` holds `from`). */
+  to: string
+}
+
+/** Payload for re-routing an existing dependency to a new endpoint. */
+export interface GanttDependencyUpdate extends GanttDependencyChange {
+  /** The dependency as it was before the change. */
+  previous: GanttDependencyChange
 }
 
 /** Payload emitted when a group is collapsed or expanded. */
@@ -327,6 +393,9 @@ export interface GanttEventMap {
   'cell-dblclick': GanttCellEvent
   'column-click': GanttColumnEvent
   'dependency-click': GanttDependencyEvent
+  'dependency-create': GanttDependencyChange
+  'dependency-remove': GanttDependencyChange
+  'dependency-update': GanttDependencyUpdate
 }
 
 /** Kind of problem reported by `validateRows`. */
@@ -362,6 +431,28 @@ export interface GanttViewport {
   width: number
   /** Client height of the scroll container (0 until measured). */
   height: number
+}
+
+/** Which kind of dependency drag is in progress. */
+export type GanttLinkMode = 'create' | 'reroute-head' | 'reroute-tail'
+
+/** Arguments to start a dependency drag (connector handle / arrow endpoint). */
+export interface GanttBeginLinkArgs {
+  /** The fixed endpoint task id (the anchor that stays put). */
+  anchorId: string
+  /** Which edge of the anchor the link attaches to. */
+  anchorEdge: 'finish' | 'start'
+  mode: GanttLinkMode
+  /** The existing dependency being re-routed (for reroute modes). */
+  link?: GanttDependencyChange
+  /** Initial pointer position in client coordinates. */
+  pointer: { x: number; y: number }
+}
+
+/** Live state of an in-progress dependency drag. */
+export interface GanttLinkDraft extends GanttBeginLinkArgs {
+  /** Task id under the pointer (a candidate drop target), or `null`. */
+  over?: string | null
 }
 
 /**
@@ -428,6 +519,20 @@ export interface GanttContext {
   unregisterTask: (id: string) => void
   /** Emit a completed drag (called by `GanttTask`/`GanttMilestone`). */
   moveTask: (event: GanttMoveEvent) => void
+  /** Emit a completed edge-resize (called by `GanttTask`). */
+  resizeTask: (event: GanttResizeEvent) => void
+  /** Emit a completed progress drag (called by `GanttTask`). */
+  progressTask: (event: GanttProgressEvent) => void
+  /** In-progress dependency drag, or `null` when idle. */
+  linkDraft: ComputedRef<GanttLinkDraft | null>
+  /** Start a dependency drag (connector handle or arrow endpoint). */
+  beginLink: (args: GanttBeginLinkArgs) => void
+  /**
+   * Finish the in-progress dependency drag. The drop target is resolved from the
+   * DOM unless `targetId` is supplied. Emits `dependency-create`/`update` and
+   * clears the draft.
+   */
+  endLink: (targetId?: string | null) => void
   /**
    * Bubble an interaction up to `GanttRoot`, which re-emits it as the matching
    * chart event (so prop-driven `<Gantt>` consumers can listen for clicks on

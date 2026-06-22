@@ -91,6 +91,19 @@ export function useGanttItem(props: GanttItemProps, overrides: Partial<GanttTask
     baseLeft,
   })
 
+  /** Start an edge-resize drag (from a left/right handle on the bar). */
+  function startResize(event: PointerEvent, edge: 'start' | 'end'): void {
+    onPointerDown(event, edge === 'start' ? 'resize-start' : 'resize-end')
+  }
+
+  /** Start a progress drag (from the progress handle on the bar). */
+  function startProgress(event: PointerEvent): void {
+    onPointerDown(event, 'progress')
+  }
+
+  // Progress to render: the live drag value while dragging, else the resolved one.
+  const liveProgress = computed(() => preview.value?.progress ?? resolved.value.progress)
+
   // Vertical band per overlap mode (lanes/cascade offset handled by the context).
   const rowStyle = computed(() => {
     const band = ctx.taskBand(resolved.value)
@@ -129,6 +142,9 @@ export function useGanttItem(props: GanttItemProps, overrides: Partial<GanttTask
     moved,
     draggable,
     onPointerDown,
+    startResize,
+    startProgress,
+    liveProgress,
     ghost,
     previewLabel,
     overlapping,

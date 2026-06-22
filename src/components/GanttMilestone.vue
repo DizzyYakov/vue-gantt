@@ -35,6 +35,8 @@ function onContextmenu(event: MouseEvent): void {
 
 const overlapMode = computed(() => ctx.config.value.overlap)
 const markerStyle = computed(() => ({ left: `${left.value}px` }))
+// Highlight while a dependency drag hovers this milestone as a drop target.
+const linkTarget = computed(() => ctx.linkDraft.value?.over === resolved.value.id)
 
 const ghostStyle = computed(() =>
   ghost.value
@@ -60,6 +62,7 @@ const labelStyle = computed(() =>
     <div
       class="gantt-milestone__marker"
       :data-draggable="draggable || undefined"
+      :data-link-target="linkTarget || undefined"
       :style="markerStyle"
       @pointerdown="onPointerDown"
       @click="onClick"
@@ -126,6 +129,12 @@ const labelStyle = computed(() =>
   background: var(--gantt-milestone-bg, #f59e0b);
   transform: rotate(45deg);
   border-radius: var(--gantt-milestone-radius, 2px);
+}
+
+/* Drop-target affordance while a dependency is being dragged onto this marker. */
+.gantt-milestone__marker[data-link-target] .gantt-milestone__diamond {
+  outline: var(--gantt-link-target-outline, 2px solid var(--gantt-progress-bg, #6366f1));
+  outline-offset: 2px;
 }
 
 .gantt-drag-label {

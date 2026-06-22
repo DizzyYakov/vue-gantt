@@ -28,6 +28,9 @@ export const GANTT_DEFAULTS = {
   overlap: 'lanes',
   draggable: false,
   rowMovable: false,
+  resizable: false,
+  progressDraggable: false,
+  linkable: false,
   snapToGrid: false,
   dragLabelFormat: 'd MMM HH:mm',
 } as const
