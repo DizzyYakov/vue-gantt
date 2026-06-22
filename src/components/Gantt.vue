@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, ref } from 'vue'
 import type {
   GanttCellEvent,
   GanttColumnEvent,
@@ -8,6 +8,7 @@ import type {
   GanttMoveEvent,
   GanttRootProps,
   GanttRowEvent,
+  GanttScrollOptions,
   GanttTaskEvent,
 } from '../types'
 import GanttRoot from './GanttRoot.vue'
@@ -58,10 +59,20 @@ const rootProps = computed<GanttRootProps>(() => {
   void height
   return rest
 })
+
+// Forward the imperative scroll API from GanttRoot so a `ref` to `<Gantt>` works.
+const root = ref<InstanceType<typeof GanttRoot>>()
+defineExpose({
+  scrollToDate: (date: Date | string | number, options?: GanttScrollOptions) =>
+    root.value?.scrollToDate(date, options),
+  scrollToTask: (id: string, options?: GanttScrollOptions) => root.value?.scrollToTask(id, options),
+  scrollToToday: (options?: GanttScrollOptions) => root.value?.scrollToToday(options),
+})
 </script>
 
 <template>
   <GanttRoot
+    ref="root"
     v-bind="rootProps"
     @move="emit('move', $event)"
     @group-toggle="emit('group-toggle', $event)"

@@ -289,6 +289,53 @@ function setViewport(metrics: Partial<GanttViewport>): void {
 
 const headerHeight = computed(() => tiers.value.length * props.headerRowHeight)
 
+// --- Imperative scroll API ------------------------------------------------
+// The scroll container (registered by `GanttView`) lives below the frozen
+// sidebar/header in the scroll flow, so a content-x maps to scrollLeft directly
+// (the sidebar occupies the first `sidebarWidth` px of the scrollable row).
+const scrollerEl = ref<HTMLElement | null>(null)
+
+function setScroller(el: HTMLElement | null): void {
+  scrollerEl.value = el
+}
+
+function applyScroll(left: number | undefined, top: number | undefined, behavior: ScrollBehavior): void {
+  const el = scrollerEl.value
+  if (!el) return
+  const x = left == null ? undefined : Math.max(0, left)
+  const y = top == null ? undefined : Math.max(0, top)
+  if (typeof el.scrollTo === 'function') {
+    el.scrollTo({ left: x, top: y, behavior })
+  } else {
+    // jsdom / older engines: assign directly.
+    if (x != null) el.scrollLeft = x
+    if (y != null) el.scrollTop = y
+  }
+}
+
+function leftForDate(date: Date | string | number, align: 'start' | 'center'): number {
+  const el = scrollerEl.value
+  const x = scale.dateToX(toDate(date))
+  if (align === 'center' && el) return x - (el.clientWidth - props.sidebarWidth) / 2
+  return x
+}
+
+function scrollToDate(date: Date | string | number, options: { behavior?: ScrollBehavior; align?: 'start' | 'center' } = {}): void {
+  applyScroll(leftForDate(date, options.align ?? 'start'), undefined, options.behavior ?? 'smooth')
+}
+
+function scrollToTask(id: string, options: { behavior?: ScrollBehavior; align?: 'start' | 'center' } = {}): void {
+  const task = tasks.value.find((t) => t.id === id)
+  if (!task) return
+  const row = rowByOrder.value[task.order]
+  const top = row ? row.top : task.order * props.rowHeight
+  applyScroll(leftForDate(task.start, options.align ?? 'start'), top, options.behavior ?? 'smooth')
+}
+
+function scrollToToday(options: { behavior?: ScrollBehavior; align?: 'start' | 'center' } = {}): void {
+  scrollToDate(today.value, options)
+}
+
 // Visible body-local window on each axis. The frozen sidebar/header offset both
 // the content origin and the sticky cover, so those terms cancel out.
 const horizontalWindow = computed(() => {
@@ -390,6 +437,10 @@ const context: GanttContext = {
   unregisterTask,
   moveTask: (event) => emit('move', event),
   dispatch,
+  setScroller,
+  scrollToDate,
+  scrollToTask,
+  scrollToToday,
   viewport,
   setViewport,
 }
@@ -445,7 +496,7 @@ function ceilToUnit(date: Date, unit: GanttUnit): Date {
   }
 }
 
-defineExpose({ rows, tasks, columns: scale.columns, config })
+defineExpose({ rows, tasks, columns: scale.columns, config, scrollToDate, scrollToTask, scrollToToday })
 </script>
 
 <template>

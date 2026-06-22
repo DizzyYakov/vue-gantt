@@ -1,6 +1,7 @@
 <script setup lang="ts">
-import { computed, ref, type Ref } from 'vue'
+import { computed, ref } from 'vue'
 import {
+  applyMove,
   Gantt,
   GanttDependencies,
   GanttGrid,
@@ -16,7 +17,6 @@ import {
   type GanttGroupToggleEvent,
   type GanttMoveEvent,
   type GanttRowData,
-  type GanttTaskData,
   type GanttUnit,
 } from '../index'
 
@@ -92,25 +92,13 @@ const manyRows = ref<GanttRowData[]>(
   })),
 )
 
-// Apply a completed drag: move the task into its target row, updating dates.
-function applyMove(list: Ref<GanttRowData[]>, e: GanttMoveEvent) {
-  let moved: GanttTaskData | undefined
-  const next = list.value.map((row) => {
-    const kept = (row.tasks ?? []).filter((t) => {
-      if (t.id !== e.id) return true
-      moved = { ...t, start: e.start, end: e.end }
-      return false
-    })
-    return { ...row, tasks: kept }
-  })
-  if (!moved) return
-  const target = next.find((r) => r.id === e.toRowId)
-  if (target) target.tasks = [...(target.tasks ?? []), moved]
-  list.value = next
-}
+// Apply a completed drag with the library's `applyMove` helper (controlled data).
+const onMoveRows = (e: GanttMoveEvent) => (rows.value = applyMove(rows.value, e))
+const onMoveMany = (e: GanttMoveEvent) => (manyRows.value = applyMove(manyRows.value, e))
 
-const onMoveRows = (e: GanttMoveEvent) => applyMove(rows, e)
-const onMoveMany = (e: GanttMoveEvent) => applyMove(manyRows, e)
+// Imperative scroll API: a template ref to the chart exposes scrollTo* helpers.
+const mainGantt = ref<InstanceType<typeof Gantt>>()
+const scrollToToday = () => mainGantt.value?.scrollToToday()
 
 // Row grouping: rows reference a group via `groupId`; groups carry the labels.
 const groups = ref<GanttGroupData[]>([
@@ -127,7 +115,7 @@ const lastToggle = ref('')
 const onGroupToggle = (e: GanttGroupToggleEvent) => {
   lastToggle.value = `${e.id} → ${e.collapsed ? 'collapsed' : 'expanded'}`
 }
-const onMoveGrouped = (e: GanttMoveEvent) => applyMove(groupedRows, e)
+const onMoveGrouped = (e: GanttMoveEvent) => (groupedRows.value = applyMove(groupedRows.value, e))
 </script>
 
 <template>
@@ -156,8 +144,13 @@ const onMoveGrouped = (e: GanttMoveEvent) => applyMove(groupedRows, e)
 
     <section>
       <h2>1. Prop-driven wrapper (<code>&lt;Gantt :rows /&gt;</code>) — rows hold tasks</h2>
+      <p class="hint">
+        <button type="button" class="btn" @click="scrollToToday">Сегодня</button>
+        — прокрутить график к текущей дате через <code>scrollToToday()</code> (template ref).
+      </p>
       <div class="card">
         <Gantt
+          ref="mainGantt"
           :rows="rows"
           :tiers="tiers"
           :column-width="columnWidth"
@@ -330,6 +323,20 @@ const onMoveGrouped = (e: GanttMoveEvent) => applyMove(groupedRows, e)
   margin: 0 0 8px;
   font-size: 0.85em;
   color: #64748b;
+}
+
+.btn {
+  padding: 2px 10px;
+  font: inherit;
+  font-size: 0.85em;
+  color: #1e293b;
+  background: #f1f5f9;
+  border: 1px solid #cbd5e1;
+  border-radius: 6px;
+  cursor: pointer;
+}
+.btn:hover {
+  background: #e2e8f0;
 }
 
 .manual {

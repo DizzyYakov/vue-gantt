@@ -8,6 +8,21 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Added
 
+- **Data utilities** — pure, tree-shakeable helpers over `rows`/`tasks`
+  (`src/utils.ts`), exported from the entry, for the boilerplate the controlled
+  data model otherwise forces on consumers:
+  - edits: `applyMove` (apply the `move` event), `updateTask`, `addTask`,
+    `removeTask` — all immutable;
+  - lookups: `flattenTasks`, `findTask`, `findRow`;
+  - dates/progress: `tasksExtent`, `rollupProgress`;
+  - dependencies & scheduling: `getDependents`, `detectCycles`,
+    `topologicalOrder`, `criticalPath`, `autoSchedule`;
+  - validation: `validateRows` (+ exported `GanttIssue` type).
+  The demo now uses `applyMove` instead of a hand-rolled copy.
+- **Imperative scroll API** — `scrollToDate` / `scrollToTask` / `scrollToToday`
+  on the context and exposed via `defineExpose` on `GanttRoot`/`Gantt` (call
+  through a template ref). `GanttView` registers its scroll container; options
+  carry `behavior` + `align`. Adds the `GanttScrollOptions` type.
 - **Interaction events** — components now surface their pointer interactions both
   on themselves (declarative usage) and aggregated on `GanttRoot`/`Gantt`
   (prop-driven usage), routed through a new `context.dispatch`:

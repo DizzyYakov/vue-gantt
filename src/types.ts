@@ -329,6 +329,31 @@ export interface GanttEventMap {
   'dependency-click': GanttDependencyEvent
 }
 
+/** Kind of problem reported by `validateRows`. */
+export type GanttIssueType =
+  | 'duplicate-row-id'
+  | 'duplicate-task-id'
+  | 'missing-dependency'
+  | 'invalid-range'
+  | 'orphan-group'
+
+/** A single data problem found by `validateRows`. */
+export interface GanttIssue {
+  type: GanttIssueType
+  /** Id of the offending row or task. */
+  id: string
+  /** Human-readable description. */
+  message: string
+}
+
+/** Options for the imperative scroll helpers. */
+export interface GanttScrollOptions {
+  /** Scroll animation behavior. Defaults to `smooth`. */
+  behavior?: ScrollBehavior
+  /** Horizontal alignment of the target within the body. Defaults to `start`. */
+  align?: 'start' | 'center'
+}
+
 /** Scroll/measurement state of the chart's scroll viewport. */
 export interface GanttViewport {
   scrollLeft: number
@@ -409,4 +434,12 @@ export interface GanttContext {
    * internally-rendered tasks, rows, cells, columns and dependencies).
    */
   dispatch: <K extends keyof GanttEventMap>(name: K, payload: GanttEventMap[K]) => void
+  /** Register the scroll container (called by `GanttView`); pass `null` to clear. */
+  setScroller: (el: HTMLElement | null) => void
+  /** Scroll horizontally so `date` comes into view. No-op without a scroller. */
+  scrollToDate: (date: Date | string | number, options?: GanttScrollOptions) => void
+  /** Scroll to a task by id (horizontal to its start, vertical to its row). */
+  scrollToTask: (id: string, options?: GanttScrollOptions) => void
+  /** Scroll to the current time (`today`). */
+  scrollToToday: (options?: GanttScrollOptions) => void
 }
