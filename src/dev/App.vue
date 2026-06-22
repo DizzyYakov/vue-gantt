@@ -96,6 +96,10 @@ const manyRows = ref<GanttRowData[]>(
 const onMoveRows = (e: GanttMoveEvent) => (rows.value = applyMove(rows.value, e))
 const onMoveMany = (e: GanttMoveEvent) => (manyRows.value = applyMove(manyRows.value, e))
 
+// Imperative scroll API: a template ref to the chart exposes scrollTo* helpers.
+const mainGantt = ref<InstanceType<typeof Gantt>>()
+const scrollToToday = () => mainGantt.value?.scrollToToday()
+
 // Row grouping: rows reference a group via `groupId`; groups carry the labels.
 const groups = ref<GanttGroupData[]>([
   { id: 'g-be', name: 'Backend' },
@@ -140,8 +144,13 @@ const onMoveGrouped = (e: GanttMoveEvent) => (groupedRows.value = applyMove(grou
 
     <section>
       <h2>1. Prop-driven wrapper (<code>&lt;Gantt :rows /&gt;</code>) — rows hold tasks</h2>
+      <p class="hint">
+        <button type="button" class="btn" @click="scrollToToday">Сегодня</button>
+        — прокрутить график к текущей дате через <code>scrollToToday()</code> (template ref).
+      </p>
       <div class="card">
         <Gantt
+          ref="mainGantt"
           :rows="rows"
           :tiers="tiers"
           :column-width="columnWidth"
@@ -314,6 +323,20 @@ const onMoveGrouped = (e: GanttMoveEvent) => (groupedRows.value = applyMove(grou
   margin: 0 0 8px;
   font-size: 0.85em;
   color: #64748b;
+}
+
+.btn {
+  padding: 2px 10px;
+  font: inherit;
+  font-size: 0.85em;
+  color: #1e293b;
+  background: #f1f5f9;
+  border: 1px solid #cbd5e1;
+  border-radius: 6px;
+  cursor: pointer;
+}
+.btn:hover {
+  background: #e2e8f0;
 }
 
 .manual {
