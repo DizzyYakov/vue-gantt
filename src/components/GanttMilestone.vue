@@ -5,7 +5,7 @@ import { useGanttItem, type GanttItemProps } from '../composables/useGanttItem'
 const props = defineProps<GanttItemProps>()
 
 // A milestone is a point in time; `end` is ignored and collapsed onto `start`.
-const { ctx, resolved, rowStyle, left, dragging, draggable, onPointerDown, ghost, previewLabel } =
+const { ctx, resolved, rowStyle, left, dragging, draggable, onPointerDown, ghost, previewLabel, hidden } =
   useGanttItem(props, { type: 'milestone' })
 
 const overlapMode = computed(() => ctx.config.value.overlap)
@@ -25,6 +25,7 @@ const labelStyle = computed(() =>
 
 <template>
   <div
+    v-if="!hidden"
     class="gantt-milestone"
     :data-id="resolved.id"
     :data-dragging="dragging || undefined"

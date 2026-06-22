@@ -1,4 +1,4 @@
-import type { GanttOverlapMode, ResolvedRow, ResolvedTask } from './types'
+import type { GanttOverlapMode, ResolvedGroup, ResolvedRow, ResolvedTask } from './types'
 
 /**
  * Greedy interval-partitioning: assign each task the first lane whose previous
@@ -46,6 +46,105 @@ export function layoutRows(rows: ResolvedRow[], options: LayoutOptions): Resolve
     top += height
     return placed
   })
+}
+
+/** Per-group metadata (label + initial collapsed state) keyed by group id. */
+export interface GroupMeta {
+  name: string
+  collapsed: boolean
+  meta: Record<string, unknown>
+}
+
+export interface LayoutGroupsOptions extends LayoutOptions {
+  /** Height of a group header band, in pixels. */
+  groupHeaderHeight: number
+  /** Group metadata by id; group order + membership come from the rows. */
+  groupMeta: Map<string, GroupMeta>
+}
+
+export interface GroupedLayout {
+  /** Member rows, lane-assigned and placed (collapsed rows flagged `hidden`). */
+  rows: ResolvedRow[]
+  /** Group header bands, in render order. */
+  groups: ResolvedGroup[]
+  /** Total plottable height including header bands. */
+  contentHeight: number
+}
+
+/**
+ * Lay out rows while injecting a collapsible header band before the first row of
+ * each group. Groups live *parallel* to the rows (the returned `rows` array is
+ * not reordered and keeps its indices), so `task.order → rows[order]` stays
+ * valid; member-row `top`s simply include the header offsets above them. A
+ * collapsed group keeps its header but hides its member rows (they take no
+ * vertical space); the group's rolled-up extent still covers every member task.
+ *
+ * With no grouped rows this is equivalent to `layoutRows`.
+ */
+export function layoutGroups(rows: ResolvedRow[], options: LayoutGroupsOptions): GroupedLayout {
+  let top = 0
+  let prevGroupId = ''
+  let groupOrder = 0
+  const outRows: ResolvedRow[] = []
+  const groups: ResolvedGroup[] = []
+  const byId = new Map<string, ResolvedGroup>()
+
+  for (const row of rows) {
+    const laneCount = assignLanes(row.tasks)
+    const rowH = options.mode === 'lanes' ? laneCount * options.rowHeight : options.rowHeight
+    const groupId = row.groupId
+
+    // Open a header the first time a (contiguous) group appears.
+    if (groupId && groupId !== prevGroupId && !byId.has(groupId)) {
+      const meta = options.groupMeta.get(groupId)
+      const group: ResolvedGroup = {
+        id: groupId,
+        name: meta?.name ?? groupId,
+        order: groupOrder++,
+        meta: meta?.meta ?? {},
+        collapsed: meta?.collapsed ?? false,
+        top,
+        height: options.groupHeaderHeight,
+        rowIds: [],
+        start: new Date(0),
+        end: new Date(0),
+        progress: 0,
+      }
+      groups.push(group)
+      byId.set(groupId, group)
+      top += options.groupHeaderHeight
+    }
+    prevGroupId = groupId
+
+    const group = groupId ? byId.get(groupId) : undefined
+    const collapsed = group?.collapsed ?? false
+
+    outRows.push({ ...row, laneCount, hidden: collapsed, top, height: rowH })
+    if (!collapsed) top += rowH
+    group?.rowIds.push(row.id)
+  }
+
+  // Roll up each group's task extent + aggregate progress (collapsed included).
+  for (const group of groups) {
+    const tasks = outRows.filter((r) => r.groupId === group.id).flatMap((r) => r.tasks)
+    if (!tasks.length) continue
+    let start = tasks[0]!.start
+    let end = tasks[0]!.end
+    let durSum = 0
+    let progSum = 0
+    for (const t of tasks) {
+      if (t.start < start) start = t.start
+      if (t.end > end) end = t.end
+      const dur = Math.max(1, t.end.getTime() - t.start.getTime())
+      durSum += dur
+      progSum += t.progress * dur
+    }
+    group.start = start
+    group.end = end
+    group.progress = durSum ? progSum / durSum : 0
+  }
+
+  return { rows: outRows, groups, contentHeight: top }
 }
 
 /**

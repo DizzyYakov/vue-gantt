@@ -53,3 +53,4 @@ graphify*
 temp/
 
 *claude*
+.playwright-mcp

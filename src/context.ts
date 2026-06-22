@@ -14,12 +14,16 @@ export const GANTT_CONTEXT: InjectionKey<GanttContext> = Symbol('gantt-context')
 /** Injection key carrying the enclosing row's id to declarative `GanttTask`s. */
 export const GANTT_ROW: InjectionKey<ComputedRef<string>> = Symbol('gantt-row')
 
+/** Injection key carrying the enclosing group's id to declarative `GanttRow`s. */
+export const GANTT_GROUP: InjectionKey<ComputedRef<string>> = Symbol('gantt-group')
+
 /** Default configuration values, overridable via `GanttRoot` props. */
 export const GANTT_DEFAULTS = {
   unit: 'day',
   columnWidth: 40,
   rowHeight: 36,
   headerRowHeight: 28,
+  groupHeaderHeight: 36,
   sidebarWidth: 200,
   overlap: 'lanes',
   draggable: false,
@@ -78,6 +82,8 @@ export function normalizeRow(row: GanttRow, order: number): ResolvedRow {
     order,
     meta: row.meta ?? {},
     tasks: (row.tasks ?? []).map((task) => normalizeTask(task, row.id, order)),
+    groupId: row.groupId ?? '',
+    hidden: false,
     laneCount: 1,
     top: order,
     height: 1,

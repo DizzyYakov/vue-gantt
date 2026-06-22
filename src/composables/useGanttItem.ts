@@ -76,6 +76,11 @@ export function useGanttItem(props: GanttItemProps, overrides: Partial<GanttTask
     () => (ctx.rows.value[resolved.value.order]?.laneCount ?? 1) > 1,
   )
 
+  // True when the item's row belongs to a collapsed group. Declarative items
+  // render themselves (unlike `GanttView`, which only renders `visibleTasks`),
+  // so each one must hide while its group is collapsed.
+  const hidden = computed(() => ctx.rows.value[resolved.value.order]?.hidden ?? false)
+
   const rowTop = (o: number) => ctx.rows.value[o]?.top ?? o * ctx.config.value.rowHeight
 
   const baseLeft = computed(() => ctx.dateToX(resolved.value.start))
@@ -99,10 +104,18 @@ export function useGanttItem(props: GanttItemProps, overrides: Partial<GanttTask
   const ghost = computed(() => {
     const p = preview.value
     if (!p) return null
+    // The ghost is positioned relative to the bar's own band (`rowStyle`), whose
+    // top already includes any lane/cascade offset. On a pure horizontal move
+    // (same row) keep that offset; when crossing into another row, snap the
+    // ghost to the target row's top (lane 0) — measuring from the band top, not
+    // the row top, so a task in a lower lane/cascade step doesn't land one
+    // lane/step too low.
+    const bandTop = ctx.taskBand(resolved.value).top
+    const translateY = p.order === resolved.value.order ? 0 : rowTop(p.order) - bandTop
     return {
       left: ctx.dateToX(p.start),
       width: ctx.widthBetween(p.start, p.end),
-      translateY: rowTop(p.order) - rowTop(resolved.value.order),
+      translateY,
     }
   })
 
@@ -118,5 +131,6 @@ export function useGanttItem(props: GanttItemProps, overrides: Partial<GanttTask
     ghost,
     previewLabel,
     overlapping,
+    hidden,
   }
 }
