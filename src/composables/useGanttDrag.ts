@@ -107,6 +107,8 @@ export function useGanttDrag(options: DragOptions) {
       const pointerY = band.top + band.height / 2 + dy.value
       let target = task.order
       for (const row of rows) {
+        // Collapsed-group rows take no space and aren't drop targets.
+        if (row.hidden) continue
         if (pointerY >= row.top && pointerY < row.top + row.height) {
           target = row.order
           break

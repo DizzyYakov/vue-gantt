@@ -15,7 +15,19 @@
   --gantt-column-width: 40px;
   --gantt-row-height: 36px;
   --gantt-header-row-height: 28px;
+  --gantt-group-header-height: 36px;
   --gantt-sidebar-width: 200px;
+
+  /* Row groups (collapsible header band + body rollup bar) */
+  --gantt-group-header-bg: #f8fafc;
+  --gantt-group-header-color: inherit;
+  --gantt-group-header-font-weight: 600;
+  /* Left indent of member rows under their group header. */
+  --gantt-group-indent: 16px;
+  --gantt-group-bar-bg: #cbd5e1;
+  --gantt-group-bar-progress-bg: #94a3b8;
+  --gantt-group-bar-height: 40%;
+  --gantt-group-bar-radius: 3px;
 
   /* Opaque background for the frozen header / sidebar / corner panels so the
      scrolling body doesn't show through them. */
