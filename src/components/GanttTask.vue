@@ -16,6 +16,7 @@ const {
   ghost,
   previewLabel,
   overlapping,
+  hidden,
 } = useGanttItem(props, { type: 'task' })
 
 const overlapMode = computed(() => ctx.config.value.overlap)
@@ -40,6 +41,7 @@ const labelStyle = computed(() =>
 
 <template>
   <div
+    v-if="!hidden"
     class="gantt-task"
     :data-id="resolved.id"
     :data-dragging="dragging || undefined"
@@ -140,6 +142,10 @@ const labelStyle = computed(() =>
   padding: 0 8px;
   white-space: nowrap;
   color: var(--gantt-bar-color, inherit);
+  /* The label can straddle both the filled progress and the empty track, which
+     may have opposite luminance (e.g. a dark fill + light track). A theme can
+     set a contrasting halo here so the text stays legible over both. */
+  text-shadow: var(--gantt-bar-text-shadow, none);
   font-size: var(--gantt-bar-font-size, 0.8em);
 }
 

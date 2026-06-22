@@ -17,6 +17,9 @@
   width: 150px;
 }
 .sb-chart__corner {
+  /* border-box so the border-bottom is included in the height and the corner
+     matches the timeline header exactly (no 1px sidebar/body misalignment). */
+  box-sizing: border-box;
   height: var(--gantt-header-height, var(--gantt-row-height));
   border-bottom: var(--gantt-grid-border, 1px solid var(--gantt-grid-color, #e5e7eb));
 }

@@ -61,9 +61,39 @@ type Story = StoryObj<typeof Gantt>
 /** Minimal usage: rows of tasks on a month/week/day axis. */
 export const Basic: Story = {}
 
-/** Toggle any subset of the seven time groups on the header. */
+/**
+ * Toggle any subset of the seven time groups on the header. The coarsest tier
+ * (`quarter`) snaps the auto range to the whole quarter, so the data spans
+ * Apr–Jun to fill it — handy for long projects viewed at a glance.
+ */
 export const MultipleTiers: Story = {
-  args: { tiers: ['quarter', 'month', 'week', 'day'], columnWidth: 32 },
+  args: {
+    tiers: ['quarter', 'month', 'week', 'day'],
+    columnWidth: 32,
+    rows: [
+      {
+        id: 'planning',
+        name: 'Planning',
+        tasks: [
+          { id: 'research', name: 'Research', start: '2026-04-01', end: '2026-04-18', progress: 100 },
+          { id: 'spec', name: 'Spec', start: '2026-04-20', end: '2026-05-04', progress: 100, dependencies: ['research'] },
+        ],
+      },
+      {
+        id: 'design',
+        name: 'Design',
+        tasks: [{ id: 'design', name: 'Design', start: '2026-05-04', end: '2026-05-25', progress: 70, dependencies: ['spec'] }],
+      },
+      {
+        id: 'dev',
+        name: 'Development',
+        tasks: [
+          { id: 'build', name: 'Implementation', start: '2026-05-25', end: '2026-06-22', progress: 30, dependencies: ['design'] },
+          { id: 'ship', name: 'Ship', type: 'milestone', start: '2026-06-29', dependencies: ['build'] },
+        ],
+      },
+    ],
+  },
 }
 
 /** A fine tier over a long range stays fast — columns are generated per window. */
@@ -133,6 +163,29 @@ export const Theming: Story = {
         <Gantt v-bind="args" />
       </div>`,
   }),
+}
+
+/**
+ * Organize rows into collapsible groups: each row references a `groupId` and the
+ * `groups` prop carries the labels (+ initial `collapsed`). Click a header to
+ * collapse — member rows + bars hide while a rollup summary bar remains.
+ * `group-toggle` fires on every toggle.
+ */
+export const Grouping: Story = {
+  args: {
+    groups: [
+      { id: 'g-be', name: 'Backend' },
+      { id: 'g-fe', name: 'Frontend', collapsed: true },
+    ],
+    rows: [
+      { id: 'gr-api', name: 'API', groupId: 'g-be', tasks: [{ id: 'g-api', name: 'API', start: '2026-06-01', end: '2026-06-10', progress: 80 }] },
+      { id: 'gr-db', name: 'Database', groupId: 'g-be', tasks: [{ id: 'g-db', name: 'Schema', start: '2026-06-06', end: '2026-06-14', progress: 40 }] },
+      { id: 'gr-ui', name: 'UI', groupId: 'g-fe', tasks: [{ id: 'g-ui', name: 'Components', start: '2026-06-10', end: '2026-06-20', progress: 20 }] },
+      { id: 'gr-ux', name: 'UX', groupId: 'g-fe', tasks: [{ id: 'g-ux', name: 'Flows', start: '2026-06-12', end: '2026-06-18' }] },
+    ],
+    tiers: ['month', 'week', 'day'],
+    height: 300,
+  },
 }
 
 /** Override a bar's content with the `bar` slot. */
