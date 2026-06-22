@@ -1,6 +1,7 @@
 <script setup lang="ts">
-import { computed, ref, type Ref } from 'vue'
+import { computed, ref } from 'vue'
 import {
+  applyMove,
   Gantt,
   GanttDependencies,
   GanttGrid,
@@ -16,7 +17,6 @@ import {
   type GanttGroupToggleEvent,
   type GanttMoveEvent,
   type GanttRowData,
-  type GanttTaskData,
   type GanttUnit,
 } from '../index'
 
@@ -92,25 +92,9 @@ const manyRows = ref<GanttRowData[]>(
   })),
 )
 
-// Apply a completed drag: move the task into its target row, updating dates.
-function applyMove(list: Ref<GanttRowData[]>, e: GanttMoveEvent) {
-  let moved: GanttTaskData | undefined
-  const next = list.value.map((row) => {
-    const kept = (row.tasks ?? []).filter((t) => {
-      if (t.id !== e.id) return true
-      moved = { ...t, start: e.start, end: e.end }
-      return false
-    })
-    return { ...row, tasks: kept }
-  })
-  if (!moved) return
-  const target = next.find((r) => r.id === e.toRowId)
-  if (target) target.tasks = [...(target.tasks ?? []), moved]
-  list.value = next
-}
-
-const onMoveRows = (e: GanttMoveEvent) => applyMove(rows, e)
-const onMoveMany = (e: GanttMoveEvent) => applyMove(manyRows, e)
+// Apply a completed drag with the library's `applyMove` helper (controlled data).
+const onMoveRows = (e: GanttMoveEvent) => (rows.value = applyMove(rows.value, e))
+const onMoveMany = (e: GanttMoveEvent) => (manyRows.value = applyMove(manyRows.value, e))
 
 // Row grouping: rows reference a group via `groupId`; groups carry the labels.
 const groups = ref<GanttGroupData[]>([
@@ -127,7 +111,7 @@ const lastToggle = ref('')
 const onGroupToggle = (e: GanttGroupToggleEvent) => {
   lastToggle.value = `${e.id} → ${e.collapsed ? 'collapsed' : 'expanded'}`
 }
-const onMoveGrouped = (e: GanttMoveEvent) => applyMove(groupedRows, e)
+const onMoveGrouped = (e: GanttMoveEvent) => (groupedRows.value = applyMove(groupedRows.value, e))
 </script>
 
 <template>

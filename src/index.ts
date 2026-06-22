@@ -35,6 +35,25 @@ export { GANTT_CONTEXT, GANTT_ROW, GANTT_GROUP, GANTT_DEFAULTS, normalizeRow, no
 export { assignLanes, layoutRows, layoutGroups, conflictSegments } from './layout'
 export type { GroupMeta, GroupedLayout, LayoutGroupsOptions } from './layout'
 
+// Data utilities (pure helpers over `rows`/`tasks`)
+export {
+  flattenTasks,
+  findTask,
+  findRow,
+  applyMove,
+  updateTask,
+  addTask,
+  removeTask,
+  tasksExtent,
+  rollupProgress,
+  getDependents,
+  detectCycles,
+  topologicalOrder,
+  criticalPath,
+  autoSchedule,
+  validateRows,
+} from './utils'
+
 // Types
 export type {
   GanttBand,
@@ -48,12 +67,15 @@ export type {
   GanttEventMap,
   GanttGroup as GanttGroupData,
   GanttGroupToggleEvent,
+  GanttIssue,
+  GanttIssueType,
   GanttItemType,
   GanttMoveEvent,
   GanttOverlapMode,
   GanttRootProps,
   GanttRow as GanttRowData,
   GanttRowEvent,
+  GanttScrollOptions,
   GanttTask as GanttTaskData,
   GanttTaskEvent,
   GanttUnit,

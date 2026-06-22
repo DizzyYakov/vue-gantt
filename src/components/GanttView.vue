@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, useTemplateRef } from 'vue'
+import { computed, onMounted, onUnmounted, useTemplateRef, watch } from 'vue'
 import { useGanttContext } from '../composables/useGanttContext'
 import { useGanttViewport } from '../composables/useGanttViewport'
 import GanttConflicts from './GanttConflicts.vue'
@@ -18,10 +18,16 @@ const props = defineProps<{
   height?: number | string
 }>()
 
-const { visibleTasks, config } = useGanttContext()
+const { visibleTasks, config, setScroller } = useGanttContext()
 
 const scroller = useTemplateRef<HTMLElement>('scroller')
 useGanttViewport(scroller)
+
+// Expose the scroll container to the context so scrollToDate/Task/Today work.
+// Register on mount (when the template ref is populated) and re-bind on change.
+onMounted(() => setScroller(scroller.value ?? null))
+watch(scroller, (el) => setScroller(el ?? null))
+onUnmounted(() => setScroller(null))
 
 const scrollStyle = computed(() => ({
   maxHeight: props.height == null
