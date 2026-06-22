@@ -8,6 +8,7 @@ import type {
   GanttDependencyUpdate,
   GanttGroupToggleEvent,
   GanttMoveEvent,
+  GanttProgressEvent,
   GanttResizeEvent,
   GanttRootProps,
   GanttRowEvent,
@@ -25,6 +26,7 @@ const props = defineProps<GanttRootProps & {
 const emit = defineEmits<{
   move: [event: GanttMoveEvent]
   resize: [event: GanttResizeEvent]
+  progress: [event: GanttProgressEvent]
   'group-toggle': [event: GanttGroupToggleEvent]
   'dependency-create': [event: GanttDependencyChange]
   'dependency-remove': [event: GanttDependencyChange]
@@ -83,6 +85,7 @@ defineExpose({
     v-bind="rootProps"
     @move="emit('move', $event)"
     @resize="emit('resize', $event)"
+    @progress="emit('progress', $event)"
     @group-toggle="emit('group-toggle', $event)"
     @dependency-create="emit('dependency-create', $event)"
     @dependency-remove="emit('dependency-remove', $event)"

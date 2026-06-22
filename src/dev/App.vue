@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
+import { format } from 'date-fns'
 import {
   addDependency,
   applyMove,
@@ -18,9 +19,11 @@ import {
   updateTask,
   type GanttDependencyChange,
   type GanttDependencyUpdate,
+  type GanttDragLabelInfo,
   type GanttGroupData,
   type GanttGroupToggleEvent,
   type GanttMoveEvent,
+  type GanttProgressEvent,
   type GanttResizeEvent,
   type GanttRowData,
   type GanttUnit,
@@ -52,7 +55,16 @@ const columnWidth = computed(() => {
 const draggable = ref(true)
 const rowMovable = ref(true)
 const resizable = ref(true)
+const progressDraggable = ref(true)
 const linkable = ref(true)
+
+// Custom drag tooltip text for every drag kind (move / resize / progress).
+const dragLabel = (i: GanttDragLabelInfo) =>
+  i.mode === 'progress'
+    ? `${i.progress}% готово`
+    : i.task.type === 'milestone'
+      ? format(i.start, 'd MMM')
+      : `${format(i.start, 'd MMM')} – ${format(i.end, 'd MMM')}`
 
 // Rows are containers; each holds any number of tasks (note multiple bars per row).
 const rows = ref<GanttRowData[]>([
@@ -107,6 +119,8 @@ const onMoveMany = (e: GanttMoveEvent) => (manyRows.value = applyMove(manyRows.v
 // Resize + dependency edits — all controlled via the exported utils.
 const onResizeRows = (e: GanttResizeEvent) =>
   (rows.value = updateTask(rows.value, e.id, { start: e.start, end: e.end }))
+const onProgressRows = (e: GanttProgressEvent) =>
+  (rows.value = updateTask(rows.value, e.id, { progress: e.progress }))
 const onCreateDep = (e: GanttDependencyChange) => (rows.value = addDependency(rows.value, e.from, e.to))
 const onRemoveDep = (e: GanttDependencyChange) => (rows.value = removeDependency(rows.value, e.from, e.to))
 const onUpdateDep = (e: GanttDependencyUpdate) =>
@@ -165,6 +179,10 @@ const onMoveGrouped = (e: GanttMoveEvent) => (groupedRows.value = applyMove(grou
         resize edges
       </label>
       <label class="control__item">
+        <input v-model="progressDraggable" type="checkbox" />
+        drag progress
+      </label>
+      <label class="control__item">
         <input v-model="linkable" type="checkbox" />
         edit dependencies
       </label>
@@ -186,9 +204,12 @@ const onMoveGrouped = (e: GanttMoveEvent) => (groupedRows.value = applyMove(grou
           :draggable="draggable"
           :row-movable="rowMovable"
           :resizable="resizable"
+          :progress-draggable="progressDraggable"
           :linkable="linkable"
+          :drag-label="dragLabel"
           @move="onMoveRows"
           @resize="onResizeRows"
+          @progress="onProgressRows"
           @dependency-create="onCreateDep"
           @dependency-remove="onRemoveDep"
           @dependency-update="onUpdateDep"

@@ -22,6 +22,8 @@ const {
   draggable,
   onPointerDown,
   startResize,
+  startProgress,
+  liveProgress,
   ghost,
   previewLabel,
   overlapping,
@@ -29,6 +31,7 @@ const {
 } = useGanttItem(props, { type: 'task' })
 
 const resizable = computed(() => ctx.config.value.resizable)
+const progressDraggable = computed(() => ctx.config.value.progressDraggable)
 const linkable = computed(() => ctx.config.value.linkable)
 // Highlight this bar while a dependency drag hovers it as a drop target.
 const linkTarget = computed(() => ctx.linkDraft.value?.over === resolved.value.id)
@@ -63,7 +66,8 @@ function onContextmenu(event: MouseEvent): void {
 
 const overlapMode = computed(() => ctx.config.value.overlap)
 const barStyle = computed(() => ({ left: `${left.value}px`, width: `${width.value}px` }))
-const progressStyle = computed(() => ({ width: `${resolved.value.progress}%` }))
+// Follows the live drag value in `progress` mode; the resolved value otherwise.
+const progressStyle = computed(() => ({ width: `${liveProgress.value}%` }))
 
 const ghostStyle = computed(() =>
   ghost.value
@@ -74,10 +78,13 @@ const ghostStyle = computed(() =>
       }
     : undefined,
 )
-const labelStyle = computed(() =>
+
+// Live tooltip shown for any drag (move / resize / progress).
+const showTooltip = computed(() => dragging.value && !!previewLabel.value)
+const tooltipStyle = computed(() =>
   ghost.value
     ? { left: `${ghost.value.left}px`, transform: `translateY(${ghost.value.translateY}px)` }
-    : undefined,
+    : { left: `${left.value}px` },
 )
 </script>
 
@@ -102,11 +109,11 @@ const labelStyle = computed(() =>
       @dblclick="onDblclick"
       @contextmenu="onContextmenu"
     >
-      <slot :task="resolved" :progress="resolved.progress">
+      <slot :task="resolved" :progress="liveProgress">
         <div
           class="gantt-bar__progress"
           :style="progressStyle"
-          :aria-label="`${resolved.progress}%`"
+          :aria-label="`${liveProgress}%`"
         />
         <span class="gantt-bar__label">{{ resolved.name }}</span>
       </slot>
@@ -117,6 +124,15 @@ const labelStyle = computed(() =>
         <div class="gantt-bar__resize gantt-bar__resize--end" @pointerdown.stop="startResize($event, 'end')" />
       </template>
 
+      <!-- Progress handle: drag to change completion. -->
+      <div
+        v-if="progressDraggable"
+        class="gantt-bar__progress-handle"
+        :style="{ left: `${liveProgress}%` }"
+        title="Drag to set progress"
+        @pointerdown.stop.prevent="startProgress"
+      />
+
       <!-- Connector to drag a new dependency from this task's finish. -->
       <div
         v-if="linkable"
@@ -126,14 +142,14 @@ const labelStyle = computed(() =>
       />
     </div>
 
-    <!-- Translucent ghost + live date label shown while dragging. -->
-    <template v-if="ghost">
-      <div class="gantt-bar gantt-bar--ghost" :style="ghostStyle" aria-hidden="true">
-        <div class="gantt-bar__progress" :style="progressStyle" />
-        <span class="gantt-bar__label">{{ resolved.name }}</span>
-      </div>
-      <div class="gantt-drag-label" :style="labelStyle">{{ previewLabel }}</div>
-    </template>
+    <!-- Translucent ghost for move/resize. -->
+    <div v-if="ghost" class="gantt-bar gantt-bar--ghost" :style="ghostStyle" aria-hidden="true">
+      <div class="gantt-bar__progress" :style="progressStyle" />
+      <span class="gantt-bar__label">{{ resolved.name }}</span>
+    </div>
+
+    <!-- Live tooltip for any drag (move / resize / progress). -->
+    <div v-if="showTooltip" class="gantt-drag-label" :style="tooltipStyle">{{ previewLabel }}</div>
   </div>
 </template>
 
@@ -185,6 +201,30 @@ const labelStyle = computed(() =>
 }
 .gantt-bar__resize:hover {
   background: var(--gantt-resize-handle-bg, rgb(0 0 0 / 12%));
+}
+
+/* Progress handle: a draggable grip at the progress boundary. */
+.gantt-bar__progress-handle {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: var(--gantt-progress-handle-width, 10px);
+  transform: translateX(-50%);
+  cursor: ew-resize;
+  touch-action: none;
+  z-index: 1;
+}
+.gantt-bar__progress-handle::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 2px;
+  height: 55%;
+  transform: translate(-50%, -50%);
+  border-radius: 1px;
+  background: var(--gantt-progress-handle-color, #fff);
+  box-shadow: 0 0 0 1px rgb(0 0 0 / 15%);
 }
 
 /* Connector dot to drag out a new dependency from the bar's finish. */

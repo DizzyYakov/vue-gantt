@@ -8,6 +8,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Added
 
+- **Progress drag** — drag a handle on the bar to change a task's progress
+  (opt-in via `progressDraggable`). Emits a `progress` event (`GanttProgressEvent`);
+  the consumer applies it (e.g. `updateTask`). The bar fills live while dragging.
+- **Live drag tooltip + formatter** — the move/resize/progress drag tooltip now
+  renders for every drag kind and accepts a `dragLabel` formatter
+  `(info: GanttDragLabelInfo) => string` that overrides the text (info carries
+  `mode` `'move' | 'resize' | 'progress'`, `task`, `start`, `end`, `progress`).
 - **Edge resize** — drag a bar's left/right edge to change its `start`/`end`
   (opt-in via `resizable`). Dragging one edge past the other flips the sides
   (the dragged date becomes the opposite boundary). Emits a `resize` event

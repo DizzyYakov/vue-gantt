@@ -39,6 +39,7 @@ import type {
   GanttGroup,
   GanttGroupToggleEvent,
   GanttMoveEvent,
+  GanttProgressEvent,
   GanttResizeEvent,
   GanttRootProps,
   GanttRow,
@@ -65,9 +66,11 @@ const props = withDefaults(defineProps<GanttRootProps>(), {
     draggable: GANTT_DEFAULTS.draggable,
     rowMovable: GANTT_DEFAULTS.rowMovable,
     resizable: GANTT_DEFAULTS.resizable,
+    progressDraggable: GANTT_DEFAULTS.progressDraggable,
     linkable: GANTT_DEFAULTS.linkable,
     snapToGrid: GANTT_DEFAULTS.snapToGrid,
     dragLabelFormat: GANTT_DEFAULTS.dragLabelFormat,
+    dragLabel: undefined,
     startDate: undefined,
     endDate: undefined,
     today: undefined,
@@ -78,6 +81,7 @@ const props = withDefaults(defineProps<GanttRootProps>(), {
 const emit = defineEmits<{
   move: [event: GanttMoveEvent]
   resize: [event: GanttResizeEvent]
+  progress: [event: GanttProgressEvent]
   'group-toggle': [event: GanttGroupToggleEvent]
   'dependency-create': [event: GanttDependencyChange]
   'dependency-remove': [event: GanttDependencyChange]
@@ -249,9 +253,11 @@ const config = computed<GanttConfig>(() => ({
   draggable: props.draggable || props.rowMovable,
   rowMovable: props.rowMovable,
   resizable: props.resizable,
+  progressDraggable: props.progressDraggable,
   linkable: props.linkable,
   snapToGrid: props.snapToGrid,
   dragLabelFormat: props.dragLabelFormat,
+  dragLabel: props.dragLabel,
   start: start.value,
   end: end.value,
   today: today.value,
@@ -455,6 +461,7 @@ const context: GanttContext = {
   unregisterTask,
   moveTask: (event) => emit('move', event),
   resizeTask: (event) => emit('resize', event),
+  progressTask: (event) => emit('progress', event),
   linkDraft,
   beginLink,
   endLink,
