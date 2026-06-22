@@ -1,0 +1,31 @@
+/* The headless chart uses `font: inherit`; give stories a sans-serif context. */
+.sb-wrap {
+  font-family: system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+}
+
+/* Layout used by the per-component story canvases (declarativeChart helper). */
+.sb-chart {
+  display: flex;
+  align-items: flex-start;
+  max-width: 880px;
+  border: 1px solid var(--gantt-grid-color, #e5e7eb);
+  border-radius: 8px;
+  overflow: hidden;
+}
+.sb-chart__side {
+  flex: none;
+  width: 150px;
+}
+.sb-chart__corner {
+  height: var(--gantt-header-height, var(--gantt-row-height));
+  border-bottom: var(--gantt-grid-border, 1px solid var(--gantt-grid-color, #e5e7eb));
+}
+.sb-chart__main {
+  flex: 1 1 auto;
+  overflow-x: auto;
+}
+.sb-chart__body {
+  position: relative;
+  width: var(--gantt-content-width);
+  height: var(--gantt-content-height);
+}

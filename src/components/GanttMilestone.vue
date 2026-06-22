@@ -1,0 +1,112 @@
+<script setup lang="ts">
+import { computed } from 'vue'
+import { useGanttItem, type GanttItemProps } from '../composables/useGanttItem'
+
+const props = defineProps<GanttItemProps>()
+
+// A milestone is a point in time; `end` is ignored and collapsed onto `start`.
+const { ctx, resolved, rowStyle, left, dragging, draggable, onPointerDown, ghost, previewLabel } =
+  useGanttItem(props, { type: 'milestone' })
+
+const overlapMode = computed(() => ctx.config.value.overlap)
+const markerStyle = computed(() => ({ left: `${left.value}px` }))
+
+const ghostStyle = computed(() =>
+  ghost.value
+    ? { left: `${ghost.value.left}px`, transform: `translate(-50%, ${ghost.value.translateY}px)` }
+    : undefined,
+)
+const labelStyle = computed(() =>
+  ghost.value
+    ? { left: `${ghost.value.left}px`, transform: `translateY(${ghost.value.translateY}px)` }
+    : undefined,
+)
+</script>
+
+<template>
+  <div
+    class="gantt-milestone"
+    :data-id="resolved.id"
+    :data-dragging="dragging || undefined"
+    :data-overlap="overlapMode"
+    :style="rowStyle"
+  >
+    <div
+      class="gantt-milestone__marker"
+      :data-draggable="draggable || undefined"
+      :style="markerStyle"
+      @pointerdown="onPointerDown"
+    >
+      <slot :task="resolved">
+        <div class="gantt-milestone__diamond" />
+      </slot>
+    </div>
+
+    <!-- Translucent ghost + live date label shown while dragging. -->
+    <template v-if="ghost">
+      <div class="gantt-milestone__marker gantt-milestone__marker--ghost" :style="ghostStyle" aria-hidden="true">
+        <div class="gantt-milestone__diamond" />
+      </div>
+      <div class="gantt-drag-label" :style="labelStyle">{{ previewLabel }}</div>
+    </template>
+  </div>
+</template>
+
+<style scoped>
+.gantt-milestone {
+  position: absolute;
+  left: 0;
+  right: 0;
+  display: flex;
+  align-items: center;
+}
+
+.gantt-milestone[data-dragging] {
+  z-index: 5;
+}
+
+.gantt-milestone__marker {
+  position: absolute;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  /* Center the marker on the milestone date. */
+  transform: translateX(-50%);
+}
+
+.gantt-milestone__marker[data-draggable] {
+  cursor: grab;
+  touch-action: none;
+}
+
+.gantt-milestone[data-dragging] .gantt-milestone__marker[data-draggable] {
+  cursor: grabbing;
+}
+
+.gantt-milestone__marker--ghost {
+  opacity: var(--gantt-ghost-opacity, 0.55);
+  pointer-events: none;
+}
+
+.gantt-milestone__diamond {
+  width: var(--gantt-milestone-size, 14px);
+  height: var(--gantt-milestone-size, 14px);
+  background: var(--gantt-milestone-bg, #f59e0b);
+  transform: rotate(45deg);
+  border-radius: var(--gantt-milestone-radius, 2px);
+}
+
+.gantt-drag-label {
+  position: absolute;
+  top: 0;
+  margin-top: -1.7em;
+  padding: 1px 6px;
+  white-space: nowrap;
+  pointer-events: none;
+  transform-origin: left center;
+  font-size: var(--gantt-drag-label-font-size, 0.72em);
+  color: var(--gantt-drag-label-color, #fff);
+  background: var(--gantt-drag-label-bg, #1e293b);
+  border-radius: var(--gantt-drag-label-radius, 4px);
+}
+</style>

@@ -1,0 +1,66 @@
+/**
+ * Optional default theme for vue-gantt.
+ *
+ * Import it with `import 'vue-gantt/styles'` to get sensible defaults, then
+ * override any `--gantt-*` property to match your design system — on `.gantt-root`
+ * itself or on ANY ancestor (e.g. a wrapper, `:root`, or a design-system class).
+ *
+ * The defaults are declared on `:root` (not `.gantt-root`) on purpose: a custom
+ * property set on an element always beats a value inherited from an ancestor, so
+ * if the defaults lived on `.gantt-root` they would shadow your overrides. On
+ * `:root` they are inherited, and the nearest overriding ancestor wins.
+ */
+:root {
+  /* Layout (most are also set per-instance by GanttRoot from props) */
+  --gantt-column-width: 40px;
+  --gantt-row-height: 36px;
+  --gantt-header-row-height: 28px;
+  --gantt-sidebar-width: 200px;
+
+  /* Opaque background for the frozen header / sidebar / corner panels so the
+     scrolling body doesn't show through them. */
+  --gantt-surface: #fff;
+
+  /* Grid */
+  --gantt-grid-color: #e5e7eb;
+  --gantt-grid-border: 1px solid var(--gantt-grid-color);
+  /* Align labels to the cell start so every tier lines up with its boundary. */
+  --gantt-header-align: flex-start;
+  /* Optional highlight behind the column containing "today". */
+  --gantt-today-column-bg: rgb(239 68 68 / 6%);
+
+  /* Bars */
+  --gantt-bar-height: 60%;
+  --gantt-bar-radius: 4px;
+  --gantt-bar-bg: #c7d2fe;
+  --gantt-bar-color: #1e1b4b;
+  --gantt-bar-font-size: 0.8em;
+
+  /* Progress */
+  --gantt-progress-bg: #6366f1;
+
+  /* Overlap handling (overlap / cascade / conflict modes) */
+  --gantt-overlap-opacity: 0.6;
+  --gantt-conflict-color: #ef4444;
+  --gantt-conflict-width: 1.5;
+
+  /* Drag & drop (ghost copy + live time label) */
+  --gantt-ghost-opacity: 0.55;
+  --gantt-drag-label-bg: #1e293b;
+  --gantt-drag-label-color: #fff;
+  --gantt-drag-label-radius: 4px;
+  --gantt-drag-label-font-size: 0.72em;
+
+  /* Milestones */
+  --gantt-milestone-size: 14px;
+  --gantt-milestone-bg: #f59e0b;
+  --gantt-milestone-radius: 2px;
+
+  /* Dependencies */
+  --gantt-dependency-color: #94a3b8;
+  --gantt-dependency-width: 1.5;
+
+  /* Today marker */
+  --gantt-today-color: #ef4444;
+  --gantt-today-border: 2px solid var(--gantt-today-color);
+}

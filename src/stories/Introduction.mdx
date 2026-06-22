@@ -1,0 +1,49 @@
+import { Meta } from '@storybook/addon-docs/blocks'
+
+<Meta title="Introduction" />
+
+# vue-gantt
+
+A headless, composable Gantt chart component library for **Vue 3**. Components
+ship only structural layout — all theming is via `--gantt-*` CSS custom
+properties, so the chart adapts to any design system.
+
+## Two ways to use it
+
+- **Prop-driven** — `<Gantt :rows />` renders the whole chart. See
+  [Components → Gantt](?path=/docs/components-gantt--docs).
+- **Declarative** — compose `GanttRoot` + `GanttRow` + `GanttTask` and the
+  feature components yourself. See
+  [Guides → Declarative composition](?path=/docs/guides-declarative-composition--docs).
+
+## Data model
+
+Data is two-level: a **row** is the sidebar entry and a **container of tasks**
+plotted on its band (a row can hold several bars). A **task** is one bar/marker.
+
+```ts
+const rows = [
+  {
+    id: 'planning',
+    name: 'Planning',
+    tasks: [
+      { id: 'spec', name: 'Spec', start: '2026-06-01', end: '2026-06-08', progress: 100 },
+      { id: 'ship', name: 'Ship', type: 'milestone', start: '2026-06-16' },
+    ],
+  },
+]
+```
+
+## Features
+
+- Multi-tier time axis (year / quarter / month / week / day / hour / minute), toggleable via `tiers`.
+- Task bars with progress, milestones (diamonds), finish-to-start dependency arrows.
+- Frozen header + sidebar, sticky time-period labels, a body grid, and a live "today" line (second precision).
+- Row & column virtualization (set `height`).
+- Drag & drop — move bars in time (full precision, ghost + live label) and, with `rowMovable`, into another row.
+
+## Components
+
+`Gantt`, `GanttRoot`, `GanttView`, `GanttRow`, `GanttTask`, `GanttMilestone`,
+`GanttTimeline`, `GanttTaskList`, `GanttGrid`, `GanttDependencies`, `GanttToday`
+— each documented under **Components** with its props table.
