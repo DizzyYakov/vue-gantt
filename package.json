@@ -1,9 +1,29 @@
 {
-  "name": "vue-gantt",
+  "name": "@yakov_dizzy/vue-gantt",
   "version": "0.0.0",
-  "private": true,
   "type": "module",
   "description": "Headless, composable Gantt chart components for Vue 3",
+  "license": "MIT",
+  "keywords": [
+    "vue",
+    "vue3",
+    "gantt",
+    "gantt-chart",
+    "timeline",
+    "scheduler",
+    "headless"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/LavaYasha/vue-gantt.git"
+  },
+  "homepage": "https://github.com/LavaYasha/vue-gantt#readme",
+  "bugs": {
+    "url": "https://github.com/LavaYasha/vue-gantt/issues"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
   "files": [
     "dist"
   ],
@@ -24,6 +44,7 @@
   "scripts": {
     "dev": "vite",
     "build": "run-s type-check build-only build:types",
+    "prepack": "bun run build",
     "preview": "vite preview",
     "test:unit": "vitest",
     "test:e2e": "playwright test",

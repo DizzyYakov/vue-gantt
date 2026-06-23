@@ -1,5 +1,12 @@
 # vue-gantt
 
+[![npm version](https://img.shields.io/npm/v/@yakov_dizzy/vue-gantt.svg)](https://www.npmjs.com/package/@yakov_dizzy/vue-gantt)
+[![npm downloads](https://img.shields.io/npm/dm/@yakov_dizzy/vue-gantt.svg)](https://www.npmjs.com/package/@yakov_dizzy/vue-gantt)
+[![CI](https://github.com/LavaYasha/vue-gantt/actions/workflows/ci.yml/badge.svg)](https://github.com/LavaYasha/vue-gantt/actions/workflows/ci.yml)
+[![minzipped size](https://img.shields.io/bundlephobia/minzip/@yakov_dizzy/vue-gantt)](https://bundlephobia.com/package/@yakov_dizzy/vue-gantt)
+[![types](https://img.shields.io/npm/types/@yakov_dizzy/vue-gantt.svg)](https://www.npmjs.com/package/@yakov_dizzy/vue-gantt)
+[![license](https://img.shields.io/npm/l/@yakov_dizzy/vue-gantt.svg)](./LICENSE)
+
 Headless, composable Gantt chart components for **Vue 3**. Ships only structural
 layout — every colour, size and font is a CSS custom property, so the chart
 adapts to any design system.
@@ -20,11 +27,12 @@ clash) — see the **Guides → Overlapping tasks** Storybook page.
 ## Install
 
 ```sh
-bun add vue-gantt        # vue ^3.5 is a peer dependency
+bun add @yakov_dizzy/vue-gantt        # vue ^3.5 is a peer dependency
+# or: npm i @yakov_dizzy/vue-gantt  ·  pnpm add @yakov_dizzy/vue-gantt  ·  yarn add @yakov_dizzy/vue-gantt
 ```
 
 ```ts
-import 'vue-gantt/styles' // optional default theme (CSS variables)
+import '@yakov_dizzy/vue-gantt/styles' // optional default theme (CSS variables)
 ```
 
 ## Two ways to provide data
@@ -40,8 +48,8 @@ exposes named slots (`bar`, `milestone`, `row`, `column`, `timeline`,
 
 ```vue
 <script setup lang="ts">
-import { Gantt, type GanttRowData } from 'vue-gantt'
-import 'vue-gantt/styles'
+import { Gantt, type GanttRowData } from '@yakov_dizzy/vue-gantt'
+import '@yakov_dizzy/vue-gantt/styles'
 
 const rows: GanttRowData[] = [
   {
@@ -78,7 +86,7 @@ const rows: GanttRowData[] = [
 ```
 
 ```ts
-import type { GanttMoveEvent } from 'vue-gantt'
+import type { GanttMoveEvent } from '@yakov_dizzy/vue-gantt'
 
 // `move` is controlled — apply it to your data when it fires.
 function onMove(e: GanttMoveEvent) {

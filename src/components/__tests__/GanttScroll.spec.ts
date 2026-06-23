@@ -14,7 +14,7 @@ function mountWithSpy() {
     attachTo: document.body,
   })
   const el = wrapper.find('.gantt').element as HTMLElement
-  const spy = vi.fn()
+  const spy = vi.fn<(options?: ScrollToOptions) => void>()
   el.scrollTo = spy as unknown as typeof el.scrollTo
   return { wrapper, spy }
 }
@@ -24,14 +24,14 @@ describe('imperative scroll API (exposed on Gantt)', () => {
     const { wrapper, spy } = mountWithSpy()
     ;(wrapper.vm as unknown as { scrollToToday: () => void }).scrollToToday()
     expect(spy).toHaveBeenCalledTimes(1)
-    expect(typeof spy.mock.calls[0]![0].left).toBe('number')
+    expect(typeof spy.mock.calls[0]![0]!.left).toBe('number')
   })
 
   it('scrollToTask scrolls to the task row and start', () => {
     const { wrapper, spy } = mountWithSpy()
     ;(wrapper.vm as unknown as { scrollToTask: (id: string) => void }).scrollToTask('b')
     expect(spy).toHaveBeenCalledTimes(1)
-    const arg = spy.mock.calls[0]![0]
+    const arg = spy.mock.calls[0]![0]!
     expect(typeof arg.left).toBe('number')
     expect(typeof arg.top).toBe('number')
   })
