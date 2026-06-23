@@ -1,6 +1,6 @@
 {
-  "name": "@yakov/vue-gantt",
-  "version": "0.1.0",
+  "name": "@yakov_dizzy/vue-gantt",
+  "version": "0.0.0",
   "type": "module",
   "description": "Headless, composable Gantt chart components for Vue 3",
   "license": "MIT",

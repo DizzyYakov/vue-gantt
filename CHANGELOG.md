@@ -8,11 +8,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Release / tooling
 
-- The package is published as **`@yakov/vue-gantt`** (scoped, public access).
-- GitHub Actions: `CI` runs the quality gates (oxlint, eslint, unit tests,
-  type-check + library build) on pushes to `develop`/`main` and on PRs; `Release`
-  re-runs the gates, checks the tag matches `package.json`, and publishes to npm
-  with provenance when a GitHub Release is published (needs the `NPM_TOKEN` secret).
+- The package is published as **`@yakov_dizzy/vue-gantt`** (scoped, public access).
+- `README` with badges + install/usage; `LICENSE` (MIT).
+- GitHub Actions `CI` runs the quality gates (oxlint, eslint, unit tests,
+  type-check + library build) on pushes to `develop`/`main` and on PRs.
+- Automatic versioning via **release-please**: it reads Conventional Commits on
+  `main`, keeps a release PR that bumps the version + changelog, and on merge cuts
+  a GitHub Release/tag and publishes to npm with provenance (needs `NPM_TOKEN`).
 
 ### Added
 

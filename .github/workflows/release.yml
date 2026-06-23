@@ -1,57 +1,58 @@
 name: Release
 
-# Publish to npm when a GitHub Release is published.
-# Create a release whose tag is `v<version>` matching package.json (e.g. v0.1.0).
+# Automatic versioning + npm publish.
+#
+# release-please reads the Conventional Commits merged into `main` and keeps a
+# "release PR" open that bumps the version (release-please-config.json /
+# .release-please-manifest.json) and updates the changelog. Merging that PR cuts
+# a GitHub Release + tag, and the steps below publish the package to npm.
 on:
-  release:
-    types: [published]
+  push:
+    branches: [main]
 
 permissions:
-  contents: read
-  id-token: write # required for npm provenance
+  contents: write # create tags/releases + the release PR commits
+  pull-requests: write # open/update the release PR
+  id-token: write # npm provenance
 
 jobs:
-  publish:
-    name: Publish to npm
+  release:
+    name: Release Please + publish
     runs-on: ubuntu-latest
     steps:
+      - uses: googleapis/release-please-action@v4
+        id: release
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      # The rest runs only on the push that actually cut a release.
       - uses: actions/checkout@v4
+        if: ${{ steps.release.outputs.release_created }}
 
       - name: Setup Bun
+        if: ${{ steps.release.outputs.release_created }}
         uses: oven-sh/setup-bun@v2
         with:
           bun-version: latest
 
-      # Sets up an .npmrc pointing at the public registry + NODE_AUTH_TOKEN.
       - name: Setup Node (npm registry)
+        if: ${{ steps.release.outputs.release_created }}
         uses: actions/setup-node@v4
         with:
           node-version: 22
           registry-url: 'https://registry.npmjs.org'
 
       - name: Install dependencies
+        if: ${{ steps.release.outputs.release_created }}
         run: bun install --frozen-lockfile
 
-      # --- Quality gates (must pass before publishing) ---
-      - name: Lint (oxlint)
-        run: bunx oxlint .
-      - name: Lint (eslint)
-        run: bunx eslint .
       - name: Unit tests
+        if: ${{ steps.release.outputs.release_created }}
         run: bunx vitest run
 
-      - name: Verify package version matches the release tag
-        run: |
-          PKG="$(node -p "require('./package.json').version")"
-          TAG="${GITHUB_REF_NAME#v}"
-          echo "package.json=$PKG release tag=$TAG"
-          if [ "$PKG" != "$TAG" ]; then
-            echo "::error::package.json version ($PKG) does not match release tag ($TAG)"
-            exit 1
-          fi
-
       # `prepack` builds the library (type-check + Vite + .d.ts) before packing.
-      - name: Publish
+      - name: Publish to npm
+        if: ${{ steps.release.outputs.release_created }}
         run: npm publish --provenance --access public
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
