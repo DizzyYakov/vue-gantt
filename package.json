@@ -25,7 +25,8 @@
     "access": "public"
   },
   "files": [
-    "dist"
+    "dist",
+    "styles.d.ts"
   ],
   "main": "./dist/vue-gantt.js",
   "module": "./dist/vue-gantt.js",
@@ -35,8 +36,14 @@
       "types": "./dist/index.d.ts",
       "import": "./dist/vue-gantt.js"
     },
-    "./styles": "./dist/gantt.css",
-    "./styles.css": "./dist/gantt.css"
+    "./styles": {
+      "types": "./styles.d.ts",
+      "default": "./dist/gantt.css"
+    },
+    "./styles.css": {
+      "types": "./styles.d.ts",
+      "default": "./dist/gantt.css"
+    }
   },
   "sideEffects": [
     "**/*.css"
