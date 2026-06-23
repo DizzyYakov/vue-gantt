@@ -8,7 +8,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Release / tooling
 
-- The package is published as **`@yakov_dizzy/vue-gantt`** (scoped, public access).
+- The package is published as **`@dizzy_yakov/vue-gantt`** (scoped, public access).
 - `README` with badges + install/usage; `LICENSE` (MIT).
 - GitHub Actions `CI` runs the quality gates (oxlint, eslint, unit tests,
   type-check + library build) on pushes to `develop`/`main` and on PRs.

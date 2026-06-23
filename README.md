@@ -1,11 +1,11 @@
 # vue-gantt
 
-[![npm version](https://img.shields.io/npm/v/@yakov_dizzy/vue-gantt.svg)](https://www.npmjs.com/package/@yakov_dizzy/vue-gantt)
-[![npm downloads](https://img.shields.io/npm/dm/@yakov_dizzy/vue-gantt.svg)](https://www.npmjs.com/package/@yakov_dizzy/vue-gantt)
+[![npm version](https://img.shields.io/npm/v/@dizzy_yakov/vue-gantt.svg)](https://www.npmjs.com/package/@dizzy_yakov/vue-gantt)
+[![npm downloads](https://img.shields.io/npm/dm/@dizzy_yakov/vue-gantt.svg)](https://www.npmjs.com/package/@dizzy_yakov/vue-gantt)
 [![CI](https://github.com/LavaYasha/vue-gantt/actions/workflows/ci.yml/badge.svg)](https://github.com/LavaYasha/vue-gantt/actions/workflows/ci.yml)
-[![minzipped size](https://img.shields.io/bundlephobia/minzip/@yakov_dizzy/vue-gantt)](https://bundlephobia.com/package/@yakov_dizzy/vue-gantt)
-[![types](https://img.shields.io/npm/types/@yakov_dizzy/vue-gantt.svg)](https://www.npmjs.com/package/@yakov_dizzy/vue-gantt)
-[![license](https://img.shields.io/npm/l/@yakov_dizzy/vue-gantt.svg)](./LICENSE)
+[![minzipped size](https://img.shields.io/bundlephobia/minzip/@dizzy_yakov/vue-gantt)](https://bundlephobia.com/package/@dizzy_yakov/vue-gantt)
+[![types](https://img.shields.io/npm/types/@dizzy_yakov/vue-gantt.svg)](https://www.npmjs.com/package/@dizzy_yakov/vue-gantt)
+[![license](https://img.shields.io/npm/l/@dizzy_yakov/vue-gantt.svg)](./LICENSE)
 
 Headless, composable Gantt chart components for **Vue 3**. Ships only structural
 layout — every colour, size and font is a CSS custom property, so the chart
@@ -27,12 +27,12 @@ clash) — see the **Guides → Overlapping tasks** Storybook page.
 ## Install
 
 ```sh
-bun add @yakov_dizzy/vue-gantt        # vue ^3.5 is a peer dependency
-# or: npm i @yakov_dizzy/vue-gantt  ·  pnpm add @yakov_dizzy/vue-gantt  ·  yarn add @yakov_dizzy/vue-gantt
+bun add @dizzy_yakov/vue-gantt        # vue ^3.5 is a peer dependency
+# or: npm i @dizzy_yakov/vue-gantt  ·  pnpm add @dizzy_yakov/vue-gantt  ·  yarn add @dizzy_yakov/vue-gantt
 ```
 
 ```ts
-import '@yakov_dizzy/vue-gantt/styles' // optional default theme (CSS variables)
+import '@dizzy_yakov/vue-gantt/styles' // optional default theme (CSS variables)
 ```
 
 ## Two ways to provide data
@@ -48,8 +48,8 @@ exposes named slots (`bar`, `milestone`, `row`, `column`, `timeline`,
 
 ```vue
 <script setup lang="ts">
-import { Gantt, type GanttRowData } from '@yakov_dizzy/vue-gantt'
-import '@yakov_dizzy/vue-gantt/styles'
+import { Gantt, type GanttRowData } from '@dizzy_yakov/vue-gantt'
+import '@dizzy_yakov/vue-gantt/styles'
 
 const rows: GanttRowData[] = [
   {
@@ -86,7 +86,7 @@ const rows: GanttRowData[] = [
 ```
 
 ```ts
-import type { GanttMoveEvent } from '@yakov_dizzy/vue-gantt'
+import type { GanttMoveEvent } from '@dizzy_yakov/vue-gantt'
 
 // `move` is controlled — apply it to your data when it fires.
 function onMove(e: GanttMoveEvent) {
