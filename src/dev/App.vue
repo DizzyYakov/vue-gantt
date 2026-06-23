@@ -1,6 +1,9 @@
 <script setup lang="ts">
-import { computed, ref, type Ref } from 'vue'
+import { computed, ref } from 'vue'
+import { format } from 'date-fns'
 import {
+  addDependency,
+  applyMove,
   Gantt,
   GanttDependencies,
   GanttGrid,
@@ -12,11 +15,17 @@ import {
   GanttTaskList,
   GanttTimeline,
   GanttToday,
+  removeDependency,
+  updateTask,
+  type GanttDependencyChange,
+  type GanttDependencyUpdate,
+  type GanttDragLabelInfo,
   type GanttGroupData,
   type GanttGroupToggleEvent,
   type GanttMoveEvent,
+  type GanttProgressEvent,
+  type GanttResizeEvent,
   type GanttRowData,
-  type GanttTaskData,
   type GanttUnit,
 } from '../index'
 
@@ -45,6 +54,17 @@ const columnWidth = computed(() => {
 // Drag & drop toggles.
 const draggable = ref(true)
 const rowMovable = ref(true)
+const resizable = ref(true)
+const progressDraggable = ref(true)
+const linkable = ref(true)
+
+// Custom drag tooltip text for every drag kind (move / resize / progress).
+const dragLabel = (i: GanttDragLabelInfo) =>
+  i.mode === 'progress'
+    ? `${i.progress}% готово`
+    : i.task.type === 'milestone'
+      ? format(i.start, 'd MMM')
+      : `${format(i.start, 'd MMM')} – ${format(i.end, 'd MMM')}`
 
 // Rows are containers; each holds any number of tasks (note multiple bars per row).
 const rows = ref<GanttRowData[]>([
@@ -92,25 +112,27 @@ const manyRows = ref<GanttRowData[]>(
   })),
 )
 
-// Apply a completed drag: move the task into its target row, updating dates.
-function applyMove(list: Ref<GanttRowData[]>, e: GanttMoveEvent) {
-  let moved: GanttTaskData | undefined
-  const next = list.value.map((row) => {
-    const kept = (row.tasks ?? []).filter((t) => {
-      if (t.id !== e.id) return true
-      moved = { ...t, start: e.start, end: e.end }
-      return false
-    })
-    return { ...row, tasks: kept }
-  })
-  if (!moved) return
-  const target = next.find((r) => r.id === e.toRowId)
-  if (target) target.tasks = [...(target.tasks ?? []), moved]
-  list.value = next
-}
+// Apply a completed drag with the library's `applyMove` helper (controlled data).
+const onMoveRows = (e: GanttMoveEvent) => (rows.value = applyMove(rows.value, e))
+const onMoveMany = (e: GanttMoveEvent) => (manyRows.value = applyMove(manyRows.value, e))
 
-const onMoveRows = (e: GanttMoveEvent) => applyMove(rows, e)
-const onMoveMany = (e: GanttMoveEvent) => applyMove(manyRows, e)
+// Resize + dependency edits — all controlled via the exported utils.
+const onResizeRows = (e: GanttResizeEvent) =>
+  (rows.value = updateTask(rows.value, e.id, { start: e.start, end: e.end }))
+const onProgressRows = (e: GanttProgressEvent) =>
+  (rows.value = updateTask(rows.value, e.id, { progress: e.progress }))
+const onCreateDep = (e: GanttDependencyChange) => (rows.value = addDependency(rows.value, e.from, e.to))
+const onRemoveDep = (e: GanttDependencyChange) => (rows.value = removeDependency(rows.value, e.from, e.to))
+const onUpdateDep = (e: GanttDependencyUpdate) =>
+  (rows.value = addDependency(
+    removeDependency(rows.value, e.previous.from, e.previous.to),
+    e.from,
+    e.to,
+  ))
+
+// Imperative scroll API: a template ref to the chart exposes scrollTo* helpers.
+const mainGantt = ref<InstanceType<typeof Gantt>>()
+const scrollToToday = () => mainGantt.value?.scrollToToday()
 
 // Row grouping: rows reference a group via `groupId`; groups carry the labels.
 const groups = ref<GanttGroupData[]>([
@@ -127,7 +149,7 @@ const lastToggle = ref('')
 const onGroupToggle = (e: GanttGroupToggleEvent) => {
   lastToggle.value = `${e.id} → ${e.collapsed ? 'collapsed' : 'expanded'}`
 }
-const onMoveGrouped = (e: GanttMoveEvent) => applyMove(groupedRows, e)
+const onMoveGrouped = (e: GanttMoveEvent) => (groupedRows.value = applyMove(groupedRows.value, e))
 </script>
 
 <template>
@@ -152,19 +174,45 @@ const onMoveGrouped = (e: GanttMoveEvent) => applyMove(groupedRows, e)
         <input v-model="rowMovable" type="checkbox" />
         move between rows
       </label>
+      <label class="control__item">
+        <input v-model="resizable" type="checkbox" />
+        resize edges
+      </label>
+      <label class="control__item">
+        <input v-model="progressDraggable" type="checkbox" />
+        drag progress
+      </label>
+      <label class="control__item">
+        <input v-model="linkable" type="checkbox" />
+        edit dependencies
+      </label>
     </fieldset>
 
     <section>
       <h2>1. Prop-driven wrapper (<code>&lt;Gantt :rows /&gt;</code>) — rows hold tasks</h2>
+      <p class="hint">
+        <button type="button" class="btn" @click="scrollToToday">Сегодня</button>
+        — прокрутить график к текущей дате через <code>scrollToToday()</code> (template ref).
+      </p>
       <div class="card">
         <Gantt
+          ref="mainGantt"
           :rows="rows"
           :tiers="tiers"
           :column-width="columnWidth"
           :height="240"
           :draggable="draggable"
           :row-movable="rowMovable"
+          :resizable="resizable"
+          :progress-draggable="progressDraggable"
+          :linkable="linkable"
+          :drag-label="dragLabel"
           @move="onMoveRows"
+          @resize="onResizeRows"
+          @progress="onProgressRows"
+          @dependency-create="onCreateDep"
+          @dependency-remove="onRemoveDep"
+          @dependency-update="onUpdateDep"
         />
       </div>
     </section>
@@ -330,6 +378,20 @@ const onMoveGrouped = (e: GanttMoveEvent) => applyMove(groupedRows, e)
   margin: 0 0 8px;
   font-size: 0.85em;
   color: #64748b;
+}
+
+.btn {
+  padding: 2px 10px;
+  font: inherit;
+  font-size: 0.85em;
+  color: #1e293b;
+  background: #f1f5f9;
+  border: 1px solid #cbd5e1;
+  border-radius: 6px;
+  cursor: pointer;
+}
+.btn:hover {
+  background: #e2e8f0;
 }
 
 .manual {

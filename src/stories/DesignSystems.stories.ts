@@ -52,6 +52,9 @@ export const Shadcn: Story = {
     '--gantt-bar-bg': 'hsl(240 4.8% 95.9%)',
     '--gantt-progress-bg': 'hsl(240 5.9% 10%)',
     '--gantt-bar-color': 'hsl(240 5.9% 10%)',
+    // The fill is near-black and the track near-white, so the dark label gets a
+    // white halo to stay readable over the filled part (clean on the track).
+    '--gantt-bar-text-shadow': '0 0 2px hsl(0 0% 100%), 0 0 3px hsl(0 0% 100%)',
     '--gantt-bar-radius': '0.5rem',
     '--gantt-grid-color': 'hsl(240 5.9% 90%)',
     '--gantt-milestone-bg': 'hsl(240 5.9% 10%)',

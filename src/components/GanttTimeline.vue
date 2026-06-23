@@ -1,7 +1,17 @@
 <script setup lang="ts">
 import { useGanttContext } from '../composables/useGanttContext'
+import type { GanttColumn, GanttColumnEvent, GanttUnit } from '../types'
 
-const { config, visibleColumnsFor, contentWidth } = useGanttContext()
+const { config, visibleColumnsFor, contentWidth, dispatch } = useGanttContext()
+
+const emit = defineEmits<{
+  'column-click': [event: GanttColumnEvent]
+}>()
+
+function onColumnClick(column: GanttColumn, tier: GanttUnit, event: MouseEvent): void {
+  emit('column-click', { column, tier, event })
+  dispatch('column-click', { column, tier, event })
+}
 </script>
 
 <template>
@@ -18,6 +28,7 @@ const { config, visibleColumnsFor, contentWidth } = useGanttContext()
         class="gantt-timeline__cell"
         :data-today="column.isToday || undefined"
         :style="{ left: `${column.x}px`, width: `${column.width}px` }"
+        @click="onColumnClick(column, tier, $event)"
       >
         <slot name="column" :column="column" :tier="tier">
           <span class="gantt-timeline__label">{{ column.label }}</span>

@@ -1,7 +1,27 @@
 <script setup lang="ts">
 import { useGanttContext } from '../composables/useGanttContext'
+import type { GanttRowEvent, ResolvedRow } from '../types'
 
-const { visibleRows, visibleGroups, toggleGroup } = useGanttContext()
+const { visibleRows, visibleGroups, toggleGroup, dispatch } = useGanttContext()
+
+const emit = defineEmits<{
+  'row-click': [event: GanttRowEvent]
+  'row-dblclick': [event: GanttRowEvent]
+  'row-contextmenu': [event: GanttRowEvent]
+}>()
+
+function onRowClick(row: ResolvedRow, event: MouseEvent): void {
+  emit('row-click', { row, event })
+  dispatch('row-click', { row, event })
+}
+function onRowDblclick(row: ResolvedRow, event: MouseEvent): void {
+  emit('row-dblclick', { row, event })
+  dispatch('row-dblclick', { row, event })
+}
+function onRowContextmenu(row: ResolvedRow, event: MouseEvent): void {
+  emit('row-contextmenu', { row, event })
+  dispatch('row-contextmenu', { row, event })
+}
 </script>
 
 <template>
@@ -40,6 +60,9 @@ const { visibleRows, visibleGroups, toggleGroup } = useGanttContext()
       :data-id="row.id"
       :data-group="row.groupId || undefined"
       :style="{ top: `${row.top}px`, height: `${row.height}px` }"
+      @click="onRowClick(row, $event)"
+      @dblclick="onRowDblclick(row, $event)"
+      @contextmenu="onRowContextmenu(row, $event)"
     >
       <slot name="row" :row="row" :index="row.order">
         <span class="gantt-task-list__name">{{ row.name }}</span>

@@ -1,6 +1,20 @@
 <script setup lang="ts">
-import { computed } from 'vue'
-import type { GanttGroupToggleEvent, GanttMoveEvent, GanttRootProps } from '../types'
+import { computed, ref } from 'vue'
+import type {
+  GanttCellEvent,
+  GanttColumnEvent,
+  GanttDependencyChange,
+  GanttDependencyEvent,
+  GanttDependencyUpdate,
+  GanttGroupToggleEvent,
+  GanttMoveEvent,
+  GanttProgressEvent,
+  GanttResizeEvent,
+  GanttRootProps,
+  GanttRowEvent,
+  GanttScrollOptions,
+  GanttTaskEvent,
+} from '../types'
 import GanttRoot from './GanttRoot.vue'
 import GanttView from './GanttView.vue'
 
@@ -11,7 +25,25 @@ const props = defineProps<GanttRootProps & {
 
 const emit = defineEmits<{
   move: [event: GanttMoveEvent]
+  resize: [event: GanttResizeEvent]
+  progress: [event: GanttProgressEvent]
   'group-toggle': [event: GanttGroupToggleEvent]
+  'dependency-create': [event: GanttDependencyChange]
+  'dependency-remove': [event: GanttDependencyChange]
+  'dependency-update': [event: GanttDependencyUpdate]
+  'task-click': [event: GanttTaskEvent]
+  'task-dblclick': [event: GanttTaskEvent]
+  'task-contextmenu': [event: GanttTaskEvent]
+  'milestone-click': [event: GanttTaskEvent]
+  'milestone-dblclick': [event: GanttTaskEvent]
+  'milestone-contextmenu': [event: GanttTaskEvent]
+  'row-click': [event: GanttRowEvent]
+  'row-dblclick': [event: GanttRowEvent]
+  'row-contextmenu': [event: GanttRowEvent]
+  'cell-click': [event: GanttCellEvent]
+  'cell-dblclick': [event: GanttCellEvent]
+  'column-click': [event: GanttColumnEvent]
+  'dependency-click': [event: GanttDependencyEvent]
 }>()
 
 defineSlots<{
@@ -36,13 +68,41 @@ const rootProps = computed<GanttRootProps>(() => {
   void height
   return rest
 })
+
+// Forward the imperative scroll API from GanttRoot so a `ref` to `<Gantt>` works.
+const root = ref<InstanceType<typeof GanttRoot>>()
+defineExpose({
+  scrollToDate: (date: Date | string | number, options?: GanttScrollOptions) =>
+    root.value?.scrollToDate(date, options),
+  scrollToTask: (id: string, options?: GanttScrollOptions) => root.value?.scrollToTask(id, options),
+  scrollToToday: (options?: GanttScrollOptions) => root.value?.scrollToToday(options),
+})
 </script>
 
 <template>
   <GanttRoot
+    ref="root"
     v-bind="rootProps"
     @move="emit('move', $event)"
+    @resize="emit('resize', $event)"
+    @progress="emit('progress', $event)"
     @group-toggle="emit('group-toggle', $event)"
+    @dependency-create="emit('dependency-create', $event)"
+    @dependency-remove="emit('dependency-remove', $event)"
+    @dependency-update="emit('dependency-update', $event)"
+    @task-click="emit('task-click', $event)"
+    @task-dblclick="emit('task-dblclick', $event)"
+    @task-contextmenu="emit('task-contextmenu', $event)"
+    @milestone-click="emit('milestone-click', $event)"
+    @milestone-dblclick="emit('milestone-dblclick', $event)"
+    @milestone-contextmenu="emit('milestone-contextmenu', $event)"
+    @row-click="emit('row-click', $event)"
+    @row-dblclick="emit('row-dblclick', $event)"
+    @row-contextmenu="emit('row-contextmenu', $event)"
+    @cell-click="emit('cell-click', $event)"
+    @cell-dblclick="emit('cell-dblclick', $event)"
+    @column-click="emit('column-click', $event)"
+    @dependency-click="emit('dependency-click', $event)"
   >
     <GanttView :height="height">
       <template v-if="$slots.corner" #corner><slot name="corner" /></template>

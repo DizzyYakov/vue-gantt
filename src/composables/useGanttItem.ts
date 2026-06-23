@@ -86,10 +86,23 @@ export function useGanttItem(props: GanttItemProps, overrides: Partial<GanttTask
   const baseLeft = computed(() => ctx.dateToX(resolved.value.start))
 
   // Drag & drop: the original stays put; a live preview drives a translucent ghost.
-  const { dragging, enabled: draggable, preview, previewLabel, onPointerDown } = useGanttDrag({
+  const { dragging, moved, enabled: draggable, preview, previewLabel, onPointerDown } = useGanttDrag({
     resolved,
     baseLeft,
   })
+
+  /** Start an edge-resize drag (from a left/right handle on the bar). */
+  function startResize(event: PointerEvent, edge: 'start' | 'end'): void {
+    onPointerDown(event, edge === 'start' ? 'resize-start' : 'resize-end')
+  }
+
+  /** Start a progress drag (from the progress handle on the bar). */
+  function startProgress(event: PointerEvent): void {
+    onPointerDown(event, 'progress')
+  }
+
+  // Progress to render: the live drag value while dragging, else the resolved one.
+  const liveProgress = computed(() => preview.value?.progress ?? resolved.value.progress)
 
   // Vertical band per overlap mode (lanes/cascade offset handled by the context).
   const rowStyle = computed(() => {
@@ -126,8 +139,12 @@ export function useGanttItem(props: GanttItemProps, overrides: Partial<GanttTask
     left,
     width,
     dragging,
+    moved,
     draggable,
     onPointerDown,
+    startResize,
+    startProgress,
+    liveProgress,
     ghost,
     previewLabel,
     overlapping,

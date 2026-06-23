@@ -1,0 +1,39 @@
+name: CI
+
+on:
+  push:
+    branches: [develop, main]
+  pull_request:
+
+# Cancel superseded runs on the same ref.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  quality:
+    name: Quality gates
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Lint (oxlint)
+        run: bunx oxlint .
+
+      - name: Lint (eslint)
+        run: bunx eslint .
+
+      - name: Unit tests
+        run: bunx vitest run
+
+      # `build` runs type-check, the Vite lib build, and emits .d.ts.
+      - name: Build (type-check + library)
+        run: bun run build

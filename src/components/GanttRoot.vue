@@ -18,22 +18,33 @@ import {
   startOfWeek,
   startOfYear,
 } from 'date-fns'
-import { computed, onMounted, onUnmounted, provide, reactive, ref, toRef, watch } from 'vue'
+import { computed, onMounted, onUnmounted, provide, reactive, ref, toRef } from 'vue'
+import { useGanttLink } from '../composables/useGanttLink'
 import { useGanttScale } from '../composables/useGanttScale'
 import { useGanttRegistry } from '../composables/useTaskRegistry'
 import { GANTT_CONTEXT, GANTT_DEFAULTS, normalizeRow, toDate } from '../context'
 import { conflictSegments, layoutGroups, type GroupMeta } from '../layout'
 import type {
   GanttBand,
+  GanttCellEvent,
   GanttColumn,
+  GanttColumnEvent,
   GanttConfig,
   GanttConflict,
   GanttContext,
+  GanttDependencyChange,
+  GanttDependencyEvent,
+  GanttDependencyUpdate,
+  GanttEventMap,
   GanttGroup,
   GanttGroupToggleEvent,
   GanttMoveEvent,
+  GanttProgressEvent,
+  GanttResizeEvent,
   GanttRootProps,
   GanttRow,
+  GanttRowEvent,
+  GanttTaskEvent,
   GanttUnit,
   GanttViewport,
   ResolvedGroup,
@@ -54,8 +65,12 @@ const props = withDefaults(defineProps<GanttRootProps>(), {
     overlap: GANTT_DEFAULTS.overlap,
     draggable: GANTT_DEFAULTS.draggable,
     rowMovable: GANTT_DEFAULTS.rowMovable,
+    resizable: GANTT_DEFAULTS.resizable,
+    progressDraggable: GANTT_DEFAULTS.progressDraggable,
+    linkable: GANTT_DEFAULTS.linkable,
     snapToGrid: GANTT_DEFAULTS.snapToGrid,
     dragLabelFormat: GANTT_DEFAULTS.dragLabelFormat,
+    dragLabel: undefined,
     startDate: undefined,
     endDate: undefined,
     today: undefined,
@@ -65,8 +80,32 @@ const props = withDefaults(defineProps<GanttRootProps>(), {
 
 const emit = defineEmits<{
   move: [event: GanttMoveEvent]
+  resize: [event: GanttResizeEvent]
+  progress: [event: GanttProgressEvent]
   'group-toggle': [event: GanttGroupToggleEvent]
+  'dependency-create': [event: GanttDependencyChange]
+  'dependency-remove': [event: GanttDependencyChange]
+  'dependency-update': [event: GanttDependencyUpdate]
+  'task-click': [event: GanttTaskEvent]
+  'task-dblclick': [event: GanttTaskEvent]
+  'task-contextmenu': [event: GanttTaskEvent]
+  'milestone-click': [event: GanttTaskEvent]
+  'milestone-dblclick': [event: GanttTaskEvent]
+  'milestone-contextmenu': [event: GanttTaskEvent]
+  'row-click': [event: GanttRowEvent]
+  'row-dblclick': [event: GanttRowEvent]
+  'row-contextmenu': [event: GanttRowEvent]
+  'cell-click': [event: GanttCellEvent]
+  'cell-dblclick': [event: GanttCellEvent]
+  'column-click': [event: GanttColumnEvent]
+  'dependency-click': [event: GanttDependencyEvent]
 }>()
+
+// Bubble child interactions up as the matching chart event. Components call this
+// via the context so prop-driven `<Gantt>` consumers can listen at the root.
+function dispatch<K extends keyof GanttEventMap>(name: K, payload: GanttEventMap[K]): void {
+  ;(emit as (n: string, p: unknown) => void)(name, payload)
+}
 
 const {
   registerGroup,
@@ -121,23 +160,17 @@ const sourceRows = computed<GanttRow[]>(() => props.rows ?? registeredRows.value
 const sourceGroups = computed<GanttGroup[]>(() => props.groups ?? registeredGroups.value)
 
 // --- Group collapse state -------------------------------------------------
-// Uncontrolled: held here, lazily seeded from each group's `collapsed` default
-// the first time its id is seen (so re-renders / dynamic groups never clobber a
-// user toggle). `toggleGroup` flips it and re-emits as the `group-toggle` event.
-const collapsedState = reactive(new Set<string>())
-const seededGroups = new Set<string>()
+// Uncontrolled: a user toggle is recorded as an explicit override that wins over
+// the group's `collapsed` default; without an override the default applies. This
+// is fully derived (no async seeding), so the default takes effect synchronously
+// in both prop-driven and declarative (post-mount registration) modes, and
+// re-renders / dynamic groups never clobber a user toggle. `toggleGroup` flips
+// the override and re-emits as the `group-toggle` event.
+const collapseOverrides = reactive(new Map<string, boolean>())
 
-watch(
-  sourceGroups,
-  (groups) => {
-    for (const group of groups) {
-      if (seededGroups.has(group.id)) continue
-      seededGroups.add(group.id)
-      if (group.collapsed) collapsedState.add(group.id)
-    }
-  },
-  { immediate: true },
-)
+function isCollapsed(group: GanttGroup): boolean {
+  return collapseOverrides.get(group.id) ?? group.collapsed ?? false
+}
 
 const groupMeta = computed<Map<string, GroupMeta>>(
   () =>
@@ -146,7 +179,7 @@ const groupMeta = computed<Map<string, GroupMeta>>(
         group.id,
         {
           name: group.name ?? group.id,
-          collapsed: collapsedState.has(group.id),
+          collapsed: isCollapsed(group),
           meta: group.meta ?? {},
         },
       ]),
@@ -154,9 +187,10 @@ const groupMeta = computed<Map<string, GroupMeta>>(
 )
 
 function toggleGroup(id: string): void {
-  if (collapsedState.has(id)) collapsedState.delete(id)
-  else collapsedState.add(id)
-  emit('group-toggle', { id, collapsed: collapsedState.has(id) })
+  const group = sourceGroups.value.find((g) => g.id === id)
+  const current = group ? isCollapsed(group) : (collapseOverrides.get(id) ?? false)
+  collapseOverrides.set(id, !current)
+  emit('group-toggle', { id, collapsed: !current })
 }
 
 // Resolve rows, then inject group header bands + assign lanes/top/height.
@@ -218,8 +252,12 @@ const config = computed<GanttConfig>(() => ({
   overlap: props.overlap,
   draggable: props.draggable || props.rowMovable,
   rowMovable: props.rowMovable,
+  resizable: props.resizable,
+  progressDraggable: props.progressDraggable,
+  linkable: props.linkable,
   snapToGrid: props.snapToGrid,
   dragLabelFormat: props.dragLabelFormat,
+  dragLabel: props.dragLabel,
   start: start.value,
   end: end.value,
   today: today.value,
@@ -268,6 +306,53 @@ function setViewport(metrics: Partial<GanttViewport>): void {
 }
 
 const headerHeight = computed(() => tiers.value.length * props.headerRowHeight)
+
+// --- Imperative scroll API ------------------------------------------------
+// The scroll container (registered by `GanttView`) lives below the frozen
+// sidebar/header in the scroll flow, so a content-x maps to scrollLeft directly
+// (the sidebar occupies the first `sidebarWidth` px of the scrollable row).
+const scrollerEl = ref<HTMLElement | null>(null)
+
+function setScroller(el: HTMLElement | null): void {
+  scrollerEl.value = el
+}
+
+function applyScroll(left: number | undefined, top: number | undefined, behavior: ScrollBehavior): void {
+  const el = scrollerEl.value
+  if (!el) return
+  const x = left == null ? undefined : Math.max(0, left)
+  const y = top == null ? undefined : Math.max(0, top)
+  if (typeof el.scrollTo === 'function') {
+    el.scrollTo({ left: x, top: y, behavior })
+  } else {
+    // jsdom / older engines: assign directly.
+    if (x != null) el.scrollLeft = x
+    if (y != null) el.scrollTop = y
+  }
+}
+
+function leftForDate(date: Date | string | number, align: 'start' | 'center'): number {
+  const el = scrollerEl.value
+  const x = scale.dateToX(toDate(date))
+  if (align === 'center' && el) return x - (el.clientWidth - props.sidebarWidth) / 2
+  return x
+}
+
+function scrollToDate(date: Date | string | number, options: { behavior?: ScrollBehavior; align?: 'start' | 'center' } = {}): void {
+  applyScroll(leftForDate(date, options.align ?? 'start'), undefined, options.behavior ?? 'smooth')
+}
+
+function scrollToTask(id: string, options: { behavior?: ScrollBehavior; align?: 'start' | 'center' } = {}): void {
+  const task = tasks.value.find((t) => t.id === id)
+  if (!task) return
+  const row = rowByOrder.value[task.order]
+  const top = row ? row.top : task.order * props.rowHeight
+  applyScroll(leftForDate(task.start, options.align ?? 'start'), top, options.behavior ?? 'smooth')
+}
+
+function scrollToToday(options: { behavior?: ScrollBehavior; align?: 'start' | 'center' } = {}): void {
+  scrollToDate(today.value, options)
+}
 
 // Visible body-local window on each axis. The frozen sidebar/header offset both
 // the content origin and the sticky cover, so those terms cancel out.
@@ -340,6 +425,12 @@ const conflicts = computed<GanttConflict[]>(() => {
   return out
 })
 
+// Interactive dependency creation / re-routing (emits intents; data is controlled).
+const { linkDraft, beginLink, endLink } = useGanttLink({
+  dispatch,
+  tasks: () => tasks.value,
+})
+
 const context: GanttContext = {
   config,
   rows,
@@ -369,6 +460,16 @@ const context: GanttContext = {
   registerTask,
   unregisterTask,
   moveTask: (event) => emit('move', event),
+  resizeTask: (event) => emit('resize', event),
+  progressTask: (event) => emit('progress', event),
+  linkDraft,
+  beginLink,
+  endLink,
+  dispatch,
+  setScroller,
+  scrollToDate,
+  scrollToTask,
+  scrollToToday,
   viewport,
   setViewport,
 }
@@ -424,7 +525,7 @@ function ceilToUnit(date: Date, unit: GanttUnit): Date {
   }
 }
 
-defineExpose({ rows, tasks, columns: scale.columns, config })
+defineExpose({ rows, tasks, columns: scale.columns, config, scrollToDate, scrollToTask, scrollToToday })
 </script>
 
 <template>

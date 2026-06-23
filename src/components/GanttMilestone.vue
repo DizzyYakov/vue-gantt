@@ -1,15 +1,42 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { useGanttItem, type GanttItemProps } from '../composables/useGanttItem'
+import type { GanttTaskEvent } from '../types'
 
 const props = defineProps<GanttItemProps>()
 
+const emit = defineEmits<{
+  click: [event: GanttTaskEvent]
+  dblclick: [event: GanttTaskEvent]
+  contextmenu: [event: GanttTaskEvent]
+}>()
+
 // A milestone is a point in time; `end` is ignored and collapsed onto `start`.
-const { ctx, resolved, rowStyle, left, dragging, draggable, onPointerDown, ghost, previewLabel, hidden } =
+const { ctx, resolved, rowStyle, left, dragging, moved, draggable, onPointerDown, ghost, previewLabel, hidden } =
   useGanttItem(props, { type: 'milestone' })
+
+// Click fires after a drag's pointerup; skip it so a drag isn't read as a click.
+function onClick(event: MouseEvent): void {
+  if (moved.value) return
+  const payload: GanttTaskEvent = { task: resolved.value, event }
+  emit('click', payload)
+  ctx.dispatch('milestone-click', payload)
+}
+function onDblclick(event: MouseEvent): void {
+  const payload: GanttTaskEvent = { task: resolved.value, event }
+  emit('dblclick', payload)
+  ctx.dispatch('milestone-dblclick', payload)
+}
+function onContextmenu(event: MouseEvent): void {
+  const payload: GanttTaskEvent = { task: resolved.value, event }
+  emit('contextmenu', payload)
+  ctx.dispatch('milestone-contextmenu', payload)
+}
 
 const overlapMode = computed(() => ctx.config.value.overlap)
 const markerStyle = computed(() => ({ left: `${left.value}px` }))
+// Highlight while a dependency drag hovers this milestone as a drop target.
+const linkTarget = computed(() => ctx.linkDraft.value?.over === resolved.value.id)
 
 const ghostStyle = computed(() =>
   ghost.value
@@ -35,8 +62,12 @@ const labelStyle = computed(() =>
     <div
       class="gantt-milestone__marker"
       :data-draggable="draggable || undefined"
+      :data-link-target="linkTarget || undefined"
       :style="markerStyle"
       @pointerdown="onPointerDown"
+      @click="onClick"
+      @dblclick="onDblclick"
+      @contextmenu="onContextmenu"
     >
       <slot :task="resolved">
         <div class="gantt-milestone__diamond" />
@@ -60,6 +91,8 @@ const labelStyle = computed(() =>
   right: 0;
   display: flex;
   align-items: center;
+  /* Only the marker reacts to pointers; clicks elsewhere reach the grid. */
+  pointer-events: none;
 }
 
 .gantt-milestone[data-dragging] {
@@ -73,6 +106,7 @@ const labelStyle = computed(() =>
   justify-content: center;
   /* Center the marker on the milestone date. */
   transform: translateX(-50%);
+  pointer-events: auto;
 }
 
 .gantt-milestone__marker[data-draggable] {
@@ -95,6 +129,12 @@ const labelStyle = computed(() =>
   background: var(--gantt-milestone-bg, #f59e0b);
   transform: rotate(45deg);
   border-radius: var(--gantt-milestone-radius, 2px);
+}
+
+/* Drop-target affordance while a dependency is being dragged onto this marker. */
+.gantt-milestone__marker[data-link-target] .gantt-milestone__diamond {
+  outline: var(--gantt-link-target-outline, 2px solid var(--gantt-progress-bg, #6366f1));
+  outline-offset: 2px;
 }
 
 .gantt-drag-label {
