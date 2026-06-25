@@ -4,6 +4,18 @@ All notable changes to this project are documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [1.1.0](https://github.com/LavaYasha/vue-gantt/compare/vue-gantt-v1.0.0...vue-gantt-v1.1.0) (2026-06-25)
+
+
+### Features
+
+* add conflicts slot to GanttView/Gantt ([239dc7a](https://github.com/LavaYasha/vue-gantt/commit/239dc7a7163e0505d8b1a1c7e60c4f85227c1cb1))
+
+
+### Bug Fixes
+
+* docs img ([4242032](https://github.com/LavaYasha/vue-gantt/commit/4242032977f5749e60a1ba0fe7f2d1210d1ac968))
+
 ## 1.0.0 (2026-06-23)
 
 
