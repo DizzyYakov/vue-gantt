@@ -108,6 +108,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   conflicts, dependencies, grid, milestone, task list, timeline, today, view,
   context, drag, item, viewport, registry) and expanded layout/`Gantt` specs.
 - Demo playground (`src/dev`) example showcasing grouped rows.
+- **`conflicts` slot** on `GanttView`/`Gantt` — override the overlap-conflict
+  rendering (default `GanttConflicts`). The slot receives a `conflicts:
+  GanttConflict[]` scoped prop (per-row overlap segments; empty outside
+  `overlap: 'conflict'`). A `Guides/Overlapping tasks → ConflictSlot` story shows
+  a custom translucent highlight.
 
 ### Fixed
 

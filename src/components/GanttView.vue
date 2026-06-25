@@ -20,7 +20,7 @@ const props = defineProps<{
   height?: number | string;
 }>();
 
-const { visibleTasks, config, setScroller } = useGanttContext();
+const { visibleTasks, config, conflicts, setScroller } = useGanttContext();
 
 const scroller = useTemplateRef<HTMLElement>("scroller");
 useGanttViewport(scroller);
@@ -99,8 +99,9 @@ const scrollStyle = computed(() => ({
             </template>
           </GanttTask>
         </template>
-        <!-- TODO: добавить slot для перепоределения конфликтов -->
-        <GanttConflicts v-if="config.overlap === 'conflict'" />
+        <slot name="conflicts" :conflicts="conflicts">
+          <GanttConflicts v-if="config.overlap === 'conflict'" />
+        </slot>
 
         <slot name="dependencies">
           <GanttDependencies />
