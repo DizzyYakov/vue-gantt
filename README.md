@@ -24,7 +24,8 @@ design system. One runtime dependency (`date-fns`), fully typed.
 - ✋ **Drag interactions** (all opt-in, controlled): move, resize an edge, set
   progress, and create/edit dependencies — with a live, formattable tooltip.
 - 🧊 Frozen header + sidebar, sticky period labels, **row/column
-  virtualization** (set `height`).
+  virtualization** (kicks in whenever the scroll viewport is height-constrained —
+  by a `height` cap or a fixed-height parent).
 - 🎨 **Themeable** through `--gantt-*` CSS variables; ships typed `.d.ts`.
 
 ## Install
@@ -184,6 +185,13 @@ The leaf components emit short names for **declarative** use (`<GanttTask @click
 The same interactions are re-emitted, namespaced, on `<GanttRoot>` / `<Gantt>`
 (`task-click`, `milestone-click`, …) so **prop-driven** consumers can listen at
 the root — see [Events](#events).
+
+**`height` (`<Gantt>` / `<GanttView>`)** — a number is treated as pixels, a
+string is used verbatim. When set, it **caps** the scroll viewport (`max-height`)
+and enables vertical scrolling + row virtualization. When **omitted**, the chart
+fills its parent's height (`height: 100%`): a height-constrained parent gives
+scrolling + virtualization without an explicit `height`, while an auto-height
+parent collapses to the content height and simply grows to fit (as before).
 
 ### Configuration props (`GanttRootProps`)
 
