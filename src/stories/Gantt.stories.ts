@@ -225,3 +225,33 @@ export const CustomBarSlot: Story = {
       </Gantt>`,
   }),
 }
+
+/**
+ * Section slots are scoped — they hand you the same data the default renderer
+ * uses. The `today` slot replaces the built-in `<GanttToday>` line and receives
+ * `{ today, dateToX }`: the configured reference `Date` and a positioning helper
+ * `(date) => number`. Here it draws a custom labelled marker at "today".
+ */
+export const CustomTodaySlot: Story = {
+  render: (args) => ({
+    components: { Gantt },
+    setup: () => ({ args }),
+    template: `
+      <Gantt v-bind="args">
+        <template #today="{ today, dateToX }">
+          <div :style="{
+            position: 'absolute', top: 0, bottom: 0, zIndex: 4,
+            left: dateToX(today) + 'px',
+            width: '2px', background: '#0ea5e9',
+          }">
+            <span :style="{
+              position: 'absolute', top: 0, left: '4px',
+              padding: '1px 6px', fontSize: '.66em', fontWeight: 600,
+              color: '#fff', background: '#0ea5e9', borderRadius: '4px',
+              whiteSpace: 'nowrap',
+            }">Today</span>
+          </div>
+        </template>
+      </Gantt>`,
+  }),
+}

@@ -97,15 +97,42 @@ const onMove = (e: GanttMoveEvent) => (rows.value = applyMove(rows.value, e))
 ### 1. Prop-driven wrapper
 
 Pass `rows` to `<Gantt>`; it renders the full standard layout and exposes named
-slots for overriding any part: `corner`, `timeline`, `sidebar`, `row`, `group`,
-`groupBar`, `column`, `bar`, `milestone`, `grid`, `conflicts`, `dependencies`,
-`today`, `body-extra`. Most are plain overrides; a few expose scoped props —
-`conflicts` receives `conflicts: GanttConflict[]` (overlap segments per row;
-empty unless `overlap: 'conflict'`), `bar` receives `{ task, progress }`,
-`milestone`/`row`/`group`/`groupBar`/`column` receive their item.
+slots for overriding any part. Every slot is scoped — its props give you the same
+(virtualized) data the default renderer uses, so an override stays in sync.
+
+**Section slots** replace a whole band of the layout:
+
+| Slot           | Scoped props                                         | Replaces                          |
+| -------------- | ---------------------------------------------------- | --------------------------------- |
+| `corner`       | `{ config }`                                         | the sidebar/header corner cell    |
+| `timeline`     | `{ config, visibleColumnsFor }`                      | `<GanttTimeline>` (the axis header) |
+| `sidebar`      | `{ rows, groups }`                                   | `<GanttTaskList>` (the row labels) |
+| `grid`         | `{ columns, rows }`                                  | `<GanttGrid>` (the body grid)     |
+| `bars`         | `{ tasks }`                                          | the task bar / milestone layer    |
+| `group-bars`   | `{ groups }`                                         | `<GanttGroupBar>` (group rollups) |
+| `conflicts`    | `{ conflicts }`                                      | `<GanttConflicts>`                |
+| `dependencies` | `{ tasks }`                                          | `<GanttDependencies>`             |
+| `today`        | `{ today, dateToX }`                                 | `<GanttToday>`                    |
+| `body-extra`   | `{ contentWidth, contentHeight }`                    | (extra layer over the body)       |
+
+`visibleColumnsFor` is `(tier: GanttUnit) => GanttColumn[]` (windowed), `dateToX`
+is `(date: Date \| string \| number) => number`, `rows`/`groups` are the visible
+`ResolvedRow[]` / `ResolvedGroup[]`, `columns` are the visible base-unit
+`GanttColumn[]`, `tasks` are `ResolvedTask[]` (all of them for `dependencies`,
+the plotted/visible ones for `bars`), `today` is the configured reference `Date`,
+and `conflicts` is `GanttConflict[]` (empty unless `overlap: 'conflict'`).
+
+**Leaf slots** customize a single repeated item: `row` (`{ row, index }`),
+`group` (`{ group, collapsed, toggle }`), `groupBar` (`{ group }`), `column`
+(`{ column, tier }`), `bar` (`{ task, progress }`), `milestone` (`{ task }`).
 
 ```vue
-<Gantt :rows="rows" :tiers="['month', 'week', 'day']" :height="480" />
+<Gantt :rows="rows" :tiers="['month', 'week', 'day']" :height="480">
+  <!-- the `today` slot gets the reference date + a positioning helper -->
+  <template #today="{ today, dateToX }">
+    <div class="my-today" :style="{ left: `${dateToX(today)}px` }" />
+  </template>
+</Gantt>
 ```
 
 ### 2. Declarative composition

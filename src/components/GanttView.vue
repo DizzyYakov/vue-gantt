@@ -1,5 +1,4 @@
 <script setup lang="ts">
-// TODO: во все слоты передавать всю необходимую для отображения информацию
 import { computed, onMounted, onUnmounted, useTemplateRef, watch } from "vue";
 import { useGanttContext } from "../composables/useGanttContext";
 import { useGanttViewport } from "../composables/useGanttViewport";
@@ -20,7 +19,23 @@ const props = defineProps<{
   height?: number | string;
 }>();
 
-const { visibleTasks, config, conflicts, setScroller } = useGanttContext();
+const {
+  visibleTasks,
+  visibleRows,
+  visibleGroups,
+  tasks,
+  config,
+  conflicts,
+  visibleColumnsFor,
+  dateToX,
+  contentWidth,
+  contentHeight,
+  setScroller,
+} = useGanttContext();
+
+// Virtualized base-unit columns the default GanttGrid draws — exposed to the
+// `grid` slot so an override keeps the same (windowed) column set.
+const gridColumns = computed(() => visibleColumnsFor(config.value.unit));
 
 const scroller = useTemplateRef<HTMLElement>("scroller");
 useGanttViewport(scroller);
@@ -46,10 +61,10 @@ const scrollStyle = computed(() => ({
     <!-- Frozen header: sticky to the top while scrolling vertically. -->
     <div class="gantt__head">
       <div class="gantt__corner">
-        <slot name="corner" />
+        <slot name="corner" :config="config" />
       </div>
       <div class="gantt__head-main">
-        <slot name="timeline">
+        <slot name="timeline" :config="config" :visibleColumnsFor="visibleColumnsFor">
           <GanttTimeline>
             <template v-if="$slots.column" #column="columnProps">
               <slot name="column" v-bind="columnProps" />
@@ -62,7 +77,7 @@ const scrollStyle = computed(() => ({
     <div class="gantt__main">
       <!-- Frozen sidebar: sticky to the left while scrolling horizontally. -->
       <div class="gantt__sidebar">
-        <slot name="sidebar">
+        <slot name="sidebar" :rows="visibleRows" :groups="visibleGroups">
           <GanttTaskList>
             <template v-if="$slots.row" #row="rowProps">
               <slot name="row" v-bind="rowProps" />
@@ -75,11 +90,11 @@ const scrollStyle = computed(() => ({
       </div>
 
       <div class="gantt__body">
-        <slot name="grid">
+        <slot name="grid" :columns="gridColumns" :rows="visibleRows">
           <GanttGrid />
         </slot>
 
-        <slot name="group-bars">
+        <slot name="group-bars" :groups="visibleGroups">
           <GanttGroupBar>
             <template v-if="$slots.groupBar" #default="groupBarProps">
               <slot name="groupBar" v-bind="groupBarProps" />
@@ -87,29 +102,31 @@ const scrollStyle = computed(() => ({
           </GanttGroupBar>
         </slot>
 
-        <template v-for="task in visibleTasks" :key="task.id">
-          <GanttMilestone v-if="task.type === 'milestone'" :task="task">
-            <template v-if="$slots.milestone" #default="slotProps">
-              <slot name="milestone" v-bind="slotProps" />
-            </template>
-          </GanttMilestone>
-          <GanttTask v-else :task="task">
-            <template v-if="$slots.bar" #default="slotProps">
-              <slot name="bar" v-bind="slotProps" />
-            </template>
-          </GanttTask>
-        </template>
+        <slot name="bars" :tasks="visibleTasks">
+          <template v-for="task in visibleTasks" :key="task.id">
+            <GanttMilestone v-if="task.type === 'milestone'" :task="task">
+              <template v-if="$slots.milestone" #default="slotProps">
+                <slot name="milestone" v-bind="slotProps" />
+              </template>
+            </GanttMilestone>
+            <GanttTask v-else :task="task">
+              <template v-if="$slots.bar" #default="slotProps">
+                <slot name="bar" v-bind="slotProps" />
+              </template>
+            </GanttTask>
+          </template>
+        </slot>
         <slot name="conflicts" :conflicts="conflicts">
           <GanttConflicts v-if="config.overlap === 'conflict'" />
         </slot>
 
-        <slot name="dependencies">
+        <slot name="dependencies" :tasks="tasks">
           <GanttDependencies />
         </slot>
-        <slot name="today">
+        <slot name="today" :today="config.today" :dateToX="dateToX">
           <GanttToday />
         </slot>
-        <slot name="body-extra" />
+        <slot name="body-extra" :contentWidth="contentWidth" :contentHeight="contentHeight" />
       </div>
     </div>
   </div>
