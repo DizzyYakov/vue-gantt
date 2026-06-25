@@ -1,9 +1,7 @@
 <script setup lang="ts">
-// TODO: реализовать несколько функций рендеринга для пути svg
-// TODO: реализовать несколько функций рендеринга для стрелки svg
-// TODO: Добавить параметр включения или выключения отображения стрелки
 import { computed, useId, useTemplateRef } from "vue";
 import { useGanttContext } from "../composables/useGanttContext";
+import type { DependencyPoint } from "../dependencyPaths";
 import type { GanttDependencyEvent, ResolvedTask } from "../types";
 
 const {
@@ -24,6 +22,13 @@ const emit = defineEmits<{
 
 const linkable = computed(() => config.value.linkable);
 const svg = useTemplateRef<SVGSVGElement>("svg");
+
+const markerId = `gantt-arrow-${useId()}`;
+
+// Selected connector path builder + resolved arrowhead (default: elbow + triangle).
+const buildPath = computed(() => config.value.dependencyShape);
+const arrow = computed(() => config.value.arrowHead());
+const markerEnd = computed(() => (arrow.value ? `url(#${markerId})` : undefined));
 
 function onLinkClick(fromId: string, toId: string, event: MouseEvent): void {
   const byId = new Map(tasks.value.map((t) => [t.id, t]));
@@ -48,8 +53,6 @@ function onEndpointDown(link: DependencyLink, event: PointerEvent): void {
   });
 }
 
-const markerId = `gantt-arrow-${useId()}`;
-
 /** Vertical centre of a task's bar (accounts for lanes/cascade offsets). */
 function centerY(task: ResolvedTask): number {
   const band = taskBand(task);
@@ -62,20 +65,8 @@ interface DependencyLink {
   to: string;
   d: string;
   /** Arrow tail (predecessor finish) and head (successor start) points. */
-  tail: { x: number; y: number };
-  head: { x: number; y: number };
-}
-
-const STUB = 12;
-
-/** Elbow path from a tail point (predecessor finish) to a head point (start). */
-function elbowPath(tail: { x: number; y: number }, head: { x: number; y: number }): string {
-  const firstX = tail.x + STUB;
-  const approachX = head.x - STUB;
-  // Always approach the head from the left so the arrowhead points rightward.
-  return approachX >= firstX
-    ? `M ${tail.x} ${tail.y} H ${approachX} V ${head.y} H ${head.x}`
-    : `M ${tail.x} ${tail.y} H ${firstX} V ${(tail.y + head.y) / 2} H ${approachX} V ${head.y} H ${head.x}`;
+  tail: DependencyPoint;
+  head: DependencyPoint;
 }
 
 // Finish-to-start links: an arrow from each dependency's end to the task's start.
@@ -95,7 +86,7 @@ const links = computed<DependencyLink[]>(() => {
         key: `${depId}->${task.id}`,
         from: depId,
         to: task.id,
-        d: elbowPath(tail, head),
+        d: buildPath.value(tail, head),
         tail,
         head,
       });
@@ -105,7 +96,7 @@ const links = computed<DependencyLink[]>(() => {
   return result;
 });
 
-// Temporary arrow shown while dragging a new/re-routed dependency — same elbow
+// Temporary arrow shown while dragging a new/re-routed dependency — same connector
 // shape + arrowhead as a real link, so you drag the actual arrow.
 const draftPath = computed<string | null>(() => {
   const d = linkDraft.value;
@@ -119,8 +110,8 @@ const draftPath = computed<string | null>(() => {
   const py = rect ? d.pointer.y - rect.top : ay;
   // The anchor is the tail on a finish edge, otherwise the head.
   return d.anchorEdge === "finish"
-    ? elbowPath({ x: ax, y: ay }, { x: px, y: py })
-    : elbowPath({ x: px, y: py }, { x: ax, y: ay });
+    ? buildPath.value({ x: ax, y: ay }, { x: px, y: py })
+    : buildPath.value({ x: px, y: py }, { x: ax, y: ay });
 });
 </script>
 
@@ -133,17 +124,19 @@ const draftPath = computed<string | null>(() => {
     :viewBox="`0 0 ${contentWidth} ${contentHeight}`"
     aria-hidden="true"
   >
-    <defs>
+    <defs v-if="arrow">
       <marker
         :id="markerId"
         class="gantt-dependencies__marker"
+        :class="{ 'gantt-dependencies__marker--open': arrow.filled === false }"
         markerWidth="8"
         markerHeight="8"
         refX="6"
         refY="3"
         orient="auto"
       >
-        <path d="M0,0 L6,3 L0,6 Z" />
+        <!-- An unfilled shape (`filled: false`) is stroked via the `--open` class. -->
+        <path :d="arrow.d" />
       </marker>
     </defs>
     <slot :links="links">
@@ -154,7 +147,7 @@ const draftPath = computed<string | null>(() => {
         :d="link.d"
         :data-from="link.from"
         :data-to="link.to"
-        :marker-end="`url(#${markerId})`"
+        :marker-end="markerEnd"
         @click="onLinkClick(link.from, link.to, $event)"
       />
     </slot>
@@ -178,7 +171,7 @@ const draftPath = computed<string | null>(() => {
       v-if="draftPath"
       class="gantt-dependency-draft"
       :d="draftPath"
-      :marker-end="`url(#${markerId})`"
+      :marker-end="markerEnd"
     />
   </svg>
 </template>
@@ -202,6 +195,12 @@ const draftPath = computed<string | null>(() => {
 
 .gantt-dependencies__marker path {
   fill: var(--gantt-dependency-color, #94a3b8);
+}
+
+.gantt-dependencies__marker--open path {
+  fill: none;
+  stroke: var(--gantt-dependency-color, #94a3b8);
+  stroke-width: 1.5;
 }
 
 .gantt-dependency-handle {
