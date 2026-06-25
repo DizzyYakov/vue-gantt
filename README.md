@@ -241,6 +241,7 @@ your data (the [utilities](#utilities) make this one-liners).
 | `move`                         | `GanttMoveEvent`                                 | a bar is dragged (start/end, possibly a new row).     |
 | `resize`                       | `GanttResizeEvent`                               | a bar edge is dragged.                                |
 | `progress`                     | `GanttProgressEvent`                             | the progress handle is dragged.                       |
+| `update:rows`                  | `GanttRowData[]`                                 | a task/dependency change is applied (`v-model:rows`). |
 | `group-toggle`                 | `GanttGroupToggleEvent`                          | a group is collapsed/expanded.                        |
 | `dependency-create`            | `GanttDependencyChange`                          | a link is dragged from one task to another.           |
 | `dependency-update`            | `GanttDependencyUpdate`                          | an arrow endpoint is re-routed (carries `previous`).  |
@@ -262,6 +263,31 @@ interface GanttDependencyChange { from: string; to: string }
 interface GanttDependencyUpdate extends GanttDependencyChange { previous: GanttDependencyChange }
 interface GanttDragLabelInfo    { mode: 'move' | 'resize' | 'progress'; task: ResolvedTask; start: Date; end: Date; progress: number }
 ```
+
+### Two-way binding (`v-model:rows`)
+
+`v-model:rows` is a convenience layer over the controlled events on `<Gantt>` and
+`<GanttRoot>`. It pairs the existing `rows` prop with an `update:rows` emit: when
+a drag change (`move` / `resize` / `progress`) or a dependency edit
+(`dependency-create` / `dependency-remove` / `dependency-update`) happens, the
+component applies it to your data with the same immutable [utilities](#utilities)
+(`applyMove` / `updateTask` / `addDependency` / `removeDependency`) and emits
+`update:rows` with the new array — so the chart stays in sync without a manual
+handler.
+
+```vue
+<Gantt v-model:rows="rows" draggable resizable progress-draggable linkable />
+```
+
+This works **only** in prop-driven mode (when `rows` is passed); in declarative
+mode (`<GanttRow>` without `rows`) there is nothing to update, so `update:rows`
+is not emitted. `group-toggle` is **not** part of the model — it is a view-state
+change, not a task-data change.
+
+The plain controlled events (`@move`, `@resize`, `@progress`, `@dependency-*`)
+are still emitted alongside `update:rows`. Choose **one** approach: use
+`v-model:rows` for automatic sync, or the manual events to apply changes
+yourself — combining both double-applies each change.
 
 ### Imperative methods
 

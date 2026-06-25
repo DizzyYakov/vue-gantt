@@ -121,6 +121,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   GanttConflict[]` scoped prop (per-row overlap segments; empty outside
   `overlap: 'conflict'`). A `Guides/Overlapping tasks → ConflictSlot` story shows
   a custom translucent highlight.
+- **`v-model:rows` two-way binding** — an opt-in convenience layer over the
+  controlled events. When bound, drag (`move`), edge `resize`, `progress` and
+  dependency `create`/`remove`/`update` edits are applied to your data for you
+  (via the same immutable utils) and emitted as `update:rows` — no manual
+  `@move`/`@resize`/… handlers. The controlled events still fire (pick one
+  approach). Prop-driven only; the declarative `<GanttRow>` mode is unaffected,
+  and `group-toggle` stays outside the model.
 - **Scoped data on `GanttView`/`Gantt` section slots** — every section-override
   slot now receives the reactive data its default component uses, so a custom
   override no longer has to reach into `useGanttContext`: `corner {config}`,

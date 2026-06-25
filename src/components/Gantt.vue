@@ -11,6 +11,7 @@ import type {
   GanttProgressEvent,
   GanttResizeEvent,
   GanttRootProps,
+  GanttRow as GanttRowData,
   GanttRowEvent,
   GanttScrollOptions,
   GanttTaskEvent,
@@ -27,6 +28,7 @@ const emit = defineEmits<{
   move: [event: GanttMoveEvent]
   resize: [event: GanttResizeEvent]
   progress: [event: GanttProgressEvent]
+  'update:rows': [rows: GanttRowData[]]
   'group-toggle': [event: GanttGroupToggleEvent]
   'dependency-create': [event: GanttDependencyChange]
   'dependency-remove': [event: GanttDependencyChange]
@@ -89,6 +91,7 @@ defineExpose({
     @move="emit('move', $event)"
     @resize="emit('resize', $event)"
     @progress="emit('progress', $event)"
+    @update:rows="emit('update:rows', $event)"
     @group-toggle="emit('group-toggle', $event)"
     @dependency-create="emit('dependency-create', $event)"
     @dependency-remove="emit('dependency-remove', $event)"

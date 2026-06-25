@@ -112,6 +112,23 @@ const manyRows = ref<GanttRowData[]>(
   })),
 )
 
+// Two-way binding: `v-model:rows` applies every task change for us (no manual
+// @move/@resize/@progress/@dependency-* handlers needed).
+const vmodelRows = ref<GanttRowData[]>([
+  {
+    id: 'vm-plan',
+    name: 'Planning',
+    tasks: [{ id: 'vm-spec', name: 'Spec', start: '2026-06-01', end: '2026-06-08', progress: 100 }],
+  },
+  {
+    id: 'vm-dev',
+    name: 'Development',
+    tasks: [
+      { id: 'vm-build', name: 'Build', start: '2026-06-09', end: '2026-06-20', progress: 30, dependencies: ['vm-spec'] },
+    ],
+  },
+])
+
 // Apply a completed drag with the library's `applyMove` helper (controlled data).
 const onMoveRows = (e: GanttMoveEvent) => (rows.value = applyMove(rows.value, e))
 const onMoveMany = (e: GanttMoveEvent) => (manyRows.value = applyMove(manyRows.value, e))
@@ -213,6 +230,28 @@ const onMoveGrouped = (e: GanttMoveEvent) => (groupedRows.value = applyMove(grou
           @dependency-create="onCreateDep"
           @dependency-remove="onRemoveDep"
           @dependency-update="onUpdateDep"
+        />
+      </div>
+    </section>
+
+    <section>
+      <h2>1b. Two-way binding (<code>v-model:rows</code>) — no manual handlers</h2>
+      <p class="hint">
+        Drag / resize / progress / dependency edits apply straight to
+        <code>vmodelRows</code>. First task: <strong>{{ vmodelRows[0]?.tasks?.[0]?.start }}</strong>.
+      </p>
+      <div class="card">
+        <Gantt
+          v-model:rows="vmodelRows"
+          :tiers="tiers"
+          :column-width="columnWidth"
+          :height="200"
+          :draggable="draggable"
+          :row-movable="rowMovable"
+          :resizable="resizable"
+          :progress-draggable="progressDraggable"
+          :linkable="linkable"
+          :drag-label="dragLabel"
         />
       </div>
     </section>

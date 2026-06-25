@@ -146,6 +146,23 @@ export const DragAndDrop: Story = {
   }),
 }
 
+/**
+ * `v-model:rows` is a convenience layer over the controlled events: drag, resize,
+ * progress and dependency edits are applied to your data for you — no manual
+ * `@move`/`@resize`/… handlers. (The controlled events still fire if you want them.)
+ */
+export const VModelRows: Story = {
+  args: { draggable: true, rowMovable: true, resizable: true, progressDraggable: true, linkable: true },
+  render: (args) => ({
+    components: { Gantt },
+    setup() {
+      const rows = ref<GanttRow[]>(JSON.parse(JSON.stringify(sampleRows)))
+      return { args, rows }
+    },
+    template: `<Gantt v-bind="args" v-model:rows="rows" />`,
+  }),
+}
+
 /** Big dataset with a fixed `height` → row & column virtualization kick in. */
 export const Virtualized: Story = {
   args: {
