@@ -4,6 +4,26 @@ All notable changes to this project are documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [1.2.0](https://github.com/LavaYasha/vue-gantt/compare/vue-gantt-v1.1.0...vue-gantt-v1.2.0) (2026-06-25)
+
+
+### Features
+
+* add `bars` slot wrapping the task/milestone layer ([0ed4dd7](https://github.com/LavaYasha/vue-gantt/commit/0ed4dd72c1e710b24c124a5abde933e287f28764))
+* add v-model:rows two-way binding ([fa3106e](https://github.com/LavaYasha/vue-gantt/commit/fa3106e23acb16beb19bdb02f5f8bda22aa733fa))
+* add v-model:rows two-way binding ([29bd12b](https://github.com/LavaYasha/vue-gantt/commit/29bd12bfcb782d260c5ed53e2cd46cfc4f04efa0))
+* configurable dependency connector + arrowhead builders ([a08fe58](https://github.com/LavaYasha/vue-gantt/commit/a08fe5887a3314b255352ce7585e05f5b66725bf))
+* configurable dependency connector + arrowhead builders ([8fe6675](https://github.com/LavaYasha/vue-gantt/commit/8fe667570a31911b263c3063201c7d7c67f6e499))
+* default chart height fills the parent ([875d8fc](https://github.com/LavaYasha/vue-gantt/commit/875d8fcbca3dca767a9bab29eb089ae17e5c365f))
+* default chart height fills the parent ([bad0c1c](https://github.com/LavaYasha/vue-gantt/commit/bad0c1c7417684b0a1b9f31d880c1a1381a016f5))
+* expose scoped data on GanttView section slots ([8026cb9](https://github.com/LavaYasha/vue-gantt/commit/8026cb91fa24d7f237fea14c4eb12572c41fdad7))
+* expose scoped data on GanttView section slots ([47ae68f](https://github.com/LavaYasha/vue-gantt/commit/47ae68f5eeef0056092c9c1d9e27d0ac5417d74c))
+
+
+### Bug Fixes
+
+* stretch .gantt-root so default fill height can scroll ([36ac124](https://github.com/LavaYasha/vue-gantt/commit/36ac1248fdfc9fdbd9b9f93983c844982f71a3d5))
+
 ## [1.1.0](https://github.com/LavaYasha/vue-gantt/compare/vue-gantt-v1.0.0...vue-gantt-v1.1.0) (2026-06-25)
 
 
