@@ -117,7 +117,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 ### Changed
 
 - **Default height fills the parent** — with no `height` prop, the chart now sets
-  `height: 100%` instead of growing unbounded. A height-constrained parent
+  `height: 100%` instead of growing unbounded (`.gantt-root` also stretches so the
+  height passes through to the scroll viewport). A height-constrained parent
   therefore gives scrolling + row/column virtualization without an explicit
   `height`; an auto-height parent still collapses to the content height (grows to
   fit, as before). An explicit `height` keeps its previous `max-height` (cap)

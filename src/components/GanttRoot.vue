@@ -537,6 +537,10 @@ defineExpose({ rows, tasks, columns: scale.columns, config, scrollToDate, scroll
 <style scoped>
 .gantt-root {
   position: relative;
+  /* Pass a height-constrained ancestor's height down to GanttView so its default
+     `height: 100%` (fill) can scroll. Resolves to `auto` under an auto-height
+     parent, so the common case still grows to content. */
+  height: 100%;
   font: var(--gantt-font, inherit);
   color: var(--gantt-color, inherit);
 }
