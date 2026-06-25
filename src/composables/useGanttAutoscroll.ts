@@ -56,7 +56,13 @@ export function edgeVelocity(
  * by `getEl`) toward whichever edge the pointer approaches, clamped to the
  * scroll bounds. `update(null)` stops it.
  */
-export function useGanttAutoscroll(getEl: () => HTMLElement | null): {
+export function useGanttAutoscroll(
+  getEl: () => HTMLElement | null,
+  // Max scroll offset per axis, derived from the *content* (not `el.scrollWidth/
+  // Height`, which a dragged ghost can inflate by overflowing the body — that
+  // would let the auto-scroll chase the ghost past the chart forever).
+  getMaxScroll?: (el: HTMLElement) => { x: number; y: number },
+): {
   update: (pointer: AutoscrollPointer | null) => void
 } {
   let pointer: AutoscrollPointer | null = null
@@ -75,13 +81,14 @@ export function useGanttAutoscroll(getEl: () => HTMLElement | null): {
     const rect = el.getBoundingClientRect()
     if (rect.width > 0 && rect.height > 0) {
       const { vx, vy } = edgeVelocity(rect, pointer)
+      const max = getMaxScroll
+        ? getMaxScroll(el)
+        : { x: el.scrollWidth - el.clientWidth, y: el.scrollHeight - el.clientHeight }
       if (vx) {
-        const maxX = el.scrollWidth - el.clientWidth
-        el.scrollLeft = Math.min(maxX, Math.max(0, el.scrollLeft + vx))
+        el.scrollLeft = Math.min(Math.max(0, max.x), Math.max(0, el.scrollLeft + vx))
       }
       if (vy) {
-        const maxY = el.scrollHeight - el.clientHeight
-        el.scrollTop = Math.min(maxY, Math.max(0, el.scrollTop + vy))
+        el.scrollTop = Math.min(Math.max(0, max.y), Math.max(0, el.scrollTop + vy))
       }
     }
     // Keep looping while a drag is active so holding at the edge keeps scrolling.
