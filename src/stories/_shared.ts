@@ -68,12 +68,18 @@ export const ganttComponents = {
  * A small, fully-assembled declarative chart (frozen sidebar + multi-tier
  * header + grid + bars + dependencies + today line). Used as the canvas for the
  * per-component stories so each renders in a realistic context.
+ *
+ * Pass `rootProps` to bind extra `GanttRoot` props (e.g. `dependencyShape`,
+ * `arrowHead`) — they're merged over the defaults via `v-bind`.
  */
-export function declarativeChart() {
+export function declarativeChart(rootProps: Record<string, unknown> = {}) {
   return () => ({
     components: ganttComponents,
+    setup() {
+      return { rootProps }
+    },
     template: /* html */ `
-      <GanttRoot :tiers="['month','week','day']" :column-width="40">
+      <GanttRoot v-bind="rootProps" :tiers="['month','week','day']" :column-width="40">
         <div class="sb-chart">
           <div class="sb-chart__side">
             <div class="sb-chart__corner" />

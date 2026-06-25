@@ -146,6 +146,23 @@ export const DragAndDrop: Story = {
   }),
 }
 
+/**
+ * `v-model:rows` is a convenience layer over the controlled events: drag, resize,
+ * progress and dependency edits are applied to your data for you — no manual
+ * `@move`/`@resize`/… handlers. (The controlled events still fire if you want them.)
+ */
+export const VModelRows: Story = {
+  args: { draggable: true, rowMovable: true, resizable: true, progressDraggable: true, linkable: true },
+  render: (args) => ({
+    components: { Gantt },
+    setup() {
+      const rows = ref<GanttRow[]>(JSON.parse(JSON.stringify(sampleRows)))
+      return { args, rows }
+    },
+    template: `<Gantt v-bind="args" v-model:rows="rows" />`,
+  }),
+}
+
 /** Big dataset with a fixed `height` → row & column virtualization kick in. */
 export const Virtualized: Story = {
   args: {
@@ -221,6 +238,36 @@ export const CustomBarSlot: Story = {
           <span style="padding:0 8px;font-size:.72em;font-weight:600">
             {{ task.name }} · {{ progress }}%
           </span>
+        </template>
+      </Gantt>`,
+  }),
+}
+
+/**
+ * Section slots are scoped — they hand you the same data the default renderer
+ * uses. The `today` slot replaces the built-in `<GanttToday>` line and receives
+ * `{ today, dateToX }`: the configured reference `Date` and a positioning helper
+ * `(date) => number`. Here it draws a custom labelled marker at "today".
+ */
+export const CustomTodaySlot: Story = {
+  render: (args) => ({
+    components: { Gantt },
+    setup: () => ({ args }),
+    template: `
+      <Gantt v-bind="args">
+        <template #today="{ today, dateToX }">
+          <div :style="{
+            position: 'absolute', top: 0, bottom: 0, zIndex: 4,
+            left: dateToX(today) + 'px',
+            width: '2px', background: '#0ea5e9',
+          }">
+            <span :style="{
+              position: 'absolute', top: 0, left: '4px',
+              padding: '1px 6px', fontSize: '.66em', fontWeight: 600,
+              color: '#fff', background: '#0ea5e9', borderRadius: '4px',
+              whiteSpace: 'nowrap',
+            }">Today</span>
+          </div>
         </template>
       </Gantt>`,
   }),

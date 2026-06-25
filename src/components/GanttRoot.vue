@@ -22,8 +22,11 @@ import { computed, onMounted, onUnmounted, provide, reactive, ref, toRef } from 
 import { useGanttLink } from '../composables/useGanttLink'
 import { useGanttScale } from '../composables/useGanttScale'
 import { useGanttRegistry } from '../composables/useTaskRegistry'
+import { triangleArrow } from '../arrowHeads'
 import { GANTT_CONTEXT, GANTT_DEFAULTS, normalizeRow, toDate } from '../context'
+import { elbowPath } from '../dependencyPaths'
 import { conflictSegments, layoutGroups, type GroupMeta } from '../layout'
+import { addDependency, applyMove, removeDependency, updateTask } from '../utils'
 import type {
   GanttBand,
   GanttCellEvent,
@@ -68,6 +71,8 @@ const props = withDefaults(defineProps<GanttRootProps>(), {
     resizable: GANTT_DEFAULTS.resizable,
     progressDraggable: GANTT_DEFAULTS.progressDraggable,
     linkable: GANTT_DEFAULTS.linkable,
+    dependencyShape: elbowPath,
+    arrowHead: triangleArrow,
     snapToGrid: GANTT_DEFAULTS.snapToGrid,
     dragLabelFormat: GANTT_DEFAULTS.dragLabelFormat,
     dragLabel: undefined,
@@ -82,6 +87,8 @@ const emit = defineEmits<{
   move: [event: GanttMoveEvent]
   resize: [event: GanttResizeEvent]
   progress: [event: GanttProgressEvent]
+  /** `v-model:rows` — emitted with the rows after applying a task change. */
+  'update:rows': [rows: GanttRow[]]
   'group-toggle': [event: GanttGroupToggleEvent]
   'dependency-create': [event: GanttDependencyChange]
   'dependency-remove': [event: GanttDependencyChange]
@@ -101,10 +108,30 @@ const emit = defineEmits<{
   'dependency-click': [event: GanttDependencyEvent]
 }>()
 
+// `v-model:rows` convenience layer (additive — runs alongside the controlled
+// events, never replaces them). Only active when `rows` is prop-driven; in
+// declarative mode (`<GanttRow>`) there is no `rows` model to update.
+function emitModelUpdate(apply: (rows: GanttRow[]) => GanttRow[]): void {
+  if (props.rows) emit('update:rows', apply(props.rows))
+}
+
 // Bubble child interactions up as the matching chart event. Components call this
 // via the context so prop-driven `<Gantt>` consumers can listen at the root.
 function dispatch<K extends keyof GanttEventMap>(name: K, payload: GanttEventMap[K]): void {
   ;(emit as (n: string, p: unknown) => void)(name, payload)
+  // Mirror dependency edits into `v-model:rows`.
+  if (name === 'dependency-create') {
+    const p = payload as GanttDependencyChange
+    emitModelUpdate((rows) => addDependency(rows, p.from, p.to))
+  } else if (name === 'dependency-remove') {
+    const p = payload as GanttDependencyChange
+    emitModelUpdate((rows) => removeDependency(rows, p.from, p.to))
+  } else if (name === 'dependency-update') {
+    const p = payload as GanttDependencyUpdate
+    emitModelUpdate((rows) =>
+      addDependency(removeDependency(rows, p.previous.from, p.previous.to), p.from, p.to),
+    )
+  }
 }
 
 const {
@@ -255,6 +282,8 @@ const config = computed<GanttConfig>(() => ({
   resizable: props.resizable,
   progressDraggable: props.progressDraggable,
   linkable: props.linkable,
+  dependencyShape: props.dependencyShape,
+  arrowHead: props.arrowHead,
   snapToGrid: props.snapToGrid,
   dragLabelFormat: props.dragLabelFormat,
   dragLabel: props.dragLabel,
@@ -459,9 +488,18 @@ const context: GanttContext = {
   toggleGroup,
   registerTask,
   unregisterTask,
-  moveTask: (event) => emit('move', event),
-  resizeTask: (event) => emit('resize', event),
-  progressTask: (event) => emit('progress', event),
+  moveTask: (event) => {
+    emit('move', event)
+    emitModelUpdate((rows) => applyMove(rows, event))
+  },
+  resizeTask: (event) => {
+    emit('resize', event)
+    emitModelUpdate((rows) => updateTask(rows, event.id, { start: event.start, end: event.end }))
+  },
+  progressTask: (event) => {
+    emit('progress', event)
+    emitModelUpdate((rows) => updateTask(rows, event.id, { progress: event.progress }))
+  },
   linkDraft,
   beginLink,
   endLink,

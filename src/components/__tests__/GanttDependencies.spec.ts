@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest'
 import { h } from 'vue'
 import GanttDependencies from '../GanttDependencies.vue'
+import { noArrow, openArrow } from '../../arrowHeads'
+import { bezierPath, straightPath } from '../../dependencyPaths'
 import type { GanttRow } from '../../types'
 import { mountInRoot } from '../../__tests__/helpers'
 
@@ -71,6 +73,58 @@ describe('GanttDependencies', () => {
     const svg = wrapper.find('svg.gantt-dependencies')
     expect(svg.attributes('width')).toBe(String(ctx().contentWidth.value))
     expect(svg.attributes('height')).toBe(String(ctx().contentHeight.value))
+  })
+
+  it('uses the straightPath builder passed to dependencyShape', () => {
+    const { wrapper } = mountInRoot(GanttDependencies, {
+      rootProps: { rows, unit: 'day', dependencyShape: straightPath },
+    })
+    const d = wrapper.find('.gantt-dependency').attributes('d')!
+    expect(d).toContain(' L ')
+    expect(d).not.toContain('H')
+    expect(d).not.toContain('V')
+  })
+
+  it('uses the bezierPath builder passed to dependencyShape', () => {
+    const { wrapper } = mountInRoot(GanttDependencies, {
+      rootProps: { rows, unit: 'day', dependencyShape: bezierPath },
+    })
+    const d = wrapper.find('.gantt-dependency').attributes('d')!
+    expect(d).toContain('C')
+  })
+
+  it('accepts a custom dependencyShape builder', () => {
+    const custom = () => 'M 1 2 L 3 4'
+    const { wrapper } = mountInRoot(GanttDependencies, {
+      rootProps: { rows, unit: 'day', dependencyShape: custom },
+    })
+    expect(wrapper.find('.gantt-dependency').attributes('d')).toBe('M 1 2 L 3 4')
+  })
+
+  it('omits the arrowhead marker entirely when arrowHead returns null (noArrow)', () => {
+    const { wrapper } = mountInRoot(GanttDependencies, {
+      rootProps: { rows, unit: 'day', arrowHead: noArrow },
+    })
+    const dep = wrapper.find('.gantt-dependency')
+    expect(dep.attributes('marker-end')).toBeUndefined()
+    expect(wrapper.find('.gantt-dependencies__marker').exists()).toBe(false)
+  })
+
+  it('renders an open (stroked) marker for an unfilled arrowHead (openArrow)', () => {
+    const { wrapper } = mountInRoot(GanttDependencies, {
+      rootProps: { rows, unit: 'day', arrowHead: openArrow },
+    })
+    const marker = wrapper.find('.gantt-dependencies__marker')
+    expect(marker.exists()).toBe(true)
+    expect(marker.classes()).toContain('gantt-dependencies__marker--open')
+    expect(wrapper.find('.gantt-dependency').attributes('marker-end')).toMatch(/^url\(#gantt-arrow-/)
+  })
+
+  it('accepts a custom arrowHead builder', () => {
+    const { wrapper } = mountInRoot(GanttDependencies, {
+      rootProps: { rows, unit: 'day', arrowHead: () => ({ d: 'M0,0 L4,4 L0,8' }) },
+    })
+    expect(wrapper.find('.gantt-dependencies__marker path').attributes('d')).toBe('M0,0 L4,4 L0,8')
   })
 
   it('exposes a scoped slot carrying the computed links', () => {

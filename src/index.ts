@@ -35,6 +35,14 @@ export { GANTT_CONTEXT, GANTT_ROW, GANTT_GROUP, GANTT_DEFAULTS, normalizeRow, no
 export { assignLanes, layoutRows, layoutGroups, conflictSegments } from './layout'
 export type { GroupMeta, GroupedLayout, LayoutGroupsOptions } from './layout'
 
+// Dependency connector path builders — pass one (or your own) to `dependencyShape`
+export { elbowPath, straightPath, bezierPath, STUB } from './dependencyPaths'
+export type { DependencyPoint, DependencyPathBuilder } from './dependencyPaths'
+
+// Dependency arrowhead builders — pass one (or your own) to `arrowHead`
+export { triangleArrow, openArrow, noArrow } from './arrowHeads'
+export type { ArrowHeadShape, ArrowHeadBuilder } from './arrowHeads'
+
 // Data utilities (pure helpers over `rows`/`tasks`)
 export {
   flattenTasks,

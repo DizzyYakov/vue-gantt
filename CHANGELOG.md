@@ -108,11 +108,35 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   conflicts, dependencies, grid, milestone, task list, timeline, today, view,
   context, drag, item, viewport, registry) and expanded layout/`Gantt` specs.
 - Demo playground (`src/dev`) example showcasing grouped rows.
+- **Configurable dependency rendering** — `dependencyShape` takes a connector path
+  builder `(tail, head) => string` (default `elbowPath`) and `arrowHead` takes an
+  arrowhead builder `() => ArrowHeadShape | null` (default `triangleArrow`;
+  `null` = no head). The built-in builders (`elbowPath`, `straightPath`,
+  `bezierPath`, `STUB`; `triangleArrow`, `openArrow`, `noArrow`) and the
+  `DependencyPoint` / `DependencyPathBuilder` / `ArrowHeadShape` /
+  `ArrowHeadBuilder` types are exported — pass a built-in or your own. Defaults
+  preserve the previous look.
 - **`conflicts` slot** on `GanttView`/`Gantt` — override the overlap-conflict
   rendering (default `GanttConflicts`). The slot receives a `conflicts:
   GanttConflict[]` scoped prop (per-row overlap segments; empty outside
   `overlap: 'conflict'`). A `Guides/Overlapping tasks → ConflictSlot` story shows
   a custom translucent highlight.
+- **`v-model:rows` two-way binding** — an opt-in convenience layer over the
+  controlled events. When bound, drag (`move`), edge `resize`, `progress` and
+  dependency `create`/`remove`/`update` edits are applied to your data for you
+  (via the same immutable utils) and emitted as `update:rows` — no manual
+  `@move`/`@resize`/… handlers. The controlled events still fire (pick one
+  approach). Prop-driven only; the declarative `<GanttRow>` mode is unaffected,
+  and `group-toggle` stays outside the model.
+- **Scoped data on `GanttView`/`Gantt` section slots** — every section-override
+  slot now receives the reactive data its default component uses, so a custom
+  override no longer has to reach into `useGanttContext`: `corner {config}`,
+  `timeline {config, visibleColumnsFor}`, `sidebar {rows, groups}`, `grid
+  {columns, rows}`, `group-bars {groups}`, `dependencies {tasks}`, `today {today,
+  dateToX}`, `body-extra {contentWidth, contentHeight}`. A new `bars {tasks}` slot
+  wraps the task-bar / milestone layer so it can be replaced wholesale. The
+  `bars` and `group-bars` slots are now also forwarded through the `<Gantt>`
+  wrapper (previously only on `GanttView`).
 
 ### Changed
 
