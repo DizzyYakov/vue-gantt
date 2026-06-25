@@ -1,4 +1,6 @@
 import type { ComputedRef } from 'vue'
+import type { ArrowHeadBuilder } from './arrowHeads'
+import type { DependencyPathBuilder } from './dependencyPaths'
 
 /**
  * A time-axis granularity / "time group". Used both as the pixel-density base
@@ -210,6 +212,18 @@ export interface GanttRootProps {
   progressDraggable?: boolean
   /** Allow creating/editing dependencies by dragging between tasks. */
   linkable?: boolean
+  /**
+   * Connector path builder `(tail, head) => string` (SVG `d`). Pass a built-in
+   * (`elbowPath` / `straightPath` / `bezierPath`) or your own. Defaults to
+   * `elbowPath`.
+   */
+  dependencyShape?: DependencyPathBuilder
+  /**
+   * Arrowhead builder `() => ArrowHeadShape | null`. Pass a built-in
+   * (`triangleArrow` / `openArrow` / `noArrow`) or your own. Defaults to
+   * `triangleArrow`.
+   */
+  arrowHead?: ArrowHeadBuilder
   /** Snap dragged dates to the base-unit grid. Off by default (full precision). */
   snapToGrid?: boolean
   /** date-fns format for the live date label shown while dragging. */
@@ -249,6 +263,10 @@ export interface GanttConfig {
   progressDraggable: boolean
   /** Whether dependencies can be created/edited by dragging. */
   linkable: boolean
+  /** Connector path builder `(tail, head) => string` (resolved, never undefined). */
+  dependencyShape: DependencyPathBuilder
+  /** Arrowhead builder `() => ArrowHeadShape | null` (resolved, never undefined). */
+  arrowHead: ArrowHeadBuilder
   /** Whether dragged dates snap to the base-unit grid. */
   snapToGrid: boolean
   /** date-fns format for the live drag date label. */

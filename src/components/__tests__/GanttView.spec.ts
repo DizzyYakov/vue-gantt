@@ -51,6 +51,14 @@ describe('GanttView', () => {
     expect(wrapper.find('.gantt').attributes('style')).toContain('max-height: 50vh')
   })
 
+  it('fills the parent height (height: 100%) when no height is given', () => {
+    const { wrapper } = mountInRoot(GanttView, { rootProps: { rows } })
+    const style = wrapper.find('.gantt').attributes('style') ?? ''
+    expect(style).toContain('height: 100%')
+    // No max-height cap is applied in the default (fill) mode.
+    expect(style).not.toContain('max-height')
+  })
+
   it('renders the conflicts overlay only in conflict mode', () => {
     const { wrapper: off } = mountInRoot(GanttView, { rootProps: { rows, unit: 'day' } })
     expect(off.find('.gantt-conflicts').exists()).toBe(false)

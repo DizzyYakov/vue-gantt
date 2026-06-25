@@ -576,6 +576,144 @@ describe('slot forwarding', () => {
   })
 })
 
+describe('section slot scoped payloads', () => {
+  // Two grouped rows (so `group-bars`/`sidebar.groups` are non-empty) plus a
+  // dependency and a milestone, exercising every section slot's scope.
+  const groups = [{ id: 'g1', name: 'Squad' }]
+  const groupedRows: GanttRowData[] = [
+    {
+      id: 'r1',
+      name: 'Backend',
+      groupId: 'g1',
+      tasks: [
+        { id: 'a', name: 'Alpha', start: '2026-01-01', end: '2026-01-05', progress: 50 },
+        { id: 'b', name: 'Beta', start: '2026-01-05', end: '2026-01-10', dependencies: ['a'] },
+      ],
+    },
+    {
+      id: 'r2',
+      name: 'Frontend',
+      groupId: 'g1',
+      tasks: [{ id: 'm', name: 'Mark', type: 'milestone', start: '2026-01-10' }],
+    },
+  ]
+
+  // Capture a slot's scoped payload into `cap` and render an inert probe so the
+  // section still mounts (and its default content is replaced).
+  function capture(name: string): { cap: Record<string, unknown> } {
+    const cap: Record<string, unknown> = {}
+    mount(Gantt, {
+      props: { rows: groupedRows, groups, unit: 'day', today: '2026-01-03' },
+      slots: {
+        [name]: (p: Record<string, unknown>) => {
+          Object.assign(cap, p)
+          return h('i', { class: 'probe' })
+        },
+      },
+    })
+    return { cap }
+  }
+
+  it('corner → { config } object carrying the resolved unit', () => {
+    const { cap } = capture('corner')
+    expect(typeof cap.config).toBe('object')
+    expect((cap.config as { unit: string }).unit).toBe('day')
+  })
+
+  it('timeline → { config, visibleColumnsFor } with a column-generating fn', () => {
+    const { cap } = capture('timeline')
+    expect(typeof cap.config).toBe('object')
+    expect(typeof cap.visibleColumnsFor).toBe('function')
+    const cols = (cap.visibleColumnsFor as (t: string) => unknown[])('day')
+    expect(Array.isArray(cols)).toBe(true)
+  })
+
+  it('sidebar → { rows, groups } both arrays (groups non-empty)', () => {
+    const { cap } = capture('sidebar')
+    expect(Array.isArray(cap.rows)).toBe(true)
+    expect(Array.isArray(cap.groups)).toBe(true)
+    expect((cap.groups as unknown[]).length).toBeGreaterThan(0)
+  })
+
+  it('grid → { columns (non-empty array), rows (array) }', () => {
+    const { cap } = capture('grid')
+    expect(Array.isArray(cap.columns)).toBe(true)
+    expect((cap.columns as unknown[]).length).toBeGreaterThan(0)
+    expect(Array.isArray(cap.rows)).toBe(true)
+  })
+
+  it('group-bars → { groups } non-empty array', () => {
+    const { cap } = capture('group-bars')
+    expect(Array.isArray(cap.groups)).toBe(true)
+    expect((cap.groups as unknown[]).length).toBeGreaterThan(0)
+  })
+
+  it('bars → { tasks } array of the plotted (visible) tasks', () => {
+    const { cap } = capture('bars')
+    expect(Array.isArray(cap.tasks)).toBe(true)
+    expect((cap.tasks as { id: string }[]).map((t) => t.id).sort()).toEqual(['a', 'b', 'm'])
+  })
+
+  it('bars slot replaces the default task/milestone layer', () => {
+    const wrapper = mount(Gantt, {
+      props: { rows: groupedRows, groups, unit: 'day' },
+      slots: { bars: () => h('i', { class: 'custom-bars' }) },
+    })
+    expect(wrapper.find('.custom-bars').exists()).toBe(true)
+    // Default bars/milestones are no longer rendered.
+    expect(wrapper.find('.gantt-bar').exists()).toBe(false)
+    expect(wrapper.find('.gantt-milestone').exists()).toBe(false)
+  })
+
+  it('dependencies → { tasks } array with every task', () => {
+    const { cap } = capture('dependencies')
+    expect(Array.isArray(cap.tasks)).toBe(true)
+    // a + b + milestone m = 3 tasks across both rows.
+    expect((cap.tasks as unknown[]).length).toBe(3)
+    expect((cap.tasks as { id: string }[]).map((t) => t.id).sort()).toEqual(['a', 'b', 'm'])
+  })
+
+  it('today → { today: Date, dateToX: fn } where dateToX(today) is a number', () => {
+    const { cap } = capture('today')
+    expect(cap.today).toBeInstanceOf(Date)
+    expect(typeof cap.dateToX).toBe('function')
+    const x = (cap.dateToX as (d: Date) => unknown)(cap.today as Date)
+    expect(typeof x).toBe('number')
+  })
+
+  it('body-extra → { contentWidth, contentHeight } positive numbers', () => {
+    const { cap } = capture('body-extra')
+    expect(typeof cap.contentWidth).toBe('number')
+    expect(typeof cap.contentHeight).toBe('number')
+    expect(cap.contentWidth as number).toBeGreaterThan(0)
+    expect(cap.contentHeight as number).toBeGreaterThan(0)
+  })
+
+  it('renders all default section content when no slots are given (regression)', () => {
+    // The today line tracks the LIVE clock, not the `today` prop — pin "now"
+    // inside the Jan 2026 range so the default GanttToday is visible.
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date(2026, 0, 3, 0, 0, 0))
+    try {
+      const wrapper = mount(Gantt, {
+        props: { rows: groupedRows, groups, unit: 'day', today: '2026-01-03' },
+      })
+      // Each section keeps its default component.
+      expect(wrapper.find('.gantt__corner').exists()).toBe(true)
+      expect(wrapper.find('.gantt-timeline').exists()).toBe(true)
+      expect(wrapper.find('.gantt-task-list').exists()).toBe(true)
+      expect(wrapper.find('.gantt-grid').exists()).toBe(true)
+      expect(wrapper.find('.gantt-bar').exists()).toBe(true)
+      expect(wrapper.find('.gantt-dependencies').exists()).toBe(true)
+      expect(wrapper.find('.gantt-today').exists()).toBe(true)
+      // No probe leaked in.
+      expect(wrapper.find('.probe').exists()).toBe(false)
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+})
+
 describe('declarative (GanttRow + GanttTask)', () => {
   it('collects rows and their tasks from child components', async () => {
     const wrapper = mount({

@@ -25,7 +25,8 @@ design system. One runtime dependency (`date-fns`), fully typed.
   progress, and create/edit dependencies — with a live, formattable tooltip and
   edge **auto-scroll** to reach drop targets off-screen.
 - 🧊 Frozen header + sidebar, sticky period labels, **row/column
-  virtualization** (set `height`).
+  virtualization** (kicks in whenever the scroll viewport is height-constrained —
+  by a `height` cap or a fixed-height parent).
 - 🎨 **Themeable** through `--gantt-*` CSS variables; ships typed `.d.ts`.
 
 ## Install
@@ -98,15 +99,42 @@ const onMove = (e: GanttMoveEvent) => (rows.value = applyMove(rows.value, e))
 ### 1. Prop-driven wrapper
 
 Pass `rows` to `<Gantt>`; it renders the full standard layout and exposes named
-slots for overriding any part: `corner`, `timeline`, `sidebar`, `row`, `group`,
-`groupBar`, `column`, `bar`, `milestone`, `grid`, `conflicts`, `dependencies`,
-`today`, `body-extra`. Most are plain overrides; a few expose scoped props —
-`conflicts` receives `conflicts: GanttConflict[]` (overlap segments per row;
-empty unless `overlap: 'conflict'`), `bar` receives `{ task, progress }`,
-`milestone`/`row`/`group`/`groupBar`/`column` receive their item.
+slots for overriding any part. Every slot is scoped — its props give you the same
+(virtualized) data the default renderer uses, so an override stays in sync.
+
+**Section slots** replace a whole band of the layout:
+
+| Slot           | Scoped props                                         | Replaces                          |
+| -------------- | ---------------------------------------------------- | --------------------------------- |
+| `corner`       | `{ config }`                                         | the sidebar/header corner cell    |
+| `timeline`     | `{ config, visibleColumnsFor }`                      | `<GanttTimeline>` (the axis header) |
+| `sidebar`      | `{ rows, groups }`                                   | `<GanttTaskList>` (the row labels) |
+| `grid`         | `{ columns, rows }`                                  | `<GanttGrid>` (the body grid)     |
+| `bars`         | `{ tasks }`                                          | the task bar / milestone layer    |
+| `group-bars`   | `{ groups }`                                         | `<GanttGroupBar>` (group rollups) |
+| `conflicts`    | `{ conflicts }`                                      | `<GanttConflicts>`                |
+| `dependencies` | `{ tasks }`                                          | `<GanttDependencies>`             |
+| `today`        | `{ today, dateToX }`                                 | `<GanttToday>`                    |
+| `body-extra`   | `{ contentWidth, contentHeight }`                    | (extra layer over the body)       |
+
+`visibleColumnsFor` is `(tier: GanttUnit) => GanttColumn[]` (windowed), `dateToX`
+is `(date: Date \| string \| number) => number`, `rows`/`groups` are the visible
+`ResolvedRow[]` / `ResolvedGroup[]`, `columns` are the visible base-unit
+`GanttColumn[]`, `tasks` are `ResolvedTask[]` (all of them for `dependencies`,
+the plotted/visible ones for `bars`), `today` is the configured reference `Date`,
+and `conflicts` is `GanttConflict[]` (empty unless `overlap: 'conflict'`).
+
+**Leaf slots** customize a single repeated item: `row` (`{ row, index }`),
+`group` (`{ group, collapsed, toggle }`), `groupBar` (`{ group }`), `column`
+(`{ column, tier }`), `bar` (`{ task, progress }`), `milestone` (`{ task }`).
 
 ```vue
-<Gantt :rows="rows" :tiers="['month', 'week', 'day']" :height="480" />
+<Gantt :rows="rows" :tiers="['month', 'week', 'day']" :height="480">
+  <!-- the `today` slot gets the reference date + a positioning helper -->
+  <template #today="{ today, dateToX }">
+    <div class="my-today" :style="{ left: `${dateToX(today)}px` }" />
+  </template>
+</Gantt>
 ```
 
 ### 2. Declarative composition
@@ -159,6 +187,13 @@ The same interactions are re-emitted, namespaced, on `<GanttRoot>` / `<Gantt>`
 (`task-click`, `milestone-click`, …) so **prop-driven** consumers can listen at
 the root — see [Events](#events).
 
+**`height` (`<Gantt>` / `<GanttView>`)** — a number is treated as pixels, a
+string is used verbatim. When set, it **caps** the scroll viewport (`max-height`)
+and enables vertical scrolling + row virtualization. When **omitted**, the chart
+fills its parent's height (`height: 100%`): a height-constrained parent gives
+scrolling + virtualization without an explicit `height`, while an auto-height
+parent collapses to the content height and simply grows to fit (as before).
+
 ### Configuration props (`GanttRootProps`)
 
 | Prop                  | Type                                              | Default         | Description                                                  |
@@ -178,6 +213,8 @@ the root — see [Events](#events).
 | `resizable`           | `boolean`                                         | `false`         | Resize bars by dragging an edge (sides flip past each other).|
 | `progressDraggable`   | `boolean`                                         | `false`         | Edit progress by dragging a handle on the bar.             |
 | `linkable`            | `boolean`                                         | `false`         | Create/edit dependencies by dragging between tasks.         |
+| `dependencyShape`     | `(tail, head) => string`                          | `elbowPath`     | Connector path builder. Pass `elbowPath`/`straightPath`/`bezierPath` or your own. |
+| `arrowHead`           | `() => ArrowHeadShape \| null`                    | `triangleArrow` | Arrowhead builder. Pass `triangleArrow`/`openArrow`/`noArrow` or your own (`null` = no head). |
 | `snapToGrid`          | `boolean`                                         | `false`         | Snap dragged dates to the base unit (off = full precision).  |
 | `dragLabelFormat`     | `string`                                          | `'d MMM HH:mm'` | date-fns format for the live drag tooltip.                  |
 | `dragLabel`           | `(info: GanttDragLabelInfo) => string`            | —               | Override the drag tooltip text (move/resize/progress).       |
@@ -220,6 +257,7 @@ your data (the [utilities](#utilities) make this one-liners).
 | `move`                         | `GanttMoveEvent`                                 | a bar is dragged (start/end, possibly a new row).     |
 | `resize`                       | `GanttResizeEvent`                               | a bar edge is dragged.                                |
 | `progress`                     | `GanttProgressEvent`                             | the progress handle is dragged.                       |
+| `update:rows`                  | `GanttRowData[]`                                 | a task/dependency change is applied (`v-model:rows`). |
 | `group-toggle`                 | `GanttGroupToggleEvent`                          | a group is collapsed/expanded.                        |
 | `dependency-create`            | `GanttDependencyChange`                          | a link is dragged from one task to another.           |
 | `dependency-update`            | `GanttDependencyUpdate`                          | an arrow endpoint is re-routed (carries `previous`).  |
@@ -241,6 +279,31 @@ interface GanttDependencyChange { from: string; to: string }
 interface GanttDependencyUpdate extends GanttDependencyChange { previous: GanttDependencyChange }
 interface GanttDragLabelInfo    { mode: 'move' | 'resize' | 'progress'; task: ResolvedTask; start: Date; end: Date; progress: number }
 ```
+
+### Two-way binding (`v-model:rows`)
+
+`v-model:rows` is a convenience layer over the controlled events on `<Gantt>` and
+`<GanttRoot>`. It pairs the existing `rows` prop with an `update:rows` emit: when
+a drag change (`move` / `resize` / `progress`) or a dependency edit
+(`dependency-create` / `dependency-remove` / `dependency-update`) happens, the
+component applies it to your data with the same immutable [utilities](#utilities)
+(`applyMove` / `updateTask` / `addDependency` / `removeDependency`) and emits
+`update:rows` with the new array — so the chart stays in sync without a manual
+handler.
+
+```vue
+<Gantt v-model:rows="rows" draggable resizable progress-draggable linkable />
+```
+
+This works **only** in prop-driven mode (when `rows` is passed); in declarative
+mode (`<GanttRow>` without `rows`) there is nothing to update, so `update:rows`
+is not emitted. `group-toggle` is **not** part of the model — it is a view-state
+change, not a task-data change.
+
+The plain controlled events (`@move`, `@resize`, `@progress`, `@dependency-*`)
+are still emitted alongside `update:rows`. Choose **one** approach: use
+`v-model:rows` for automatic sync, or the manual events to apply changes
+yourself — combining both double-applies each change.
 
 ### Imperative methods
 
@@ -344,6 +407,29 @@ live on `:root`, so the nearest override wins):
 | `--gantt-dependency-width`        | `1.5`       | Arrow stroke width.                     |
 | `--gantt-dependency-draft-color`  | progress bg | Colour of the in-progress link line.    |
 | `--gantt-dependency-handle-color` | progress bg | Colour of the draggable arrow endpoint. |
+
+The connector is configured on `GanttRoot`/`Gantt` with two builder functions:
+`dependencyShape` (a path builder `(tail, head) => string`) and `arrowHead` (an
+arrowhead builder `() => ArrowHeadShape | null`). The built-ins are exported — pass
+one, or write your own:
+
+```ts
+import {
+  elbowPath, straightPath, bezierPath, STUB, // path builders (+ stub length)
+  triangleArrow, openArrow, noArrow,         // arrowhead builders
+} from '@dizzy_yakov/vue-gantt'
+import type {
+  DependencyPoint, DependencyPathBuilder, ArrowHeadShape, ArrowHeadBuilder,
+} from '@dizzy_yakov/vue-gantt'
+
+// e.g. <Gantt :dependency-shape="bezierPath" :arrow-head="noArrow" />
+const stepped: DependencyPathBuilder = (tail, head) =>
+  `M ${tail.x} ${tail.y} H ${head.x} V ${head.y}`
+const diamond: ArrowHeadBuilder = () => ({ d: 'M0,3 L3,0 L6,3 L3,6 Z', filled: true })
+```
+
+For full control over the rendered links, `<GanttDependencies>` also exposes a
+default slot (`<slot :links>`).
 
 **Row groups**
 
