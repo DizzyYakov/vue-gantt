@@ -218,6 +218,17 @@ const onMoveGrouped = (e: GanttMoveEvent) => (groupedRows.value = applyMove(grou
     </section>
 
     <section>
+      <h2>1c. No <code>height</code> prop → fills the parent (here a 180px box)</h2>
+      <p class="hint">
+        Without <code>height</code>, the chart now takes its parent's height, so a
+        height-constrained box gives scrolling + virtualization.
+      </p>
+      <div class="card" style="height: 180px">
+        <Gantt :rows="manyRows" :tiers="tiers" :column-width="columnWidth" />
+      </div>
+    </section>
+
+    <section>
       <h2>2. Declarative (<code>&lt;GanttRow&gt;</code> + <code>&lt;GanttTask&gt;</code>)</h2>
       <div class="card">
         <GanttRoot :tiers="tiers" :column-width="columnWidth" >

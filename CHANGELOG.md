@@ -114,6 +114,16 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   `overlap: 'conflict'`). A `Guides/Overlapping tasks → ConflictSlot` story shows
   a custom translucent highlight.
 
+### Changed
+
+- **Default height fills the parent** — with no `height` prop, the chart now sets
+  `height: 100%` instead of growing unbounded. A height-constrained parent
+  therefore gives scrolling + row/column virtualization without an explicit
+  `height`; an auto-height parent still collapses to the content height (grows to
+  fit, as before). An explicit `height` keeps its previous `max-height` (cap)
+  behavior. Behavioral change: if you relied on the chart overflowing a
+  fixed-height ancestor, set `height` (or give the ancestor `height: auto`).
+
 ### Fixed
 
 - Storybook `Components/Gantt → Multiple Tiers` story no longer opens visually

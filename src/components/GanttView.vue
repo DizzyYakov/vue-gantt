@@ -14,9 +14,11 @@ import GanttTimeline from "./GanttTimeline.vue";
 import GanttToday from "./GanttToday.vue";
 
 const props = defineProps<{
-  // TODO: по умолчанию занимать все доступное пространство и работать с этим
-  /** Max height of the scroll viewport. A number is treated as pixels.
-   *  Provide it to enable vertical scrolling + row virtualization. */
+  /** Height of the scroll viewport. A number is treated as pixels; a string is
+   *  used verbatim. Provide it to cap the height and enable vertical scrolling +
+   *  row virtualization. When omitted, the chart fills its parent's height
+   *  (`height: 100%`) — so a height-constrained parent gives scrolling +
+   *  virtualization, while an auto-height parent grows to fit the content. */
   height?: number | string;
 }>();
 
@@ -31,14 +33,14 @@ onMounted(() => setScroller(scroller.value ?? null));
 watch(scroller, (el) => setScroller(el ?? null));
 onUnmounted(() => setScroller(null));
 
-const scrollStyle = computed(() => ({
-  maxHeight:
-    props.height == null
-      ? undefined
-      : typeof props.height === "number"
-        ? `${props.height}px`
-        : props.height,
-}));
+const scrollStyle = computed(() => {
+  // No explicit height → fill the parent. `height: 100%` resolves to the parent's
+  // height when it's constrained (→ scroll + virtualization), and collapses to
+  // content height when the parent is auto-sized (→ grows to fit, as before).
+  if (props.height == null) return { height: "100%" };
+  const h = typeof props.height === "number" ? `${props.height}px` : props.height;
+  return { maxHeight: h };
+});
 </script>
 
 <template>
