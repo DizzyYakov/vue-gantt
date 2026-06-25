@@ -1,27 +1,39 @@
 <script setup lang="ts">
-import { computed, useId, useTemplateRef } from 'vue'
-import { useGanttContext } from '../composables/useGanttContext'
-import type { GanttDependencyEvent, ResolvedTask } from '../types'
+// TODO: реализовать несколько функций рендеринга для пути svg
+// TODO: реализовать несколько функций рендеринга для стрелки svg
+// TODO: Добавить параметр включения или выключения отображения стрелки
+import { computed, useId, useTemplateRef } from "vue";
+import { useGanttContext } from "../composables/useGanttContext";
+import type { GanttDependencyEvent, ResolvedTask } from "../types";
 
-const { tasks, config, contentWidth, contentHeight, dateToX, taskBand, dispatch, linkDraft, beginLink } =
-  useGanttContext()
+const {
+  tasks,
+  config,
+  contentWidth,
+  contentHeight,
+  dateToX,
+  taskBand,
+  dispatch,
+  linkDraft,
+  beginLink,
+} = useGanttContext();
 
 const emit = defineEmits<{
-  'dependency-click': [event: GanttDependencyEvent]
-}>()
+  "dependency-click": [event: GanttDependencyEvent];
+}>();
 
-const linkable = computed(() => config.value.linkable)
-const svg = useTemplateRef<SVGSVGElement>('svg')
+const linkable = computed(() => config.value.linkable);
+const svg = useTemplateRef<SVGSVGElement>("svg");
 
 function onLinkClick(fromId: string, toId: string, event: MouseEvent): void {
-  const byId = new Map(tasks.value.map((t) => [t.id, t]))
-  const from = byId.get(fromId)
-  const to = byId.get(toId)
-  if (!from || !to) return
+  const byId = new Map(tasks.value.map((t) => [t.id, t]));
+  const from = byId.get(fromId);
+  const to = byId.get(toId);
+  if (!from || !to) return;
   // Generic click (custom handling) always fires; default remove on linkable.
-  emit('dependency-click', { from, to, event })
-  dispatch('dependency-click', { from, to, event })
-  if (linkable.value) dispatch('dependency-remove', { from: fromId, to: toId })
+  emit("dependency-click", { from, to, event });
+  dispatch("dependency-click", { from, to, event });
+  if (linkable.value) dispatch("dependency-remove", { from: fromId, to: toId });
 }
 
 function onEndpointDown(link: DependencyLink, event: PointerEvent): void {
@@ -29,55 +41,55 @@ function onEndpointDown(link: DependencyLink, event: PointerEvent): void {
   // retarget the successor on drop.
   beginLink({
     anchorId: link.from,
-    anchorEdge: 'finish',
-    mode: 'reroute-head',
+    anchorEdge: "finish",
+    mode: "reroute-head",
     link: { from: link.from, to: link.to },
     pointer: { x: event.clientX, y: event.clientY },
-  })
+  });
 }
 
-const markerId = `gantt-arrow-${useId()}`
+const markerId = `gantt-arrow-${useId()}`;
 
 /** Vertical centre of a task's bar (accounts for lanes/cascade offsets). */
 function centerY(task: ResolvedTask): number {
-  const band = taskBand(task)
-  return band.top + band.height / 2
+  const band = taskBand(task);
+  return band.top + band.height / 2;
 }
 
 interface DependencyLink {
-  key: string
-  from: string
-  to: string
-  d: string
+  key: string;
+  from: string;
+  to: string;
+  d: string;
   /** Arrow tail (predecessor finish) and head (successor start) points. */
-  tail: { x: number; y: number }
-  head: { x: number; y: number }
+  tail: { x: number; y: number };
+  head: { x: number; y: number };
 }
 
-const STUB = 12
+const STUB = 12;
 
 /** Elbow path from a tail point (predecessor finish) to a head point (start). */
 function elbowPath(tail: { x: number; y: number }, head: { x: number; y: number }): string {
-  const firstX = tail.x + STUB
-  const approachX = head.x - STUB
+  const firstX = tail.x + STUB;
+  const approachX = head.x - STUB;
   // Always approach the head from the left so the arrowhead points rightward.
   return approachX >= firstX
     ? `M ${tail.x} ${tail.y} H ${approachX} V ${head.y} H ${head.x}`
-    : `M ${tail.x} ${tail.y} H ${firstX} V ${(tail.y + head.y) / 2} H ${approachX} V ${head.y} H ${head.x}`
+    : `M ${tail.x} ${tail.y} H ${firstX} V ${(tail.y + head.y) / 2} H ${approachX} V ${head.y} H ${head.x}`;
 }
 
 // Finish-to-start links: an arrow from each dependency's end to the task's start.
 const links = computed<DependencyLink[]>(() => {
-  const byId = new Map<string, ResolvedTask>(tasks.value.map((t) => [t.id, t]))
-  const result: DependencyLink[] = []
+  const byId = new Map<string, ResolvedTask>(tasks.value.map((t) => [t.id, t]));
+  const result: DependencyLink[] = [];
 
   for (const task of tasks.value) {
     for (const depId of task.dependencies) {
-      const from = byId.get(depId)
-      if (!from) continue
+      const from = byId.get(depId);
+      if (!from) continue;
 
-      const tail = { x: dateToX(from.end), y: centerY(from) }
-      const head = { x: dateToX(task.start), y: centerY(task) }
+      const tail = { x: dateToX(from.end), y: centerY(from) };
+      const head = { x: dateToX(task.start), y: centerY(task) };
 
       result.push({
         key: `${depId}->${task.id}`,
@@ -86,30 +98,30 @@ const links = computed<DependencyLink[]>(() => {
         d: elbowPath(tail, head),
         tail,
         head,
-      })
+      });
     }
   }
 
-  return result
-})
+  return result;
+});
 
 // Temporary arrow shown while dragging a new/re-routed dependency — same elbow
 // shape + arrowhead as a real link, so you drag the actual arrow.
 const draftPath = computed<string | null>(() => {
-  const d = linkDraft.value
-  if (!d) return null
-  const anchor = tasks.value.find((t) => t.id === d.anchorId)
-  if (!anchor) return null
-  const ax = dateToX(d.anchorEdge === 'finish' ? anchor.end : anchor.start)
-  const ay = centerY(anchor)
-  const rect = svg.value?.getBoundingClientRect()
-  const px = rect ? d.pointer.x - rect.left : ax
-  const py = rect ? d.pointer.y - rect.top : ay
+  const d = linkDraft.value;
+  if (!d) return null;
+  const anchor = tasks.value.find((t) => t.id === d.anchorId);
+  if (!anchor) return null;
+  const ax = dateToX(d.anchorEdge === "finish" ? anchor.end : anchor.start);
+  const ay = centerY(anchor);
+  const rect = svg.value?.getBoundingClientRect();
+  const px = rect ? d.pointer.x - rect.left : ax;
+  const py = rect ? d.pointer.y - rect.top : ay;
   // The anchor is the tail on a finish edge, otherwise the head.
-  return d.anchorEdge === 'finish'
+  return d.anchorEdge === "finish"
     ? elbowPath({ x: ax, y: ay }, { x: px, y: py })
-    : elbowPath({ x: px, y: py }, { x: ax, y: ay })
-})
+    : elbowPath({ x: px, y: py }, { x: ax, y: ay });
+});
 </script>
 
 <template>

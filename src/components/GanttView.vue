@@ -1,41 +1,44 @@
 <script setup lang="ts">
-import { computed, onMounted, onUnmounted, useTemplateRef, watch } from 'vue'
-import { useGanttContext } from '../composables/useGanttContext'
-import { useGanttViewport } from '../composables/useGanttViewport'
-import GanttConflicts from './GanttConflicts.vue'
-import GanttDependencies from './GanttDependencies.vue'
-import GanttGrid from './GanttGrid.vue'
-import GanttGroupBar from './GanttGroupBar.vue'
-import GanttMilestone from './GanttMilestone.vue'
-import GanttTask from './GanttTask.vue'
-import GanttTaskList from './GanttTaskList.vue'
-import GanttTimeline from './GanttTimeline.vue'
-import GanttToday from './GanttToday.vue'
+// TODO: во все слоты передавать всю необходимую для отображения информацию
+import { computed, onMounted, onUnmounted, useTemplateRef, watch } from "vue";
+import { useGanttContext } from "../composables/useGanttContext";
+import { useGanttViewport } from "../composables/useGanttViewport";
+import GanttConflicts from "./GanttConflicts.vue";
+import GanttDependencies from "./GanttDependencies.vue";
+import GanttGrid from "./GanttGrid.vue";
+import GanttGroupBar from "./GanttGroupBar.vue";
+import GanttMilestone from "./GanttMilestone.vue";
+import GanttTask from "./GanttTask.vue";
+import GanttTaskList from "./GanttTaskList.vue";
+import GanttTimeline from "./GanttTimeline.vue";
+import GanttToday from "./GanttToday.vue";
 
 const props = defineProps<{
+  // TODO: по умолчанию занимать все доступное пространство и работать с этим
   /** Max height of the scroll viewport. A number is treated as pixels.
    *  Provide it to enable vertical scrolling + row virtualization. */
-  height?: number | string
-}>()
+  height?: number | string;
+}>();
 
-const { visibleTasks, config, setScroller } = useGanttContext()
+const { visibleTasks, config, setScroller } = useGanttContext();
 
-const scroller = useTemplateRef<HTMLElement>('scroller')
-useGanttViewport(scroller)
+const scroller = useTemplateRef<HTMLElement>("scroller");
+useGanttViewport(scroller);
 
 // Expose the scroll container to the context so scrollToDate/Task/Today work.
 // Register on mount (when the template ref is populated) and re-bind on change.
-onMounted(() => setScroller(scroller.value ?? null))
-watch(scroller, (el) => setScroller(el ?? null))
-onUnmounted(() => setScroller(null))
+onMounted(() => setScroller(scroller.value ?? null));
+watch(scroller, (el) => setScroller(el ?? null));
+onUnmounted(() => setScroller(null));
 
 const scrollStyle = computed(() => ({
-  maxHeight: props.height == null
-    ? undefined
-    : typeof props.height === 'number'
-      ? `${props.height}px`
-      : props.height,
-}))
+  maxHeight:
+    props.height == null
+      ? undefined
+      : typeof props.height === "number"
+        ? `${props.height}px`
+        : props.height,
+}));
 </script>
 
 <template>
@@ -96,7 +99,7 @@ const scrollStyle = computed(() => ({
             </template>
           </GanttTask>
         </template>
-
+        <!-- TODO: добавить slot для перепоределения конфликтов -->
         <GanttConflicts v-if="config.overlap === 'conflict'" />
 
         <slot name="dependencies">
