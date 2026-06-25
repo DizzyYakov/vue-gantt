@@ -22,7 +22,9 @@ import { computed, onMounted, onUnmounted, provide, reactive, ref, toRef } from 
 import { useGanttLink } from '../composables/useGanttLink'
 import { useGanttScale } from '../composables/useGanttScale'
 import { useGanttRegistry } from '../composables/useTaskRegistry'
+import { triangleArrow } from '../arrowHeads'
 import { GANTT_CONTEXT, GANTT_DEFAULTS, normalizeRow, toDate } from '../context'
+import { elbowPath } from '../dependencyPaths'
 import { conflictSegments, layoutGroups, type GroupMeta } from '../layout'
 import type {
   GanttBand,
@@ -68,6 +70,8 @@ const props = withDefaults(defineProps<GanttRootProps>(), {
     resizable: GANTT_DEFAULTS.resizable,
     progressDraggable: GANTT_DEFAULTS.progressDraggable,
     linkable: GANTT_DEFAULTS.linkable,
+    dependencyShape: elbowPath,
+    arrowHead: triangleArrow,
     snapToGrid: GANTT_DEFAULTS.snapToGrid,
     dragLabelFormat: GANTT_DEFAULTS.dragLabelFormat,
     dragLabel: undefined,
@@ -255,6 +259,8 @@ const config = computed<GanttConfig>(() => ({
   resizable: props.resizable,
   progressDraggable: props.progressDraggable,
   linkable: props.linkable,
+  dependencyShape: props.dependencyShape,
+  arrowHead: props.arrowHead,
   snapToGrid: props.snapToGrid,
   dragLabelFormat: props.dragLabelFormat,
   dragLabel: props.dragLabel,

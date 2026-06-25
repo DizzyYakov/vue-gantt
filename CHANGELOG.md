@@ -108,6 +108,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   conflicts, dependencies, grid, milestone, task list, timeline, today, view,
   context, drag, item, viewport, registry) and expanded layout/`Gantt` specs.
 - Demo playground (`src/dev`) example showcasing grouped rows.
+- **Configurable dependency rendering** — `dependencyShape` takes a connector path
+  builder `(tail, head) => string` (default `elbowPath`) and `arrowHead` takes an
+  arrowhead builder `() => ArrowHeadShape | null` (default `triangleArrow`;
+  `null` = no head). The built-in builders (`elbowPath`, `straightPath`,
+  `bezierPath`, `STUB`; `triangleArrow`, `openArrow`, `noArrow`) and the
+  `DependencyPoint` / `DependencyPathBuilder` / `ArrowHeadShape` /
+  `ArrowHeadBuilder` types are exported — pass a built-in or your own. Defaults
+  preserve the previous look.
 
 ### Fixed
 

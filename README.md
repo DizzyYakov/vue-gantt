@@ -173,6 +173,8 @@ the root — see [Events](#events).
 | `resizable`           | `boolean`                                         | `false`         | Resize bars by dragging an edge (sides flip past each other).|
 | `progressDraggable`   | `boolean`                                         | `false`         | Edit progress by dragging a handle on the bar.             |
 | `linkable`            | `boolean`                                         | `false`         | Create/edit dependencies by dragging between tasks.         |
+| `dependencyShape`     | `(tail, head) => string`                          | `elbowPath`     | Connector path builder. Pass `elbowPath`/`straightPath`/`bezierPath` or your own. |
+| `arrowHead`           | `() => ArrowHeadShape \| null`                    | `triangleArrow` | Arrowhead builder. Pass `triangleArrow`/`openArrow`/`noArrow` or your own (`null` = no head). |
 | `snapToGrid`          | `boolean`                                         | `false`         | Snap dragged dates to the base unit (off = full precision).  |
 | `dragLabelFormat`     | `string`                                          | `'d MMM HH:mm'` | date-fns format for the live drag tooltip.                  |
 | `dragLabel`           | `(info: GanttDragLabelInfo) => string`            | —               | Override the drag tooltip text (move/resize/progress).       |
@@ -332,6 +334,29 @@ live on `:root`, so the nearest override wins):
 | `--gantt-dependency-width`        | `1.5`       | Arrow stroke width.                     |
 | `--gantt-dependency-draft-color`  | progress bg | Colour of the in-progress link line.    |
 | `--gantt-dependency-handle-color` | progress bg | Colour of the draggable arrow endpoint. |
+
+The connector is configured on `GanttRoot`/`Gantt` with two builder functions:
+`dependencyShape` (a path builder `(tail, head) => string`) and `arrowHead` (an
+arrowhead builder `() => ArrowHeadShape | null`). The built-ins are exported — pass
+one, or write your own:
+
+```ts
+import {
+  elbowPath, straightPath, bezierPath, STUB, // path builders (+ stub length)
+  triangleArrow, openArrow, noArrow,         // arrowhead builders
+} from '@dizzy_yakov/vue-gantt'
+import type {
+  DependencyPoint, DependencyPathBuilder, ArrowHeadShape, ArrowHeadBuilder,
+} from '@dizzy_yakov/vue-gantt'
+
+// e.g. <Gantt :dependency-shape="bezierPath" :arrow-head="noArrow" />
+const stepped: DependencyPathBuilder = (tail, head) =>
+  `M ${tail.x} ${tail.y} H ${head.x} V ${head.y}`
+const diamond: ArrowHeadBuilder = () => ({ d: 'M0,3 L3,0 L6,3 L3,6 Z', filled: true })
+```
+
+For full control over the rendered links, `<GanttDependencies>` also exposes a
+default slot (`<slot :links>`).
 
 **Row groups**
 
