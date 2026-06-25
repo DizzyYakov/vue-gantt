@@ -113,6 +113,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   GanttConflict[]` scoped prop (per-row overlap segments; empty outside
   `overlap: 'conflict'`). A `Guides/Overlapping tasks → ConflictSlot` story shows
   a custom translucent highlight.
+- **Scoped data on `GanttView`/`Gantt` section slots** — every section-override
+  slot now receives the reactive data its default component uses, so a custom
+  override no longer has to reach into `useGanttContext`: `corner {config}`,
+  `timeline {config, visibleColumnsFor}`, `sidebar {rows, groups}`, `grid
+  {columns, rows}`, `group-bars {groups}`, `dependencies {tasks}`, `today {today,
+  dateToX}`, `body-extra {contentWidth, contentHeight}`. The `group-bars` slot is
+  now also forwarded through the `<Gantt>` wrapper (previously only on
+  `GanttView`).
 
 ### Fixed
 

@@ -47,20 +47,21 @@ const emit = defineEmits<{
 }>()
 
 defineSlots<{
-  sidebar?: () => unknown
+  sidebar?: (props: { rows: unknown; groups: unknown }) => unknown
   row?: (props: { row: unknown; index: number }) => unknown
   group?: (props: { group: unknown; collapsed: boolean; toggle: () => void }) => unknown
   groupBar?: (props: { group: unknown }) => unknown
-  corner?: () => unknown
-  timeline?: () => unknown
+  'group-bars'?: (props: { groups: unknown }) => unknown
+  corner?: (props: { config: unknown }) => unknown
+  timeline?: (props: { config: unknown; visibleColumnsFor: unknown }) => unknown
   column?: (props: { column: unknown; tier: unknown }) => unknown
   bar?: (props: { task: unknown; progress: number }) => unknown
   milestone?: (props: { task: unknown }) => unknown
-  grid?: () => unknown
+  grid?: (props: { columns: unknown; rows: unknown }) => unknown
   conflicts?: (props: { conflicts: unknown }) => unknown
-  dependencies?: () => unknown
-  today?: () => unknown
-  'body-extra'?: () => unknown
+  dependencies?: (props: { tasks: unknown }) => unknown
+  today?: (props: { today: unknown; dateToX: unknown }) => unknown
+  'body-extra'?: (props: { contentWidth: number; contentHeight: number }) => unknown
 }>()
 
 // Everything except `height` is forwarded to GanttRoot.
@@ -106,16 +107,23 @@ defineExpose({
     @dependency-click="emit('dependency-click', $event)"
   >
     <GanttView :height="height">
-      <template v-if="$slots.corner" #corner><slot name="corner" /></template>
-      <template v-if="$slots.timeline" #timeline><slot name="timeline" /></template>
-      <template v-if="$slots.sidebar" #sidebar><slot name="sidebar" /></template>
-      <template v-if="$slots.grid" #grid><slot name="grid" /></template>
+      <template v-if="$slots.corner" #corner="slotProps"><slot name="corner" v-bind="slotProps" /></template>
+      <template v-if="$slots.timeline" #timeline="slotProps"><slot name="timeline" v-bind="slotProps" /></template>
+      <template v-if="$slots.sidebar" #sidebar="slotProps"><slot name="sidebar" v-bind="slotProps" /></template>
+      <template v-if="$slots.grid" #grid="slotProps"><slot name="grid" v-bind="slotProps" /></template>
+      <template v-if="$slots['group-bars']" #group-bars="slotProps">
+        <slot name="group-bars" v-bind="slotProps" />
+      </template>
       <template v-if="$slots.conflicts" #conflicts="slotProps">
         <slot name="conflicts" v-bind="slotProps" />
       </template>
-      <template v-if="$slots.dependencies" #dependencies><slot name="dependencies" /></template>
-      <template v-if="$slots.today" #today><slot name="today" /></template>
-      <template v-if="$slots['body-extra']" #body-extra><slot name="body-extra" /></template>
+      <template v-if="$slots.dependencies" #dependencies="slotProps">
+        <slot name="dependencies" v-bind="slotProps" />
+      </template>
+      <template v-if="$slots.today" #today="slotProps"><slot name="today" v-bind="slotProps" /></template>
+      <template v-if="$slots['body-extra']" #body-extra="slotProps">
+        <slot name="body-extra" v-bind="slotProps" />
+      </template>
       <template v-if="$slots.row" #row="slotProps"><slot name="row" v-bind="slotProps" /></template>
       <template v-if="$slots.group" #group="slotProps"><slot name="group" v-bind="slotProps" /></template>
       <template v-if="$slots.groupBar" #groupBar="slotProps"><slot name="groupBar" v-bind="slotProps" /></template>
