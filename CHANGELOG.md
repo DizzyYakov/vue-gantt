@@ -116,6 +116,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   `DependencyPoint` / `DependencyPathBuilder` / `ArrowHeadShape` /
   `ArrowHeadBuilder` types are exported — pass a built-in or your own. Defaults
   preserve the previous look.
+- **`conflicts` slot** on `GanttView`/`Gantt` — override the overlap-conflict
+  rendering (default `GanttConflicts`). The slot receives a `conflicts:
+  GanttConflict[]` scoped prop (per-row overlap segments; empty outside
+  `overlap: 'conflict'`). A `Guides/Overlapping tasks → ConflictSlot` story shows
+  a custom translucent highlight.
 
 ### Fixed
 

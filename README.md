@@ -97,8 +97,12 @@ const onMove = (e: GanttMoveEvent) => (rows.value = applyMove(rows.value, e))
 ### 1. Prop-driven wrapper
 
 Pass `rows` to `<Gantt>`; it renders the full standard layout and exposes named
-slots (`bar`, `milestone`, `row`, `group`, `column`, `timeline`, `dependencies`,
-`today`, …) for overriding any part.
+slots for overriding any part: `corner`, `timeline`, `sidebar`, `row`, `group`,
+`groupBar`, `column`, `bar`, `milestone`, `grid`, `conflicts`, `dependencies`,
+`today`, `body-extra`. Most are plain overrides; a few expose scoped props —
+`conflicts` receives `conflicts: GanttConflict[]` (overlap segments per row;
+empty unless `overlap: 'conflict'`), `bar` receives `{ task, progress }`,
+`milestone`/`row`/`group`/`groupBar`/`column` receive their item.
 
 ```vue
 <Gantt :rows="rows" :tiers="['month', 'week', 'day']" :height="480" />

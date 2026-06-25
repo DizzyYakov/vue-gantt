@@ -60,3 +60,38 @@ export const Cascade: Story = { args: { overlap: 'cascade' } }
 
 /** Bars keep full size; the overlapping span is hatched and flagged as a clash. */
 export const Conflict: Story = { args: { overlap: 'conflict' } }
+
+/**
+ * The `conflicts` slot overrides how clashing spans are rendered. It receives a
+ * scoped prop `conflicts: GanttConflict[]` — one segment per overlapping span,
+ * each carrying `{ rowId, order, x, width }` in body pixels (empty unless
+ * `overlap: 'conflict'`). Here it draws a translucent red highlight per segment
+ * instead of the default `<GanttConflicts>` hatch.
+ */
+export const ConflictSlot: Story = {
+  args: { overlap: 'conflict' },
+  render: (args) => ({
+    components: { Gantt },
+    setup: () => ({ args }),
+    template: `
+      <Gantt v-bind="args">
+        <template #conflicts="{ conflicts }">
+          <div
+            v-for="(c, i) in conflicts"
+            :key="i"
+            :style="{
+              position: 'absolute',
+              left: c.x + 'px',
+              width: c.width + 'px',
+              top: c.order * args.rowHeight + 'px',
+              height: args.rowHeight + 'px',
+              background: 'rgba(239, 68, 68, 0.25)',
+              outline: '1px dashed #ef4444',
+              pointerEvents: 'none',
+            }"
+          />
+        </template>
+      </Gantt>
+    `,
+  }),
+}

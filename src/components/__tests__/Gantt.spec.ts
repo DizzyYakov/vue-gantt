@@ -441,6 +441,70 @@ describe('overlap modes', () => {
     expect(wrapper.findAll('.gantt-conflicts__outline').length).toBeGreaterThan(0)
   })
 
+  it('renders a custom `conflicts` slot instead of the default GanttConflicts', () => {
+    // arrange + act
+    const wrapper = mount(Gantt, {
+      props: { rows: overlapRows, overlap: 'conflict' },
+      slots: {
+        conflicts: () => h('div', { class: 's-conflicts' }, 'custom'),
+      },
+    })
+
+    // assert: the default SVG overlay is replaced by the custom content.
+    expect(wrapper.find('.gantt-conflicts').exists()).toBe(false)
+    expect(wrapper.find('.s-conflicts').exists()).toBe(true)
+  })
+
+  it('passes a non-empty GanttConflict[] (not a ComputedRef) into the slot', () => {
+    // arrange: capture the scoped prop the slot receives.
+    let received: unknown = undefined
+    const wrapper = mount(Gantt, {
+      props: { rows: overlapRows, overlap: 'conflict' },
+      slots: {
+        conflicts: (p: { conflicts: unknown }) => {
+          received = p.conflicts
+          return h('div', { class: 's-conflicts' })
+        },
+      },
+    })
+
+    // assert: it's a plain array (unwrapped), not a ComputedRef object.
+    expect(wrapper.find('.s-conflicts').exists()).toBe(true)
+    expect(Array.isArray(received)).toBe(true)
+    // r1 has overlapping tasks (a/b), so there is at least one conflict segment.
+    expect((received as unknown[]).length).toBeGreaterThan(0)
+    // Each entry is a resolved conflict descriptor with pixel geometry.
+    const first = (received as { rowId: string; x: number; width: number }[])[0]!
+    expect(first.rowId).toBe('r1')
+    expect(typeof first.x).toBe('number')
+    expect(first.width).toBeGreaterThan(0)
+  })
+
+  it('renders the default GanttConflicts when no slot is provided (regression)', () => {
+    // conflict mode → default overlay present.
+    const conflict = mount(Gantt, { props: { rows: overlapRows, overlap: 'conflict' } })
+    expect(conflict.find('.gantt-conflicts').exists()).toBe(true)
+
+    // outside conflict mode → no overlay at all.
+    const lanes = mount(Gantt, { props: { rows: overlapRows, overlap: 'lanes' } })
+    expect(lanes.find('.gantt-conflicts').exists()).toBe(false)
+  })
+
+  it('gives the slot an empty array outside conflict mode', () => {
+    let received: unknown = undefined
+    mount(Gantt, {
+      props: { rows: overlapRows, overlap: 'lanes' },
+      slots: {
+        conflicts: (p: { conflicts: unknown }) => {
+          received = p.conflicts
+          return h('div')
+        },
+      },
+    })
+    expect(Array.isArray(received)).toBe(true)
+    expect((received as unknown[]).length).toBe(0)
+  })
+
   it('keeps uniform rows when there is no overlap', () => {
     const wrapper = mount(Gantt, {
       props: {
