@@ -1,4 +1,4 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi, type Mock } from 'vitest'
 import { useGanttLink, type LinkOptions } from '../useGanttLink'
 import type { GanttBeginLinkArgs, ResolvedTask } from '../../types'
 
@@ -20,8 +20,8 @@ function taskEl(id: string): HTMLElement {
 }
 
 function makeLink(overrides: Partial<LinkOptions> = {}) {
-  const autoScroll = vi.fn()
-  const dispatch = vi.fn()
+  const autoScroll = vi.fn<(pointer: { x: number; y: number } | null) => void>()
+  const dispatch = vi.fn<() => void>()
   const api = useGanttLink({
     dispatch,
     tasks: () => [] as ResolvedTask[],
@@ -38,12 +38,12 @@ function pointerMove(x: number, y: number): void {
 describe('useGanttLink', () => {
   // jsdom doesn't implement `document.elementFromPoint` at all (so `vi.spyOn`
   // can't wrap it) — install a mock fn we can re-point per test.
-  let efp: ReturnType<typeof vi.fn>
+  let efp: Mock<(x: number, y: number) => Element | null>
   const original = Object.getOwnPropertyDescriptor(Document.prototype, 'elementFromPoint')
 
   beforeEach(() => {
     // Default: pointer is over empty space unless a test says otherwise.
-    efp = vi.fn().mockReturnValue(null)
+    efp = vi.fn<(x: number, y: number) => Element | null>().mockReturnValue(null)
     document.elementFromPoint = efp as unknown as typeof document.elementFromPoint
   })
 

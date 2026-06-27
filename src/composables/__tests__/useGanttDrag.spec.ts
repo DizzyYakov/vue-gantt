@@ -108,7 +108,7 @@ describe('useGanttDrag', () => {
 
     it('drives ctx.autoScroll with the pointer during a move drag', async () => {
       const { wrapper, ctx } = setup({ draggable: true })
-      const spy = vi.fn()
+      const spy = vi.fn<(pointer: { x: number; y: number } | null) => void>()
       ctx().autoScroll = spy
 
       fire(wrapper.find('.bar').element, 'pointerdown', { button: 0, clientX: 0, clientY: 0, pointerId: 1 })
@@ -120,8 +120,8 @@ describe('useGanttDrag', () => {
     })
 
     it('drives ctx.autoScroll during a resize drag', async () => {
-      const { wrapper, api, ctx } = setup({ resizable: true })
-      const spy = vi.fn()
+      const { api, ctx } = setup({ resizable: true })
+      const spy = vi.fn<(pointer: { x: number; y: number } | null) => void>()
       ctx().autoScroll = spy
 
       api().onPointerDown(
@@ -136,8 +136,8 @@ describe('useGanttDrag', () => {
     })
 
     it('does NOT auto-scroll during a progress drag', async () => {
-      const { wrapper, api, ctx } = setup({ progressDraggable: true })
-      const spy = vi.fn()
+      const { api, ctx } = setup({ progressDraggable: true })
+      const spy = vi.fn<(pointer: { x: number; y: number } | null) => void>()
       ctx().autoScroll = spy
 
       api().onPointerDown(
