@@ -18,7 +18,8 @@ import {
   startOfWeek,
   startOfYear,
 } from 'date-fns'
-import { computed, onMounted, onUnmounted, provide, reactive, ref, toRef } from 'vue'
+import { computed, onMounted, onUnmounted, provide, reactive, ref, toRef, watch } from 'vue'
+import { useGanttAutoscroll } from '../composables/useGanttAutoscroll'
 import { useGanttLink } from '../composables/useGanttLink'
 import { useGanttScale } from '../composables/useGanttScale'
 import { useGanttRegistry } from '../composables/useTaskRegistry'
@@ -346,6 +347,19 @@ function setScroller(el: HTMLElement | null): void {
   scrollerEl.value = el
 }
 
+// Edge auto-scroll during a drag (move/resize/link): scrolls the viewport toward
+// whichever edge the pointer approaches so off-screen destinations are reachable.
+// Clamp to the content extent (not `el.scrollWidth/Height`, which a dragged ghost
+// inflates by overflowing the body — that would let the scroll run away).
+const autoscroll = useGanttAutoscroll(
+  () => scrollerEl.value,
+  (el) => ({
+    x: Math.max(0, props.sidebarWidth + scale.contentWidth.value - el.clientWidth),
+    y: Math.max(0, headerHeight.value + contentHeight.value - el.clientHeight),
+  }),
+)
+onUnmounted(() => autoscroll.update(null))
+
 function applyScroll(left: number | undefined, top: number | undefined, behavior: ScrollBehavior): void {
   const el = scrollerEl.value
   if (!el) return
@@ -455,10 +469,14 @@ const conflicts = computed<GanttConflict[]>(() => {
 })
 
 // Interactive dependency creation / re-routing (emits intents; data is controlled).
-const { linkDraft, beginLink, endLink } = useGanttLink({
+const { linkDraft, beginLink, endLink, refresh: refreshLink } = useGanttLink({
   dispatch,
   tasks: () => tasks.value,
+  autoScroll: autoscroll.update,
 })
+
+// While auto-scrolling reveals new tasks, re-resolve the link target / endpoint.
+watch([() => viewport.scrollLeft, () => viewport.scrollTop], () => refreshLink())
 
 const context: GanttContext = {
   config,
@@ -500,6 +518,7 @@ const context: GanttContext = {
     emit('progress', event)
     emitModelUpdate((rows) => updateTask(rows, event.id, { progress: event.progress }))
   },
+  autoScroll: autoscroll.update,
   linkDraft,
   beginLink,
   endLink,
