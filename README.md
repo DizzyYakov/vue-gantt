@@ -22,7 +22,8 @@ design system. One runtime dependency (`date-fns`), fully typed.
 - 🧩 **Two APIs** — a prop-driven `<Gantt :rows>` or composable primitives.
 - 🗂️ Collapsible **row groups** with rolled-up summary bars.
 - ✋ **Drag interactions** (all opt-in, controlled): move, resize an edge, set
-  progress, and create/edit dependencies — with a live, formattable tooltip.
+  progress, and create/edit dependencies — with a live, formattable tooltip and
+  edge **auto-scroll** to reach drop targets off-screen.
 - 🧊 Frozen header + sidebar, sticky period labels, **row/column
   virtualization** (kicks in whenever the scroll viewport is height-constrained —
   by a `height` cap or a fixed-height parent).
@@ -238,6 +239,13 @@ Declarative fields — the item registers into the enclosing `<GanttRow>`:
 
 > `<GanttTask :task>` / `<GanttMilestone :task>` also accept an already-resolved
 > task — this is how `<Gantt>` renders bars internally.
+
+> While a drag is in progress (move/resize via `draggable`/`rowMovable`/`resizable`,
+> or linking via `linkable`), the viewport **auto-scrolls** on both axes when the
+> pointer nears an edge of the scroll container — so you can drop a bar or land a
+> dependency arrow on a target outside the current view. The preview (ghost / drop
+> target / draft arrow) keeps following the content, and scrolling stops on release.
+> This is automatic; there are no extra props.
 
 ### Events
 

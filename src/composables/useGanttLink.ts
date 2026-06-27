@@ -11,12 +11,17 @@ export interface LinkOptions {
   dispatch: <K extends keyof GanttEventMap>(name: K, payload: GanttEventMap[K]) => void
   /** Current resolved tasks (for self-link / duplicate guards). */
   tasks: () => ResolvedTask[]
+  /** Drive viewport edge auto-scroll while linking (pass `null` to stop). */
+  autoScroll: (pointer: { x: number; y: number } | null) => void
 }
 
 export interface GanttLinkApi {
   linkDraft: ComputedRef<GanttLinkDraft | null>
   beginLink: (args: GanttBeginLinkArgs) => void
   endLink: (targetId?: string | null) => void
+  /** Re-resolve the drop target / endpoint from the last pointer (e.g. after the
+   *  viewport auto-scrolled under a stationary pointer). No-op when idle. */
+  refresh: () => void
 }
 
 /**
@@ -28,14 +33,23 @@ export interface GanttLinkApi {
  */
 export function useGanttLink(options: LinkOptions): GanttLinkApi {
   const draft = ref<GanttLinkDraft | null>(null)
+  let lastPointer: { x: number; y: number } | null = null
 
-  function onPointerMove(event: PointerEvent): void {
+  // Resolve the draft's drop target + endpoint from a client pointer.
+  function resolveAt(pointer: { x: number; y: number }): void {
     if (!draft.value) return
-    const pointer = { x: event.clientX, y: event.clientY }
     const hit = taskIdAt(pointer)
     // Highlight the hovered task as a drop target (never the anchor itself).
     const over = hit && hit !== draft.value.anchorId ? hit : null
+    // Reassign so `draftPath` recomputes against the live (possibly scrolled) rect.
     draft.value = { ...draft.value, pointer, over }
+  }
+
+  function onPointerMove(event: PointerEvent): void {
+    if (!draft.value) return
+    lastPointer = { x: event.clientX, y: event.clientY }
+    resolveAt(lastPointer)
+    options.autoScroll(lastPointer)
   }
 
   function onPointerUp(): void {
@@ -56,7 +70,15 @@ export function useGanttLink(options: LinkOptions): GanttLinkApi {
     window.removeEventListener('pointerup', onPointerUp)
     document.body.style.userSelect = ''
     document.body.style.cursor = ''
+    options.autoScroll(null)
+    lastPointer = null
     draft.value = null
+  }
+
+  // Re-run target resolution from the last pointer (used after an auto-scroll
+  // shifts the content under a stationary pointer).
+  function refresh(): void {
+    if (draft.value && lastPointer) resolveAt(lastPointer)
   }
 
   /** Task id under a client point, or `null` over empty space. */
@@ -98,5 +120,5 @@ export function useGanttLink(options: LinkOptions): GanttLinkApi {
     }
   }
 
-  return { linkDraft: computed(() => draft.value), beginLink, endLink }
+  return { linkDraft: computed(() => draft.value), beginLink, endLink, refresh }
 }
