@@ -8,6 +8,18 @@ import type { DependencyPathBuilder } from './dependencyPaths'
  */
 export type GanttUnit = 'year' | 'quarter' | 'month' | 'week' | 'day' | 'hour' | 'minute'
 
+/**
+ * How timeline column labels are formatted. Either:
+ * - a date-fns format string — applied to the **base unit** only (other tiers keep
+ *   their defaults);
+ * - a per-tier map of date-fns format strings (missing tiers keep their defaults);
+ * - a function `(date, tier) => string` returning the label directly (full control).
+ */
+export type GanttLabelFormat =
+  | string
+  | Partial<Record<GanttUnit, string>>
+  | ((date: Date, tier: GanttUnit) => string)
+
 /** Type of an item plotted on a row. */
 export type GanttItemType = 'task' | 'milestone'
 
@@ -234,8 +246,11 @@ export interface GanttRootProps {
   startDate?: Date | string | number
   endDate?: Date | string | number
   today?: Date | string | number
-  /** date-fns format string for column labels. */
-  labelFormat?: string
+  /**
+   * Column label formatting. A date-fns string (base unit only), a per-tier map
+   * of format strings, or a `(date, tier) => string` function. See `GanttLabelFormat`.
+   */
+  labelFormat?: GanttLabelFormat
 }
 
 /** Resolved configuration shared with every child component. */

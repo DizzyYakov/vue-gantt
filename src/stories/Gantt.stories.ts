@@ -168,6 +168,25 @@ export const MultipleTiers: Story = {
   },
 }
 
+/**
+ * `labelFormat` accepts a per-tier map of date-fns formats, so each header row
+ * reads differently: full month + year up top, ISO week in the middle, day-of-month
+ * with a weekday at the bottom. Tiers left out of the map keep their defaults.
+ * (A bare string would instead format the base unit only; a `(date, tier) => string`
+ * function gives full control.)
+ */
+export const PerTierLabelFormat: Story = {
+  args: {
+    tiers: ['month', 'week', 'day'],
+    columnWidth: 44,
+    labelFormat: {
+      month: 'LLLL yyyy',
+      week: "'W'w",
+      day: 'd EEEEE',
+    },
+  },
+}
+
 /** A fine tier over a long range stays fast — columns are generated per window. */
 export const HourTier: Story = {
   args: { tiers: ['day', 'hour'], columnWidth: 44, height: 240 },

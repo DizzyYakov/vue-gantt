@@ -227,31 +227,31 @@ parent collapses to the content height and simply grows to fit (as before).
 
 ### Configuration props (`GanttRootProps`)
 
-| Prop                    | Type                                              | Default         | Description                                                                                   |
-| ----------------------- | ------------------------------------------------- | --------------- | --------------------------------------------------------------------------------------------- |
-| `rows`                  | `GanttRowData[]`                                  | —               | Prop-driven data source (omit for declarative `<GanttRow>`).                                  |
-| `groups`                | `GanttGroupData[]`                                | —               | Group labels + initial `collapsed`, keyed by `id`.                                            |
-| `unit`                  | `GanttUnit`                                       | `'day'`         | Base granularity when `tiers` is omitted.                                                     |
-| `tiers`                 | `GanttUnit[]`                                     | `[unit]`        | Header rows, coarse → fine, e.g. `['month','week','day']`.                                    |
-| `columnWidth`           | `number`                                          | `40`            | Width of one base-unit cell, px.                                                              |
-| `rowHeight`             | `number`                                          | `36`            | Row height, px.                                                                               |
-| `headerRowHeight`       | `number`                                          | `28`            | Height of one timeline tier row, px.                                                          |
-| `groupHeaderHeight`     | `number`                                          | `36`            | Group header band height, px.                                                                 |
-| `sidebarWidth`          | `number`                                          | `200`           | Frozen task-list width, px.                                                                   |
-| `overlap`               | `'lanes' \| 'overlap' \| 'cascade' \| 'conflict'` | `'lanes'`       | How time-overlapping tasks in a row are shown.                                                |
-| `draggable`             | `boolean`                                         | `false`         | Drag bars along their row to change start/end.                                                |
-| `rowMovable`            | `boolean`                                         | `false`         | Drag a task into another row (implies `draggable`).                                           |
-| `resizable`             | `boolean`                                         | `false`         | Resize bars by dragging an edge (sides flip past each other).                                 |
-| `progressDraggable`     | `boolean`                                         | `false`         | Edit progress by dragging a handle on the bar.                                                |
-| `linkable`              | `boolean`                                         | `false`         | Create/edit dependencies by dragging between tasks.                                           |
-| `dependencyShape`       | `(tail, head) => string`                          | `elbowPath`     | Connector path builder. Pass `elbowPath`/`straightPath`/`bezierPath` or your own.             |
-| `arrowHead`             | `() => ArrowHeadShape \| null`                    | `triangleArrow` | Arrowhead builder. Pass `triangleArrow`/`openArrow`/`noArrow` or your own (`null` = no head). |
-| `snapToGrid`            | `boolean`                                         | `false`         | Snap dragged dates to the base unit (off = full precision).                                   |
-| `dragLabelFormat`       | `string`                                          | `'d MMM HH:mm'` | date-fns format for the live drag tooltip.                                                    |
-| `dragLabel`             | `(info: GanttDragLabelInfo) => string`            | —               | Override the drag tooltip text (move/resize/progress).                                        |
-| `startDate` / `endDate` | `Date \| string \| number`                        | auto            | Explicit axis bounds (auto-derived from tasks otherwise).                                     |
-| `today`                 | `Date \| string \| number`                        | now             | The "today" reference.                                                                        |
-| `labelFormat`           | `string`                                          | per tier        | date-fns format for column labels.                                                            |
+| Prop                  | Type                                              | Default         | Description                                                  |
+| --------------------- | ------------------------------------------------- | --------------- | ------------------------------------------------------------ |
+| `rows`                | `GanttRowData[]`                                  | —               | Prop-driven data source (omit for declarative `<GanttRow>`). |
+| `groups`              | `GanttGroupData[]`                                | —               | Group labels + initial `collapsed`, keyed by `id`.           |
+| `unit`                | `GanttUnit`                                       | `'day'`         | Base granularity when `tiers` is omitted.                    |
+| `tiers`               | `GanttUnit[]`                                     | `[unit]`        | Header rows, coarse → fine, e.g. `['month','week','day']`.    |
+| `columnWidth`         | `number`                                          | `40`            | Width of one base-unit cell, px.                             |
+| `rowHeight`           | `number`                                          | `36`            | Row height, px.                                             |
+| `headerRowHeight`     | `number`                                          | `28`            | Height of one timeline tier row, px.                        |
+| `groupHeaderHeight`   | `number`                                          | `36`            | Group header band height, px.                               |
+| `sidebarWidth`        | `number`                                          | `200`           | Frozen task-list width, px.                                 |
+| `overlap`             | `'lanes' \| 'overlap' \| 'cascade' \| 'conflict'` | `'lanes'`       | How time-overlapping tasks in a row are shown.              |
+| `draggable`           | `boolean`                                         | `false`         | Drag bars along their row to change start/end.              |
+| `rowMovable`          | `boolean`                                         | `false`         | Drag a task into another row (implies `draggable`).         |
+| `resizable`           | `boolean`                                         | `false`         | Resize bars by dragging an edge (sides flip past each other).|
+| `progressDraggable`   | `boolean`                                         | `false`         | Edit progress by dragging a handle on the bar.             |
+| `linkable`            | `boolean`                                         | `false`         | Create/edit dependencies by dragging between tasks.         |
+| `dependencyShape`     | `(tail, head) => string`                          | `elbowPath`     | Connector path builder. Pass `elbowPath`/`straightPath`/`bezierPath` or your own. |
+| `arrowHead`           | `() => ArrowHeadShape \| null`                    | `triangleArrow` | Arrowhead builder. Pass `triangleArrow`/`openArrow`/`noArrow` or your own (`null` = no head). |
+| `snapToGrid`          | `boolean`                                         | `false`         | Snap dragged dates to the base unit (off = full precision).  |
+| `dragLabelFormat`     | `string`                                          | `'d MMM HH:mm'` | date-fns format for the live drag tooltip.                  |
+| `dragLabel`           | `(info: GanttDragLabelInfo) => string`            | —               | Override the drag tooltip text (move/resize/progress).       |
+| `startDate` / `endDate` | `Date \| string \| number`                      | auto            | Explicit axis bounds (auto-derived from tasks otherwise).    |
+| `today`               | `Date \| string \| number`                        | now             | The "today" reference.                                      |
+| `labelFormat`         | `GanttLabelFormat`                                | per tier        | Column label formatting. A date-fns `string` (base unit only — other tiers keep defaults), a per-tier map `Partial<Record<GanttUnit, string>>`, or a `(date, tier) => string` function (full control). E.g. `{ month: 'LLLL yyyy', week: "'W'w", day: 'd' }`. |
 
 ### Item props (`GanttItemProps`, for `<GanttTask>` / `<GanttMilestone>`)
 
