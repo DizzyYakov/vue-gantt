@@ -7,7 +7,10 @@ import { useGanttContext } from '../useGanttContext'
 import type { GanttContext } from '../../types'
 
 /** Give a jsdom element measurable scroll/size metrics. */
-function size(el: HTMLElement, m: Partial<Record<'clientWidth' | 'clientHeight' | 'scrollLeft' | 'scrollTop', number>>): void {
+function size(
+  el: HTMLElement,
+  m: Partial<Record<'clientWidth' | 'clientHeight' | 'scrollLeft' | 'scrollTop', number>>,
+): void {
   for (const [k, v] of Object.entries(m)) {
     Object.defineProperty(el, k, { configurable: true, value: v })
   }

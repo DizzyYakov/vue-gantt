@@ -12,7 +12,7 @@ describe('useGanttRegistry', () => {
     reg.registerRow({ id: 'b' })
     reg.registerRow({ id: 'a' })
     reg.registerRow({ id: 'c' })
-    expect(reg.rows.value.map((r) => r.id)).toEqual(['b', 'a', 'c'])
+    expect(reg.rows.value.map(r => r.id)).toEqual(['b', 'a', 'c'])
   })
 
   it('merges child-registered tasks into their row', () => {
@@ -20,8 +20,8 @@ describe('useGanttRegistry', () => {
     reg.registerRow({ id: 'r', tasks: [{ id: 'pre', start: 0 }] })
     reg.registerTask({ id: 't1', start: 0 }, 'r')
     reg.registerTask({ id: 't2', start: 0 }, 'r')
-    const row = reg.rows.value.find((r) => r.id === 'r')!
-    expect(row.tasks!.map((t) => t.id)).toEqual(['pre', 't1', 't2'])
+    const row = reg.rows.value.find(r => r.id === 'r')!
+    expect(row.tasks!.map(t => t.id)).toEqual(['pre', 't1', 't2'])
   })
 
   it('drops a task once unregistered', () => {
@@ -29,7 +29,7 @@ describe('useGanttRegistry', () => {
     reg.registerRow({ id: 'r' })
     reg.registerTask({ id: 't1', start: 0 }, 'r')
     reg.unregisterTask('t1')
-    expect(reg.rows.value.find((r) => r.id === 'r')!.tasks).toEqual([])
+    expect(reg.rows.value.find(r => r.id === 'r')!.tasks).toEqual([])
   })
 
   it('drops a row once unregistered', () => {
@@ -43,7 +43,7 @@ describe('useGanttRegistry', () => {
     const reg = useGanttRegistry()
     reg.registerRow({ id: 'r' })
     reg.registerTask({ id: 'orphan', start: 0 }, 'missing')
-    expect(reg.rows.value.find((r) => r.id === 'r')!.tasks).toEqual([])
+    expect(reg.rows.value.find(r => r.id === 'r')!.tasks).toEqual([])
   })
 })
 

@@ -12,9 +12,24 @@ import type { GanttGroupData, GanttRowData, ResolvedGroup } from '../../index'
 import { mountInRoot } from '../../__tests__/helpers'
 
 const rows: GanttRowData[] = [
-  { id: 'r1', name: 'API', groupId: 'be', tasks: [{ id: 'a', start: '2026-06-01', end: '2026-06-05', progress: 50 }] },
-  { id: 'r2', name: 'DB', groupId: 'be', tasks: [{ id: 'b', start: '2026-06-03', end: '2026-06-09' }] },
-  { id: 'r3', name: 'UI', groupId: 'fe', tasks: [{ id: 'c', start: '2026-06-02', end: '2026-06-08' }] },
+  {
+    id: 'r1',
+    name: 'API',
+    groupId: 'be',
+    tasks: [{ id: 'a', start: '2026-06-01', end: '2026-06-05', progress: 50 }],
+  },
+  {
+    id: 'r2',
+    name: 'DB',
+    groupId: 'be',
+    tasks: [{ id: 'b', start: '2026-06-03', end: '2026-06-09' }],
+  },
+  {
+    id: 'r3',
+    name: 'UI',
+    groupId: 'fe',
+    tasks: [{ id: 'c', start: '2026-06-02', end: '2026-06-08' }],
+  },
 ]
 const groups: GanttGroupData[] = [
   { id: 'be', name: 'Backend' },
@@ -25,7 +40,7 @@ describe('row grouping — sidebar headers', () => {
   it('renders a collapsible header per group with its name', () => {
     const wrapper = mount(Gantt, { props: { rows, groups, unit: 'day' } })
     const headers = wrapper.findAll('.gantt-task-list__group')
-    expect(headers.map((h) => h.attributes('data-id'))).toEqual(['be', 'fe'])
+    expect(headers.map(h => h.attributes('data-id'))).toEqual(['be', 'fe'])
     expect(headers[0]!.text()).toContain('Backend')
     expect(headers[1]!.text()).toContain('Frontend')
     // All three member rows + their bars are visible while expanded.
@@ -67,7 +82,9 @@ describe('row grouping — collapse / expand', () => {
       .trigger('click')
 
     // r1/r2 rows + bars a/b disappear; only the fe row + bar c remain.
-    expect(wrapper.findAll('.gantt-task-list__row').map((r) => r.attributes('data-id'))).toEqual(['r3'])
+    expect(wrapper.findAll('.gantt-task-list__row').map(r => r.attributes('data-id'))).toEqual([
+      'r3',
+    ])
     expect(wrapper.findAll('.gantt-bar')).toHaveLength(1)
     expect(wrapper.find('.gantt-bar[data-id="c"]').exists()).toBe(true)
 
@@ -85,10 +102,16 @@ describe('row grouping — collapse / expand', () => {
 
   it('honours an initial collapsed group', () => {
     const wrapper = mount(Gantt, {
-      props: { rows, groups: [{ id: 'be', name: 'Backend', collapsed: true }, { id: 'fe' }], unit: 'day' },
+      props: {
+        rows,
+        groups: [{ id: 'be', name: 'Backend', collapsed: true }, { id: 'fe' }],
+        unit: 'day',
+      },
     })
-    expect(wrapper.find('.gantt-task-list__group[data-id="be"]').attributes('data-collapsed')).toBe('true')
-    expect(wrapper.findAll('.gantt-bar').map((b) => b.attributes('data-id'))).toEqual(['c'])
+    expect(wrapper.find('.gantt-task-list__group[data-id="be"]').attributes('data-collapsed')).toBe(
+      'true',
+    )
+    expect(wrapper.findAll('.gantt-bar').map(b => b.attributes('data-id'))).toEqual(['c'])
   })
 
   it('grows contentHeight by the group header bands', () => {
@@ -97,7 +120,7 @@ describe('row grouping — collapse / expand', () => {
     })
     const { ctx: flat } = mountInRoot(GanttTaskList, {
       rootProps: {
-        rows: rows.map((r) => ({ ...r, groupId: undefined })),
+        rows: rows.map(r => ({ ...r, groupId: undefined })),
         unit: 'day',
         rowHeight: 30,
         groupHeaderHeight: 20,
@@ -114,10 +137,10 @@ describe('row grouping — summary bar', () => {
       rootProps: { rows, groups, unit: 'day', columnWidth: 40 },
     })
     const bars = wrapper.findAll('.gantt-group-bar')
-    expect(bars.map((b) => b.attributes('data-id'))).toEqual(['be', 'fe'])
+    expect(bars.map(b => b.attributes('data-id'))).toEqual(['be', 'fe'])
 
     // Backend spans a(Jun1-5) + b(Jun3-9) → Jun1..Jun9.
-    const be = ctx().groups.value.find((g) => g.id === 'be')!
+    const be = ctx().groups.value.find(g => g.id === 'be')!
     const track = wrapper.find('.gantt-group-bar[data-id="be"] .gantt-group-bar__track')
     expect(track.attributes('style')).toContain(`left: ${ctx().dateToX(be.start)}px`)
     expect(track.attributes('style')).toContain(`width: ${ctx().widthBetween(be.start, be.end)}px`)
@@ -144,9 +167,11 @@ describe('row grouping — summary bar', () => {
   it('exposes a scoped slot carrying the group', () => {
     const { wrapper } = mountInRoot(GanttGroupBar, {
       rootProps: { rows, groups, unit: 'day' },
-      slots: { default: ({ group }: { group: ResolvedGroup }) => h('span', { class: 'gb' }, group.name) },
+      slots: {
+        default: ({ group }: { group: ResolvedGroup }) => h('span', { class: 'gb' }, group.name),
+      },
     })
-    expect(wrapper.findAll('.gb').map((g) => g.text())).toEqual(['Backend', 'Frontend'])
+    expect(wrapper.findAll('.gb').map(g => g.text())).toEqual(['Backend', 'Frontend'])
   })
 })
 
@@ -192,7 +217,7 @@ describe('row grouping — declarative <GanttGroup>', () => {
     })
     await nextTick()
     // Only the expanded group's bar renders; the collapsed one is omitted.
-    expect(wrapper.findAll('.gantt-bar').map((b) => b.attributes('data-id'))).toEqual(['a'])
+    expect(wrapper.findAll('.gantt-bar').map(b => b.attributes('data-id'))).toEqual(['a'])
   })
 
   it('lets an explicit groupId on GanttRow override the enclosing group', async () => {
@@ -208,6 +233,8 @@ describe('row grouping — declarative <GanttGroup>', () => {
       `,
     })
     await nextTick()
-    expect(wrapper.find('.gantt-task-list__row[data-id="r1"]').attributes('data-group')).toBe('other')
+    expect(wrapper.find('.gantt-task-list__row[data-id="r1"]').attributes('data-group')).toBe(
+      'other',
+    )
   })
 })

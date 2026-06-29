@@ -39,7 +39,12 @@ function setup(rootProps: Partial<GanttRootProps>, resolved: ResolvedTask = task
     },
   })
   const wrapper = mount(GanttRoot, {
-    props: { rows: [{ id: 'r1', tasks: [resolved] }], unit: 'day', columnWidth: 40, ...rootProps } as Record<string, unknown>,
+    props: {
+      rows: [{ id: 'r1', tasks: [resolved] }],
+      unit: 'day',
+      columnWidth: 40,
+      ...rootProps,
+    } as Record<string, unknown>,
     slots: { default: () => h(Harness) },
   })
   return { wrapper, api: () => api!, ctx: () => ctx! }
@@ -54,21 +59,36 @@ describe('useGanttDrag', () => {
 
   it('ignores non-primary buttons', async () => {
     const { wrapper, api } = setup({ draggable: true })
-    fire(wrapper.find('.bar').element, 'pointerdown', { button: 2, clientX: 0, clientY: 0, pointerId: 1 })
+    fire(wrapper.find('.bar').element, 'pointerdown', {
+      button: 2,
+      clientX: 0,
+      clientY: 0,
+      pointerId: 1,
+    })
     await nextTick()
     expect(api().dragging.value).toBe(false)
   })
 
   it('does not start when disabled', async () => {
     const { wrapper, api } = setup({})
-    fire(wrapper.find('.bar').element, 'pointerdown', { button: 0, clientX: 0, clientY: 0, pointerId: 1 })
+    fire(wrapper.find('.bar').element, 'pointerdown', {
+      button: 0,
+      clientX: 0,
+      clientY: 0,
+      pointerId: 1,
+    })
     await nextTick()
     expect(api().dragging.value).toBe(false)
   })
 
   it('builds a duration-preserving preview while dragging', async () => {
     const { wrapper, api } = setup({ draggable: true })
-    fire(wrapper.find('.bar').element, 'pointerdown', { button: 0, clientX: 0, clientY: 0, pointerId: 1 })
+    fire(wrapper.find('.bar').element, 'pointerdown', {
+      button: 0,
+      clientX: 0,
+      clientY: 0,
+      pointerId: 1,
+    })
     fire(window, 'pointermove', { clientX: 80, clientY: 0 }) // +2 days at 40px/day
     await nextTick()
     const p = api().preview.value!
@@ -79,7 +99,12 @@ describe('useGanttDrag', () => {
 
   it('cancels cleanly without emitting a move', async () => {
     const { wrapper, api } = setup({ draggable: true })
-    fire(wrapper.find('.bar').element, 'pointerdown', { button: 0, clientX: 0, clientY: 0, pointerId: 1 })
+    fire(wrapper.find('.bar').element, 'pointerdown', {
+      button: 0,
+      clientX: 0,
+      clientY: 0,
+      pointerId: 1,
+    })
     fire(window, 'pointermove', { clientX: 80, clientY: 0 })
     await nextTick()
     expect(api().dragging.value).toBe(true)
@@ -94,7 +119,12 @@ describe('useGanttDrag', () => {
   it('formats a milestone label as a single date (no range)', async () => {
     const milestone: ResolvedTask = { ...task, type: 'milestone', end: task.start }
     const { wrapper, api } = setup({ draggable: true }, milestone)
-    fire(wrapper.find('.bar').element, 'pointerdown', { button: 0, clientX: 0, clientY: 0, pointerId: 1 })
+    fire(wrapper.find('.bar').element, 'pointerdown', {
+      button: 0,
+      clientX: 0,
+      clientY: 0,
+      pointerId: 1,
+    })
     fire(window, 'pointermove', { clientX: 40, clientY: 0 })
     await nextTick()
     expect(api().previewLabel.value).not.toContain('→')

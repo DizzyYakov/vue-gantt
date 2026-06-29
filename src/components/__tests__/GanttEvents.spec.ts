@@ -26,7 +26,8 @@ const rows: GanttRowData[] = [
   },
 ]
 
-const mountChart = () => mount(Gantt, { props: { rows, unit: 'day', columnWidth: 40, today: '2026-01-03' } })
+const mountChart = () =>
+  mount(Gantt, { props: { rows, unit: 'day', columnWidth: 40, today: '2026-01-03' } })
 
 describe('chart events (prop-driven, aggregated on Gantt)', () => {
   it('emits task-click / dblclick / contextmenu with the task', async () => {

@@ -8,9 +8,15 @@ const patternId = `gantt-hatch-${useId()}`
 
 // Position each conflict span over its row's band.
 const rects = computed(() =>
-  conflicts.value.map((c) => {
+  conflicts.value.map(c => {
     const row = rows.value[c.order]
-    return { key: `${c.rowId}-${c.x}`, x: c.x, width: c.width, top: row?.top ?? 0, height: row?.height ?? 0 }
+    return {
+      key: `${c.rowId}-${c.x}`,
+      x: c.x,
+      width: c.width,
+      top: row?.top ?? 0,
+      height: row?.height ?? 0,
+    }
   }),
 )
 </script>
@@ -24,12 +30,24 @@ const rects = computed(() =>
     aria-hidden="true"
   >
     <defs>
-      <pattern :id="patternId" width="6" height="6" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
+      <pattern
+        :id="patternId"
+        width="6"
+        height="6"
+        patternUnits="userSpaceOnUse"
+        patternTransform="rotate(45)"
+      >
         <line class="gantt-conflicts__hatch" x1="0" y1="0" x2="0" y2="6" />
       </pattern>
     </defs>
     <g v-for="rect in rects" :key="rect.key">
-      <rect :x="rect.x" :y="rect.top" :width="rect.width" :height="rect.height" :fill="`url(#${patternId})`" />
+      <rect
+        :x="rect.x"
+        :y="rect.top"
+        :width="rect.width"
+        :height="rect.height"
+        :fill="`url(#${patternId})`"
+      />
       <rect
         class="gantt-conflicts__outline"
         :x="rect.x"

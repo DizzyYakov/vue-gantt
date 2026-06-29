@@ -84,7 +84,7 @@ export function normalizeRow(row: GanttRow, order: number): ResolvedRow {
     name: row.name ?? row.id,
     order,
     meta: row.meta ?? {},
-    tasks: (row.tasks ?? []).map((task) => normalizeTask(task, row.id, order)),
+    tasks: (row.tasks ?? []).map(task => normalizeTask(task, row.id, order)),
     groupId: row.groupId ?? '',
     hidden: false,
     laneCount: 1,

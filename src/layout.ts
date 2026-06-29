@@ -14,7 +14,7 @@ export function assignLanes(tasks: ResolvedTask[]): number {
   for (const task of ordered) {
     const start = task.start.getTime()
     const end = task.end.getTime()
-    let lane = laneEnds.findIndex((laneEnd) => laneEnd <= start)
+    let lane = laneEnds.findIndex(laneEnd => laneEnd <= start)
     if (lane === -1) {
       lane = laneEnds.length
       laneEnds.push(end)
@@ -39,7 +39,7 @@ export interface LayoutOptions {
  */
 export function layoutRows(rows: ResolvedRow[], options: LayoutOptions): ResolvedRow[] {
   let top = 0
-  return rows.map((row) => {
+  return rows.map(row => {
     const laneCount = assignLanes(row.tasks)
     const height = options.mode === 'lanes' ? laneCount * options.rowHeight : options.rowHeight
     const placed: ResolvedRow = { ...row, laneCount, top, height }
@@ -126,7 +126,7 @@ export function layoutGroups(rows: ResolvedRow[], options: LayoutGroupsOptions):
 
   // Roll up each group's task extent + aggregate progress (collapsed included).
   for (const group of groups) {
-    const tasks = outRows.filter((r) => r.groupId === group.id).flatMap((r) => r.tasks)
+    const tasks = outRows.filter(r => r.groupId === group.id).flatMap(r => r.tasks)
     if (!tasks.length) continue
     let start = tasks[0]!.start
     let end = tasks[0]!.end
@@ -169,7 +169,8 @@ export function conflictSegments(tasks: ResolvedTask[]): { start: Date; end: Dat
     const prev = coverage
     coverage += point.delta
     if (prev < 2 && coverage >= 2) segStart = point.t
-    else if (prev >= 2 && coverage < 2) segments.push({ start: new Date(segStart), end: new Date(point.t) })
+    else if (prev >= 2 && coverage < 2)
+      segments.push({ start: new Date(segStart), end: new Date(point.t) })
   }
   return segments
 }

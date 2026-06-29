@@ -8,7 +8,8 @@ const props = defineProps<{
   tier?: GanttUnit
 }>()
 
-const { config, visibleColumnsFor, visibleRows, visibleGroups, xToDate, dispatch } = useGanttContext()
+const { config, visibleColumnsFor, visibleRows, visibleGroups, xToDate, dispatch } =
+  useGanttContext()
 
 const emit = defineEmits<{
   'cell-click': [event: GanttCellEvent]

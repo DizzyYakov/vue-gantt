@@ -15,7 +15,7 @@ import type { GanttGroup, GanttIssue, GanttMoveEvent, GanttRow, GanttTask } from
 
 /** Flatten the two-level rows→tasks structure into a single task list. */
 export function flattenTasks(rows: GanttRow[]): GanttTask[] {
-  return rows.flatMap((row) => row.tasks ?? [])
+  return rows.flatMap(row => row.tasks ?? [])
 }
 
 /** Find a task (and its owning row) by id. */
@@ -24,7 +24,7 @@ export function findTask(
   id: string,
 ): { task: GanttTask; row: GanttRow } | undefined {
   for (const row of rows) {
-    const task = (row.tasks ?? []).find((t) => t.id === id)
+    const task = (row.tasks ?? []).find(t => t.id === id)
     if (task) return { task, row }
   }
   return undefined
@@ -32,7 +32,7 @@ export function findTask(
 
 /** Find a row by id. */
 export function findRow(rows: GanttRow[], id: string): GanttRow | undefined {
-  return rows.find((r) => r.id === id)
+  return rows.find(r => r.id === id)
 }
 
 // --- Immutable edits --------------------------------------------------------
@@ -44,14 +44,14 @@ export function findRow(rows: GanttRow[], id: string): GanttRow | undefined {
  */
 export function applyMove(rows: GanttRow[], e: GanttMoveEvent): GanttRow[] {
   const found = findTask(rows, e.id)
-  if (!found || !rows.some((r) => r.id === e.toRowId)) return rows
+  if (!found || !rows.some(r => r.id === e.toRowId)) return rows
   const moved: GanttTask = { ...found.task, start: e.start, end: e.end }
 
-  return rows.map((row) => {
-    const has = (row.tasks ?? []).some((t) => t.id === e.id)
+  return rows.map(row => {
+    const has = (row.tasks ?? []).some(t => t.id === e.id)
     const isTarget = row.id === e.toRowId
     if (!has && !isTarget) return row
-    const tasks = (row.tasks ?? []).filter((t) => t.id !== e.id)
+    const tasks = (row.tasks ?? []).filter(t => t.id !== e.id)
     if (isTarget) tasks.push(moved)
     return { ...row, tasks }
   })
@@ -59,25 +59,23 @@ export function applyMove(rows: GanttRow[], e: GanttMoveEvent): GanttRow[] {
 
 /** Patch a task by id (shallow merge). No-op if the id is unknown. */
 export function updateTask(rows: GanttRow[], id: string, patch: Partial<GanttTask>): GanttRow[] {
-  return rows.map((row) =>
-    (row.tasks ?? []).some((t) => t.id === id)
-      ? { ...row, tasks: (row.tasks ?? []).map((t) => (t.id === id ? { ...t, ...patch } : t)) }
+  return rows.map(row =>
+    (row.tasks ?? []).some(t => t.id === id)
+      ? { ...row, tasks: (row.tasks ?? []).map(t => (t.id === id ? { ...t, ...patch } : t)) }
       : row,
   )
 }
 
 /** Append a task to a row. No-op if the row id is unknown. */
 export function addTask(rows: GanttRow[], rowId: string, task: GanttTask): GanttRow[] {
-  return rows.map((row) =>
-    row.id === rowId ? { ...row, tasks: [...(row.tasks ?? []), task] } : row,
-  )
+  return rows.map(row => (row.id === rowId ? { ...row, tasks: [...(row.tasks ?? []), task] } : row))
 }
 
 /** Remove a task by id from whichever row holds it. */
 export function removeTask(rows: GanttRow[], id: string): GanttRow[] {
-  return rows.map((row) =>
-    (row.tasks ?? []).some((t) => t.id === id)
-      ? { ...row, tasks: (row.tasks ?? []).filter((t) => t.id !== id) }
+  return rows.map(row =>
+    (row.tasks ?? []).some(t => t.id === id)
+      ? { ...row, tasks: (row.tasks ?? []).filter(t => t.id !== id) }
       : row,
   )
 }
@@ -125,8 +123,8 @@ export function rollupProgress(tasks: GanttTask[]): number {
 /** Ids of tasks that declare `id` in their `dependencies` (reverse links). */
 export function getDependents(rows: GanttRow[], id: string): string[] {
   return flattenTasks(rows)
-    .filter((t) => (t.dependencies ?? []).includes(id))
-    .map((t) => t.id)
+    .filter(t => (t.dependencies ?? []).includes(id))
+    .map(t => t.id)
 }
 
 /**
@@ -145,7 +143,7 @@ export function removeDependency(rows: GanttRow[], from: string, to: string): Ga
   const target = findTask(rows, to)
   if (!target || !(target.task.dependencies ?? []).includes(from)) return rows
   return updateTask(rows, to, {
-    dependencies: (target.task.dependencies ?? []).filter((d) => d !== from),
+    dependencies: (target.task.dependencies ?? []).filter(d => d !== from),
   })
 }
 
@@ -155,7 +153,7 @@ export function removeDependency(rows: GanttRow[], from: string, to: string): Ga
  */
 export function detectCycles(rows: GanttRow[]): string[][] {
   const tasks = flattenTasks(rows)
-  const deps = new Map(tasks.map((t) => [t.id, t.dependencies ?? []]))
+  const deps = new Map(tasks.map(t => [t.id, t.dependencies ?? []]))
   const WHITE = 0
   const GRAY = 1
   const BLACK = 2
@@ -192,9 +190,9 @@ export function detectCycles(rows: GanttRow[]): string[][] {
  */
 export function topologicalOrder(rows: GanttRow[]): string[] {
   const tasks = flattenTasks(rows)
-  const ids = new Set(tasks.map((t) => t.id))
-  const indegree = new Map<string, number>(tasks.map((t) => [t.id, 0]))
-  const adjacency = new Map<string, string[]>(tasks.map((t) => [t.id, []]))
+  const ids = new Set(tasks.map(t => t.id))
+  const indegree = new Map<string, number>(tasks.map(t => [t.id, 0]))
+  const adjacency = new Map<string, string[]>(tasks.map(t => [t.id, []]))
 
   for (const t of tasks) {
     for (const dep of t.dependencies ?? []) {
@@ -204,7 +202,7 @@ export function topologicalOrder(rows: GanttRow[]): string[] {
     }
   }
 
-  const queue = tasks.filter((t) => (indegree.get(t.id) ?? 0) === 0).map((t) => t.id)
+  const queue = tasks.filter(t => (indegree.get(t.id) ?? 0) === 0).map(t => t.id)
   const order: string[] = []
   while (queue.length) {
     const id = queue.shift()!
@@ -229,7 +227,7 @@ export function topologicalOrder(rows: GanttRow[]): string[] {
  */
 export function criticalPath(rows: GanttRow[]): string[] {
   if (detectCycles(rows).length) return []
-  const byId = new Map(flattenTasks(rows).map((t) => [t.id, t]))
+  const byId = new Map(flattenTasks(rows).map(t => [t.id, t]))
   const finish = new Map<string, number>()
   const prev = new Map<string, string | null>()
   let bestId: string | null = null
@@ -270,7 +268,7 @@ export function criticalPath(rows: GanttRow[]): string[] {
  */
 export function autoSchedule(rows: GanttRow[], changedId?: string): GanttRow[] {
   const tasks = flattenTasks(rows)
-  const byId = new Map(tasks.map((t) => [t.id, t]))
+  const byId = new Map(tasks.map(t => [t.id, t]))
   const start = new Map<string, number>()
   const end = new Map<string, number>()
   for (const t of tasks) {
@@ -298,11 +296,11 @@ export function autoSchedule(rows: GanttRow[], changedId?: string): GanttRow[] {
   }
 
   if (!shifted.size) return rows
-  return rows.map((row) =>
-    (row.tasks ?? []).some((t) => shifted.has(t.id))
+  return rows.map(row =>
+    (row.tasks ?? []).some(t => shifted.has(t.id))
       ? {
           ...row,
-          tasks: (row.tasks ?? []).map((t) =>
+          tasks: (row.tasks ?? []).map(t =>
             shifted.has(t.id)
               ? { ...t, start: new Date(start.get(t.id)!), end: new Date(end.get(t.id)!) }
               : t,
@@ -325,7 +323,11 @@ export function validateRows(rows: GanttRow[], groups?: GanttGroup[]): GanttIssu
   const rowIds = new Set<string>()
   for (const row of rows) {
     if (rowIds.has(row.id)) {
-      issues.push({ type: 'duplicate-row-id', id: row.id, message: `Duplicate row id "${row.id}".` })
+      issues.push({
+        type: 'duplicate-row-id',
+        id: row.id,
+        message: `Duplicate row id "${row.id}".`,
+      })
     }
     rowIds.add(row.id)
   }
@@ -341,7 +343,11 @@ export function validateRows(rows: GanttRow[], groups?: GanttGroup[]): GanttIssu
 
   for (const t of tasks) {
     if (t.type !== 'milestone' && t.end != null && toDate(t.end) < toDate(t.start)) {
-      issues.push({ type: 'invalid-range', id: t.id, message: `Task "${t.id}" ends before it starts.` })
+      issues.push({
+        type: 'invalid-range',
+        id: t.id,
+        message: `Task "${t.id}" ends before it starts.`,
+      })
     }
     for (const dep of t.dependencies ?? []) {
       if (!taskIds.has(dep)) {
@@ -355,7 +361,7 @@ export function validateRows(rows: GanttRow[], groups?: GanttGroup[]): GanttIssu
   }
 
   if (groups) {
-    const groupIds = new Set(groups.map((g) => g.id))
+    const groupIds = new Set(groups.map(g => g.id))
     for (const row of rows) {
       if (row.groupId && !groupIds.has(row.groupId)) {
         issues.push({

@@ -12,8 +12,19 @@ const emit = defineEmits<{
 }>()
 
 // A milestone is a point in time; `end` is ignored and collapsed onto `start`.
-const { ctx, resolved, rowStyle, left, dragging, moved, draggable, onPointerDown, ghost, previewLabel, hidden } =
-  useGanttItem(props, { type: 'milestone' })
+const {
+  ctx,
+  resolved,
+  rowStyle,
+  left,
+  dragging,
+  moved,
+  draggable,
+  onPointerDown,
+  ghost,
+  previewLabel,
+  hidden,
+} = useGanttItem(props, { type: 'milestone' })
 
 // Click fires after a drag's pointerup; skip it so a drag isn't read as a click.
 function onClick(event: MouseEvent): void {
@@ -76,7 +87,11 @@ const labelStyle = computed(() =>
 
     <!-- Translucent ghost + live date label shown while dragging. -->
     <template v-if="ghost">
-      <div class="gantt-milestone__marker gantt-milestone__marker--ghost" :style="ghostStyle" aria-hidden="true">
+      <div
+        class="gantt-milestone__marker gantt-milestone__marker--ghost"
+        :style="ghostStyle"
+        aria-hidden="true"
+      >
         <div class="gantt-milestone__diamond" />
       </div>
       <div class="gantt-drag-label" :style="labelStyle">{{ previewLabel }}</div>

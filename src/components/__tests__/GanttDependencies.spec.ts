@@ -30,7 +30,12 @@ describe('GanttDependencies', () => {
   it('ignores dependencies that reference an unknown task', () => {
     const { wrapper } = mountInRoot(GanttDependencies, {
       rootProps: {
-        rows: [{ id: 'r', tasks: [{ id: 'x', start: '2026-01-01', end: '2026-01-03', dependencies: ['ghost'] }] }],
+        rows: [
+          {
+            id: 'r',
+            tasks: [{ id: 'x', start: '2026-01-01', end: '2026-01-03', dependencies: ['ghost'] }],
+          },
+        ],
         unit: 'day',
       },
     })
@@ -117,7 +122,9 @@ describe('GanttDependencies', () => {
     const marker = wrapper.find('.gantt-dependencies__marker')
     expect(marker.exists()).toBe(true)
     expect(marker.classes()).toContain('gantt-dependencies__marker--open')
-    expect(wrapper.find('.gantt-dependency').attributes('marker-end')).toMatch(/^url\(#gantt-arrow-/)
+    expect(wrapper.find('.gantt-dependency').attributes('marker-end')).toMatch(
+      /^url\(#gantt-arrow-/,
+    )
   })
 
   it('accepts a custom arrowHead builder', () => {

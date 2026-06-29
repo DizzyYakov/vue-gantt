@@ -35,13 +35,28 @@ const meta: Meta<typeof Gantt> = {
     rowHeight: { control: { type: 'number', min: 16, max: 80 } },
     headerRowHeight: { control: { type: 'number', min: 16, max: 60 } },
     sidebarWidth: { control: { type: 'number', min: 80, max: 400 } },
-    height: { control: { type: 'number', min: 120, max: 800 }, description: 'Scroll viewport height (enables virtualization).' },
+    height: {
+      control: { type: 'number', min: 120, max: 800 },
+      description: 'Scroll viewport height (enables virtualization).',
+    },
     draggable: { control: 'boolean', description: 'Drag bars to change start/end.' },
     rowMovable: { control: 'boolean', description: 'Drag a task into another row.' },
-    resizable: { control: 'boolean', description: 'Resize bars by dragging an edge (sides flip past each other).' },
-    progressDraggable: { control: 'boolean', description: 'Edit progress by dragging a handle on the bar.' },
-    linkable: { control: 'boolean', description: 'Create/edit dependencies by dragging between tasks.' },
-    snapToGrid: { control: 'boolean', description: 'Snap dragged dates to the base unit (off = full precision).' },
+    resizable: {
+      control: 'boolean',
+      description: 'Resize bars by dragging an edge (sides flip past each other).',
+    },
+    progressDraggable: {
+      control: 'boolean',
+      description: 'Edit progress by dragging a handle on the bar.',
+    },
+    linkable: {
+      control: 'boolean',
+      description: 'Create/edit dependencies by dragging between tasks.',
+    },
+    snapToGrid: {
+      control: 'boolean',
+      description: 'Snap dragged dates to the base unit (off = full precision).',
+    },
     today: { control: 'text' },
     labelFormat: { control: 'text' },
     onMove: { action: 'move', table: { category: 'events' } },
@@ -97,21 +112,56 @@ export const MultipleTiers: Story = {
         id: 'planning',
         name: 'Planning',
         tasks: [
-          { id: 'research', name: 'Research', start: '2026-04-01', end: '2026-04-18', progress: 100 },
-          { id: 'spec', name: 'Spec', start: '2026-04-20', end: '2026-05-04', progress: 100, dependencies: ['research'] },
+          {
+            id: 'research',
+            name: 'Research',
+            start: '2026-04-01',
+            end: '2026-04-18',
+            progress: 100,
+          },
+          {
+            id: 'spec',
+            name: 'Spec',
+            start: '2026-04-20',
+            end: '2026-05-04',
+            progress: 100,
+            dependencies: ['research'],
+          },
         ],
       },
       {
         id: 'design',
         name: 'Design',
-        tasks: [{ id: 'design', name: 'Design', start: '2026-05-04', end: '2026-05-25', progress: 70, dependencies: ['spec'] }],
+        tasks: [
+          {
+            id: 'design',
+            name: 'Design',
+            start: '2026-05-04',
+            end: '2026-05-25',
+            progress: 70,
+            dependencies: ['spec'],
+          },
+        ],
       },
       {
         id: 'dev',
         name: 'Development',
         tasks: [
-          { id: 'build', name: 'Implementation', start: '2026-05-25', end: '2026-06-22', progress: 30, dependencies: ['design'] },
-          { id: 'ship', name: 'Ship', type: 'milestone', start: '2026-06-29', dependencies: ['build'] },
+          {
+            id: 'build',
+            name: 'Implementation',
+            start: '2026-05-25',
+            end: '2026-06-22',
+            progress: 30,
+            dependencies: ['design'],
+          },
+          {
+            id: 'ship',
+            name: 'Ship',
+            type: 'milestone',
+            start: '2026-06-29',
+            dependencies: ['build'],
+          },
         ],
       },
     ],
@@ -149,15 +199,16 @@ export const HourTier: Story = {
  */
 export const DragAndDrop: Story = {
   args: { draggable: true, rowMovable: true },
-  render: (args) => ({
+  render: args => ({
     components: { Gantt },
     setup() {
       // Own a local copy so the drag actually moves tasks in this demo.
       const rows = ref<GanttRow[]>(JSON.parse(JSON.stringify(sampleRows)))
       function onMove(e: GanttMoveEvent) {
-        for (const row of rows.value) row.tasks = (row.tasks ?? []).filter((t) => t.id !== e.id)
-        const target = rows.value.find((r) => r.id === e.toRowId)
-        if (target) target.tasks = [...(target.tasks ?? []), { id: e.id, start: e.start, end: e.end }]
+        for (const row of rows.value) row.tasks = (row.tasks ?? []).filter(t => t.id !== e.id)
+        const target = rows.value.find(r => r.id === e.toRowId)
+        if (target)
+          target.tasks = [...(target.tasks ?? []), { id: e.id, start: e.start, end: e.end }]
       }
       return { args, rows, onMove }
     },
@@ -171,8 +222,14 @@ export const DragAndDrop: Story = {
  * `@move`/`@resize`/… handlers. (The controlled events still fire if you want them.)
  */
 export const VModelRows: Story = {
-  args: { draggable: true, rowMovable: true, resizable: true, progressDraggable: true, linkable: true },
-  render: (args) => ({
+  args: {
+    draggable: true,
+    rowMovable: true,
+    resizable: true,
+    progressDraggable: true,
+    linkable: true,
+  },
+  render: args => ({
     components: { Gantt },
     setup() {
       const rows = ref<GanttRow[]>(JSON.parse(JSON.stringify(sampleRows)))
@@ -205,7 +262,7 @@ export const Virtualized: Story = {
 
 /** Everything is themed via `--gantt-*` custom properties — no prop changes. */
 export const Theming: Story = {
-  render: (args) => ({
+  render: args => ({
     components: { Gantt },
     setup: () => ({ args }),
     template: `
@@ -236,10 +293,34 @@ export const Grouping: Story = {
       { id: 'g-fe', name: 'Frontend', collapsed: true },
     ],
     rows: [
-      { id: 'gr-api', name: 'API', groupId: 'g-be', tasks: [{ id: 'g-api', name: 'API', start: '2026-06-01', end: '2026-06-10', progress: 80 }] },
-      { id: 'gr-db', name: 'Database', groupId: 'g-be', tasks: [{ id: 'g-db', name: 'Schema', start: '2026-06-06', end: '2026-06-14', progress: 40 }] },
-      { id: 'gr-ui', name: 'UI', groupId: 'g-fe', tasks: [{ id: 'g-ui', name: 'Components', start: '2026-06-10', end: '2026-06-20', progress: 20 }] },
-      { id: 'gr-ux', name: 'UX', groupId: 'g-fe', tasks: [{ id: 'g-ux', name: 'Flows', start: '2026-06-12', end: '2026-06-18' }] },
+      {
+        id: 'gr-api',
+        name: 'API',
+        groupId: 'g-be',
+        tasks: [{ id: 'g-api', name: 'API', start: '2026-06-01', end: '2026-06-10', progress: 80 }],
+      },
+      {
+        id: 'gr-db',
+        name: 'Database',
+        groupId: 'g-be',
+        tasks: [
+          { id: 'g-db', name: 'Schema', start: '2026-06-06', end: '2026-06-14', progress: 40 },
+        ],
+      },
+      {
+        id: 'gr-ui',
+        name: 'UI',
+        groupId: 'g-fe',
+        tasks: [
+          { id: 'g-ui', name: 'Components', start: '2026-06-10', end: '2026-06-20', progress: 20 },
+        ],
+      },
+      {
+        id: 'gr-ux',
+        name: 'UX',
+        groupId: 'g-fe',
+        tasks: [{ id: 'g-ux', name: 'Flows', start: '2026-06-12', end: '2026-06-18' }],
+      },
     ],
     tiers: ['month', 'week', 'day'],
     height: 300,
@@ -248,7 +329,7 @@ export const Grouping: Story = {
 
 /** Override a bar's content with the `bar` slot. */
 export const CustomBarSlot: Story = {
-  render: (args) => ({
+  render: args => ({
     components: { Gantt },
     setup: () => ({ args }),
     template: `
@@ -269,7 +350,7 @@ export const CustomBarSlot: Story = {
  * `(date) => number`. Here it draws a custom labelled marker at "today".
  */
 export const CustomTodaySlot: Story = {
-  render: (args) => ({
+  render: args => ({
     components: { Gantt },
     setup: () => ({ args }),
     template: `

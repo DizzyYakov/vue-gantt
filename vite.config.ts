@@ -8,10 +8,7 @@ import vueDevTools from 'vite-plugin-vue-devtools'
 // Type declarations are emitted separately by `vue-tsc` (see the `build:types`
 // script) so the test/dev pipeline stays free of the api-extractor toolchain.
 export default defineConfig({
-  plugins: [
-    vue(),
-    vueDevTools(),
-  ],
+  plugins: [vue(), vueDevTools()],
   resolve: {
     alias: {
       '@': fileURLToPath(new URL('./src', import.meta.url)),
@@ -32,8 +29,8 @@ export default defineConfig({
         globals: {
           vue: 'Vue',
         },
-        assetFileNames: (assetInfo) => {
-          if (assetInfo.names?.some((name) => name.endsWith('.css'))) {
+        assetFileNames: assetInfo => {
+          if (assetInfo.names?.some(name => name.endsWith('.css'))) {
             return 'gantt.css'
           }
           return '[name][extname]'

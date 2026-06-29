@@ -12,7 +12,7 @@ describe('GanttTimeline', () => {
       rootProps: { rows, tiers: ['day', 'month', 'week'] },
     })
     const tierRows = wrapper.findAll('.gantt-timeline__row')
-    expect(tierRows.map((r) => r.attributes('data-tier'))).toEqual(['month', 'week', 'day'])
+    expect(tierRows.map(r => r.attributes('data-tier'))).toEqual(['month', 'week', 'day'])
   })
 
   it('renders cells with day labels and positions them by the scale', () => {

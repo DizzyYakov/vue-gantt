@@ -14,7 +14,7 @@ describe('GanttTaskList', () => {
     const { wrapper } = mountInRoot(GanttTaskList, { rootProps: { rows } })
     const rendered = wrapper.findAll('.gantt-task-list__row')
     expect(rendered).toHaveLength(2)
-    expect(rendered.map((r) => r.attributes('data-id'))).toEqual(['r1', 'r2'])
+    expect(rendered.map(r => r.attributes('data-id'))).toEqual(['r1', 'r2'])
     expect(wrapper.text()).toContain('Backend')
     expect(wrapper.text()).toContain('Frontend')
   })
@@ -45,7 +45,7 @@ describe('GanttTaskList', () => {
       },
     })
     const custom = wrapper.findAll('.custom-row')
-    expect(custom.map((c) => c.text())).toEqual(['0:Backend', '1:Frontend'])
+    expect(custom.map(c => c.text())).toEqual(['0:Backend', '1:Frontend'])
     expect(wrapper.find('.gantt-task-list__name').exists()).toBe(false)
   })
 })

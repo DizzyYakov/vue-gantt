@@ -17,7 +17,13 @@ export const sampleRows: GanttRowData[] = [
     name: 'Planning',
     tasks: [
       { id: 'spec', name: 'Specification', start: '2026-06-01', end: '2026-06-08', progress: 100 },
-      { id: 'review', name: 'Review', type: 'milestone', start: '2026-06-30', dependencies: ['build'] },
+      {
+        id: 'review',
+        name: 'Review',
+        type: 'milestone',
+        start: '2026-06-30',
+        dependencies: ['build'],
+      },
     ],
   },
   {

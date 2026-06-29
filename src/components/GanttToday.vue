@@ -2,10 +2,13 @@
 import { computed, onMounted, onUnmounted, ref } from 'vue'
 import { useGanttContext } from '../composables/useGanttContext'
 
-const props = withDefaults(defineProps<{
-  /** How often the line re-positions, in ms. Default 1000 (second precision). */
-  interval?: number
-}>(), { interval: 1000 })
+const props = withDefaults(
+  defineProps<{
+    /** How often the line re-positions, in ms. Default 1000 (second precision). */
+    interval?: number
+  }>(),
+  { interval: 1000 },
+)
 
 const { dateToX, contentWidth } = useGanttContext()
 
@@ -27,12 +30,7 @@ const visible = computed(() => x.value >= 0 && x.value <= contentWidth.value)
 </script>
 
 <template>
-  <div
-    v-if="visible"
-    class="gantt-today"
-    :style="{ left: `${x}px` }"
-    aria-hidden="true"
-  >
+  <div v-if="visible" class="gantt-today" :style="{ left: `${x}px` }" aria-hidden="true">
     <slot :x="x" :date="date" />
   </div>
 </template>

@@ -26,7 +26,13 @@ describe('GanttConflicts', () => {
 
   it('positions the conflict rect at its row band', () => {
     const { wrapper, ctx } = mountInRoot(GanttConflicts, {
-      rootProps: { rows: overlapRows, overlap: 'conflict', unit: 'day', columnWidth: 40, rowHeight: 30 },
+      rootProps: {
+        rows: overlapRows,
+        overlap: 'conflict',
+        unit: 'day',
+        columnWidth: 40,
+        rowHeight: 30,
+      },
     })
     const conflict = ctx().conflicts.value[0]!
     const rect = wrapper.find('.gantt-conflicts__outline')

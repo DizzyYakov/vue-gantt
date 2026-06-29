@@ -28,7 +28,9 @@ const mountTask = (start: string, end: string) =>
 
 describe('edge resize', () => {
   it('renders edge handles only when resizable', () => {
-    const off = mount(Gantt, { props: { rows: [{ id: 'r1', tasks: [{ id: 'a', start: '2026-01-01', end: '2026-01-05' }] }] } })
+    const off = mount(Gantt, {
+      props: { rows: [{ id: 'r1', tasks: [{ id: 'a', start: '2026-01-01', end: '2026-01-05' }] }] },
+    })
     expect(off.find('.gantt-bar__resize').exists()).toBe(false)
     const on = mountTask('2026-01-01', '2026-01-05')
     expect(on.findAll('.gantt-bar__resize')).toHaveLength(2)

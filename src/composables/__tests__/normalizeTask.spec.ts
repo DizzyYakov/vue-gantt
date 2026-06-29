@@ -50,7 +50,7 @@ describe('normalizeRow', () => {
     expect(row.name).toBe('Backend')
     expect(row.order).toBe(3)
     expect(row.tasks).toHaveLength(2)
-    expect(row.tasks.every((t) => t.rowId === 'r1' && t.order === 3)).toBe(true)
+    expect(row.tasks.every(t => t.rowId === 'r1' && t.order === 3)).toBe(true)
   })
 
   it('defaults name to id and tasks to empty', () => {

@@ -16,12 +16,7 @@ function onColumnClick(column: GanttColumn, tier: GanttUnit, event: MouseEvent):
 
 <template>
   <div class="gantt-timeline" :style="{ width: `${contentWidth}px` }">
-    <div
-      v-for="tier in config.tiers"
-      :key="tier"
-      class="gantt-timeline__row"
-      :data-tier="tier"
-    >
+    <div v-for="tier in config.tiers" :key="tier" class="gantt-timeline__row" :data-tier="tier">
       <div
         v-for="column in visibleColumnsFor(tier)"
         :key="column.key"

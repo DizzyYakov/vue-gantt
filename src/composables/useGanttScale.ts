@@ -103,10 +103,7 @@ export function useGanttScale(options: ScaleOptions) {
     return daysBetween(toValue(options.start), toDate(date)) * pxPerDay.value
   }
 
-  function widthBetween(
-    start: Date | string | number,
-    end: Date | string | number,
-  ): number {
+  function widthBetween(start: Date | string | number, end: Date | string | number): number {
     return daysBetween(toDate(start), toDate(end)) * pxPerDay.value
   }
 

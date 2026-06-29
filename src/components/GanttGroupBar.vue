@@ -14,10 +14,10 @@ interface GroupBar {
 // One rolled-up bar per group that actually has tasks, spanning the earliest
 // start to the latest end of its members across the group's header band.
 const bars = computed<GroupBar[]>(() => {
-  const byId = new Map(rows.value.map((r) => [r.id, r]))
+  const byId = new Map(rows.value.map(r => [r.id, r]))
   const out: GroupBar[] = []
   for (const group of visibleGroups.value) {
-    const hasTasks = group.rowIds.some((id) => (byId.get(id)?.tasks.length ?? 0) > 0)
+    const hasTasks = group.rowIds.some(id => (byId.get(id)?.tasks.length ?? 0) > 0)
     if (!hasTasks) continue
     out.push({ group, left: dateToX(group.start), width: widthBetween(group.start, group.end) })
   }

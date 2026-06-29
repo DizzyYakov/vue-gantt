@@ -1,16 +1,16 @@
 <script setup lang="ts">
-import { computed, onMounted, onUnmounted, useTemplateRef, watch } from "vue";
-import { useGanttContext } from "../composables/useGanttContext";
-import { useGanttViewport } from "../composables/useGanttViewport";
-import GanttConflicts from "./GanttConflicts.vue";
-import GanttDependencies from "./GanttDependencies.vue";
-import GanttGrid from "./GanttGrid.vue";
-import GanttGroupBar from "./GanttGroupBar.vue";
-import GanttMilestone from "./GanttMilestone.vue";
-import GanttTask from "./GanttTask.vue";
-import GanttTaskList from "./GanttTaskList.vue";
-import GanttTimeline from "./GanttTimeline.vue";
-import GanttToday from "./GanttToday.vue";
+import { computed, onMounted, onUnmounted, useTemplateRef, watch } from 'vue'
+import { useGanttContext } from '../composables/useGanttContext'
+import { useGanttViewport } from '../composables/useGanttViewport'
+import GanttConflicts from './GanttConflicts.vue'
+import GanttDependencies from './GanttDependencies.vue'
+import GanttGrid from './GanttGrid.vue'
+import GanttGroupBar from './GanttGroupBar.vue'
+import GanttMilestone from './GanttMilestone.vue'
+import GanttTask from './GanttTask.vue'
+import GanttTaskList from './GanttTaskList.vue'
+import GanttTimeline from './GanttTimeline.vue'
+import GanttToday from './GanttToday.vue'
 
 const props = defineProps<{
   /** Height of the scroll viewport. A number is treated as pixels; a string is
@@ -18,8 +18,8 @@ const props = defineProps<{
    *  row virtualization. When omitted, the chart fills its parent's height
    *  (`height: 100%`) — so a height-constrained parent gives scrolling +
    *  virtualization, while an auto-height parent grows to fit the content. */
-  height?: number | string;
-}>();
+  height?: number | string
+}>()
 
 const {
   visibleTasks,
@@ -33,29 +33,29 @@ const {
   contentWidth,
   contentHeight,
   setScroller,
-} = useGanttContext();
+} = useGanttContext()
 
 // Virtualized base-unit columns the default GanttGrid draws — exposed to the
 // `grid` slot so an override keeps the same (windowed) column set.
-const gridColumns = computed(() => visibleColumnsFor(config.value.unit));
+const gridColumns = computed(() => visibleColumnsFor(config.value.unit))
 
-const scroller = useTemplateRef<HTMLElement>("scroller");
-useGanttViewport(scroller);
+const scroller = useTemplateRef<HTMLElement>('scroller')
+useGanttViewport(scroller)
 
 // Expose the scroll container to the context so scrollToDate/Task/Today work.
 // Register on mount (when the template ref is populated) and re-bind on change.
-onMounted(() => setScroller(scroller.value ?? null));
-watch(scroller, (el) => setScroller(el ?? null));
-onUnmounted(() => setScroller(null));
+onMounted(() => setScroller(scroller.value ?? null))
+watch(scroller, el => setScroller(el ?? null))
+onUnmounted(() => setScroller(null))
 
 const scrollStyle = computed(() => {
   // No explicit height → fill the parent. `height: 100%` resolves to the parent's
   // height when it's constrained (→ scroll + virtualization), and collapses to
   // content height when the parent is auto-sized (→ grows to fit, as before).
-  if (props.height == null) return { height: "100%" };
-  const h = typeof props.height === "number" ? `${props.height}px` : props.height;
-  return { maxHeight: h };
-});
+  if (props.height == null) return { height: '100%' }
+  const h = typeof props.height === 'number' ? `${props.height}px` : props.height
+  return { maxHeight: h }
+})
 </script>
 
 <template>

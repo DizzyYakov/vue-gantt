@@ -16,7 +16,9 @@ const rows: GanttRow[] = [
   {
     id: 'qa',
     name: 'QA',
-    tasks: [{ id: 'testing', name: 'Testing', start: '2026-06-16', end: '2026-06-26', progress: 0 }],
+    tasks: [
+      { id: 'testing', name: 'Testing', start: '2026-06-16', end: '2026-06-26', progress: 0 },
+    ],
   },
 ]
 
@@ -70,7 +72,7 @@ export const Conflict: Story = { args: { overlap: 'conflict' } }
  */
 export const ConflictSlot: Story = {
   args: { overlap: 'conflict' },
-  render: (args) => ({
+  render: args => ({
     components: { Gantt },
     setup: () => ({ args }),
     template: `

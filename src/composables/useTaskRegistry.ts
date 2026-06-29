@@ -40,7 +40,7 @@ export function useGanttRegistry() {
       if (list) list.push(task)
       else byRow.set(rowId, [task])
     }
-    return [...rows.values()].map((row) => ({
+    return [...rows.values()].map(row => ({
       ...row,
       tasks: [...(row.tasks ?? []), ...(byRow.get(row.id) ?? [])],
     }))
@@ -66,10 +66,14 @@ export function useGanttRegistry() {
  */
 export function useRegisteredGroup(getGroup: MaybeRefOrGetter<GanttGroup>): void {
   const ctx = useGanttContext()
-  watch(() => toValue(getGroup), (group) => ctx.registerGroup(group), {
-    immediate: true,
-    deep: true,
-  })
+  watch(
+    () => toValue(getGroup),
+    group => ctx.registerGroup(group),
+    {
+      immediate: true,
+      deep: true,
+    },
+  )
   onUnmounted(() => ctx.unregisterGroup(toValue(getGroup).id))
 }
 
@@ -79,7 +83,11 @@ export function useRegisteredGroup(getGroup: MaybeRefOrGetter<GanttGroup>): void
  */
 export function useRegisteredRow(getRow: MaybeRefOrGetter<GanttRow>): void {
   const ctx = useGanttContext()
-  watch(() => toValue(getRow), (row) => ctx.registerRow(row), { immediate: true, deep: true })
+  watch(
+    () => toValue(getRow),
+    row => ctx.registerRow(row),
+    { immediate: true, deep: true },
+  )
   onUnmounted(() => ctx.unregisterRow(toValue(getRow).id))
 }
 

@@ -1,6 +1,13 @@
 /* The headless chart uses `font: inherit`; give stories a sans-serif context. */
 .sb-wrap {
-  font-family: system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+  font-family:
+    system-ui,
+    -apple-system,
+    'Segoe UI',
+    Roboto,
+    Helvetica,
+    Arial,
+    sans-serif;
 }
 
 /* Layout used by the per-component story canvases (declarativeChart helper). */

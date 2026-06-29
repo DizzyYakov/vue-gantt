@@ -63,7 +63,11 @@ export function useGanttDrag(options: DragOptions) {
   function onPointerDown(event: PointerEvent, dragMode: DragMode = 'move'): void {
     const cfg = ctx.config.value
     const allowed =
-      dragMode === 'move' ? enabled.value : dragMode === 'progress' ? cfg.progressDraggable : cfg.resizable
+      dragMode === 'move'
+        ? enabled.value
+        : dragMode === 'progress'
+          ? cfg.progressDraggable
+          : cfg.resizable
     if (event.button !== 0 || !allowed) return
     mode.value = dragMode
     dragging.value = true

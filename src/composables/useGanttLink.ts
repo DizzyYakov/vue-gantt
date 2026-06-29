@@ -1,10 +1,5 @@
 import { computed, ref, type ComputedRef } from 'vue'
-import type {
-  GanttBeginLinkArgs,
-  GanttEventMap,
-  GanttLinkDraft,
-  ResolvedTask,
-} from '../types'
+import type { GanttBeginLinkArgs, GanttEventMap, GanttLinkDraft, ResolvedTask } from '../types'
 
 export interface LinkOptions {
   /** Emit a chart event (the context `dispatch`). */
@@ -89,7 +84,7 @@ export function useGanttLink(options: LinkOptions): GanttLinkApi {
   }
 
   function hasDependency(toId: string, fromId: string): boolean {
-    const to = options.tasks().find((t) => t.id === toId)
+    const to = options.tasks().find(t => t.id === toId)
     return !!to && to.dependencies.includes(fromId)
   }
 

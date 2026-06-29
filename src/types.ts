@@ -433,11 +433,7 @@ export interface GanttEventMap {
 
 /** Kind of problem reported by `validateRows`. */
 export type GanttIssueType =
-  | 'duplicate-row-id'
-  | 'duplicate-task-id'
-  | 'missing-dependency'
-  | 'invalid-range'
-  | 'orphan-group'
+  'duplicate-row-id' | 'duplicate-task-id' | 'missing-dependency' | 'invalid-range' | 'orphan-group'
 
 /** A single data problem found by `validateRows`. */
 export interface GanttIssue {

@@ -23,7 +23,9 @@ describe('GanttGrid', () => {
   })
 
   it('renders vertical columns for the base unit', () => {
-    const { wrapper } = mountInRoot(GanttGrid, { rootProps: { rows, unit: 'day', columnWidth: 40 } })
+    const { wrapper } = mountInRoot(GanttGrid, {
+      rootProps: { rows, unit: 'day', columnWidth: 40 },
+    })
     const cols = wrapper.findAll('.gantt-grid__col')
     expect(cols.length).toBeGreaterThan(0)
     expect(cols[0]!.attributes('style')).toContain('left: 0px')

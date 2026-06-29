@@ -19,7 +19,11 @@ import type {
 // A tiny fixture: two rows, two tasks, with b depending on a.
 function makeRows(): GanttRowType[] {
   return [
-    { id: 'r1', name: 'R1', tasks: [{ id: 'a', name: 'A', start: '2026-01-01', end: '2026-01-05' }] },
+    {
+      id: 'r1',
+      name: 'R1',
+      tasks: [{ id: 'a', name: 'A', start: '2026-01-01', end: '2026-01-05' }],
+    },
     {
       id: 'r2',
       name: 'R2',
@@ -33,7 +37,7 @@ function makeRows(): GanttRowType[] {
 const Noop = defineComponent({ setup: () => () => null })
 
 function taskById(ctx: GanttContext, id: string): ResolvedTask {
-  const t = ctx.tasks.value.find((t) => t.id === id)
+  const t = ctx.tasks.value.find(t => t.id === id)
   if (!t) throw new Error(`task ${id} not found in context`)
   return t
 }

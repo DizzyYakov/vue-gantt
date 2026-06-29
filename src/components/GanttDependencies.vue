@@ -1,8 +1,8 @@
 <script setup lang="ts">
-import { computed, useId, useTemplateRef } from "vue";
-import { useGanttContext } from "../composables/useGanttContext";
-import type { DependencyPoint } from "../dependencyPaths";
-import type { GanttDependencyEvent, ResolvedTask } from "../types";
+import { computed, useId, useTemplateRef } from 'vue'
+import { useGanttContext } from '../composables/useGanttContext'
+import type { DependencyPoint } from '../dependencyPaths'
+import type { GanttDependencyEvent, ResolvedTask } from '../types'
 
 const {
   tasks,
@@ -14,31 +14,31 @@ const {
   dispatch,
   linkDraft,
   beginLink,
-} = useGanttContext();
+} = useGanttContext()
 
 const emit = defineEmits<{
-  "dependency-click": [event: GanttDependencyEvent];
-}>();
+  'dependency-click': [event: GanttDependencyEvent]
+}>()
 
-const linkable = computed(() => config.value.linkable);
-const svg = useTemplateRef<SVGSVGElement>("svg");
+const linkable = computed(() => config.value.linkable)
+const svg = useTemplateRef<SVGSVGElement>('svg')
 
-const markerId = `gantt-arrow-${useId()}`;
+const markerId = `gantt-arrow-${useId()}`
 
 // Selected connector path builder + resolved arrowhead (default: elbow + triangle).
-const buildPath = computed(() => config.value.dependencyShape);
-const arrow = computed(() => config.value.arrowHead());
-const markerEnd = computed(() => (arrow.value ? `url(#${markerId})` : undefined));
+const buildPath = computed(() => config.value.dependencyShape)
+const arrow = computed(() => config.value.arrowHead())
+const markerEnd = computed(() => (arrow.value ? `url(#${markerId})` : undefined))
 
 function onLinkClick(fromId: string, toId: string, event: MouseEvent): void {
-  const byId = new Map(tasks.value.map((t) => [t.id, t]));
-  const from = byId.get(fromId);
-  const to = byId.get(toId);
-  if (!from || !to) return;
+  const byId = new Map(tasks.value.map(t => [t.id, t]))
+  const from = byId.get(fromId)
+  const to = byId.get(toId)
+  if (!from || !to) return
   // Generic click (custom handling) always fires; default remove on linkable.
-  emit("dependency-click", { from, to, event });
-  dispatch("dependency-click", { from, to, event });
-  if (linkable.value) dispatch("dependency-remove", { from: fromId, to: toId });
+  emit('dependency-click', { from, to, event })
+  dispatch('dependency-click', { from, to, event })
+  if (linkable.value) dispatch('dependency-remove', { from: fromId, to: toId })
 }
 
 function onEndpointDown(link: DependencyLink, event: PointerEvent): void {
@@ -46,41 +46,41 @@ function onEndpointDown(link: DependencyLink, event: PointerEvent): void {
   // retarget the successor on drop.
   beginLink({
     anchorId: link.from,
-    anchorEdge: "finish",
-    mode: "reroute-head",
+    anchorEdge: 'finish',
+    mode: 'reroute-head',
     link: { from: link.from, to: link.to },
     pointer: { x: event.clientX, y: event.clientY },
-  });
+  })
 }
 
 /** Vertical centre of a task's bar (accounts for lanes/cascade offsets). */
 function centerY(task: ResolvedTask): number {
-  const band = taskBand(task);
-  return band.top + band.height / 2;
+  const band = taskBand(task)
+  return band.top + band.height / 2
 }
 
 interface DependencyLink {
-  key: string;
-  from: string;
-  to: string;
-  d: string;
+  key: string
+  from: string
+  to: string
+  d: string
   /** Arrow tail (predecessor finish) and head (successor start) points. */
-  tail: DependencyPoint;
-  head: DependencyPoint;
+  tail: DependencyPoint
+  head: DependencyPoint
 }
 
 // Finish-to-start links: an arrow from each dependency's end to the task's start.
 const links = computed<DependencyLink[]>(() => {
-  const byId = new Map<string, ResolvedTask>(tasks.value.map((t) => [t.id, t]));
-  const result: DependencyLink[] = [];
+  const byId = new Map<string, ResolvedTask>(tasks.value.map(t => [t.id, t]))
+  const result: DependencyLink[] = []
 
   for (const task of tasks.value) {
     for (const depId of task.dependencies) {
-      const from = byId.get(depId);
-      if (!from) continue;
+      const from = byId.get(depId)
+      if (!from) continue
 
-      const tail = { x: dateToX(from.end), y: centerY(from) };
-      const head = { x: dateToX(task.start), y: centerY(task) };
+      const tail = { x: dateToX(from.end), y: centerY(from) }
+      const head = { x: dateToX(task.start), y: centerY(task) }
 
       result.push({
         key: `${depId}->${task.id}`,
@@ -89,30 +89,30 @@ const links = computed<DependencyLink[]>(() => {
         d: buildPath.value(tail, head),
         tail,
         head,
-      });
+      })
     }
   }
 
-  return result;
-});
+  return result
+})
 
 // Temporary arrow shown while dragging a new/re-routed dependency — same connector
 // shape + arrowhead as a real link, so you drag the actual arrow.
 const draftPath = computed<string | null>(() => {
-  const d = linkDraft.value;
-  if (!d) return null;
-  const anchor = tasks.value.find((t) => t.id === d.anchorId);
-  if (!anchor) return null;
-  const ax = dateToX(d.anchorEdge === "finish" ? anchor.end : anchor.start);
-  const ay = centerY(anchor);
-  const rect = svg.value?.getBoundingClientRect();
-  const px = rect ? d.pointer.x - rect.left : ax;
-  const py = rect ? d.pointer.y - rect.top : ay;
+  const d = linkDraft.value
+  if (!d) return null
+  const anchor = tasks.value.find(t => t.id === d.anchorId)
+  if (!anchor) return null
+  const ax = dateToX(d.anchorEdge === 'finish' ? anchor.end : anchor.start)
+  const ay = centerY(anchor)
+  const rect = svg.value?.getBoundingClientRect()
+  const px = rect ? d.pointer.x - rect.left : ax
+  const py = rect ? d.pointer.y - rect.top : ay
   // The anchor is the tail on a finish edge, otherwise the head.
-  return d.anchorEdge === "finish"
+  return d.anchorEdge === 'finish'
     ? buildPath.value({ x: ax, y: ay }, { x: px, y: py })
-    : buildPath.value({ x: px, y: py }, { x: ax, y: ay });
-});
+    : buildPath.value({ x: px, y: py }, { x: ax, y: ay })
+})
 </script>
 
 <template>
@@ -167,12 +167,7 @@ const draftPath = computed<string | null>(() => {
     </template>
 
     <!-- In-progress arrow (does not capture pointers, so drop hit-tests work). -->
-    <path
-      v-if="draftPath"
-      class="gantt-dependency-draft"
-      :d="draftPath"
-      :marker-end="markerEnd"
-    />
+    <path v-if="draftPath" class="gantt-dependency-draft" :d="draftPath" :marker-end="markerEnd" />
   </svg>
 </template>
 

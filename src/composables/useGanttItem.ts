@@ -67,14 +67,12 @@ export function useGanttItem(props: GanttItemProps, overrides: Partial<GanttTask
   const resolved = computed<ResolvedTask>(() => {
     if (props.task) return props.task as ResolvedTask
     return (
-      ctx.tasks.value.find((t) => t.id === input.value.id) ??
+      ctx.tasks.value.find(t => t.id === input.value.id) ??
       normalizeTask(input.value, rowId.value, order.value)
     )
   })
 
-  const overlapping = computed(
-    () => (ctx.rows.value[resolved.value.order]?.laneCount ?? 1) > 1,
-  )
+  const overlapping = computed(() => (ctx.rows.value[resolved.value.order]?.laneCount ?? 1) > 1)
 
   // True when the item's row belongs to a collapsed group. Declarative items
   // render themselves (unlike `GanttView`, which only renders `visibleTasks`),
@@ -86,7 +84,14 @@ export function useGanttItem(props: GanttItemProps, overrides: Partial<GanttTask
   const baseLeft = computed(() => ctx.dateToX(resolved.value.start))
 
   // Drag & drop: the original stays put; a live preview drives a translucent ghost.
-  const { dragging, moved, enabled: draggable, preview, previewLabel, onPointerDown } = useGanttDrag({
+  const {
+    dragging,
+    moved,
+    enabled: draggable,
+    preview,
+    previewLabel,
+    onPointerDown,
+  } = useGanttDrag({
     resolved,
     baseLeft,
   })

@@ -57,32 +57,31 @@ import type {
 } from '../types'
 
 const props = withDefaults(defineProps<GanttRootProps>(), {
-    rows: undefined,
-    unit: GANTT_DEFAULTS.unit,
-    tiers: undefined,
-    columnWidth: GANTT_DEFAULTS.columnWidth,
-    groups: undefined,
-    rowHeight: GANTT_DEFAULTS.rowHeight,
-    headerRowHeight: GANTT_DEFAULTS.headerRowHeight,
-    groupHeaderHeight: GANTT_DEFAULTS.groupHeaderHeight,
-    sidebarWidth: GANTT_DEFAULTS.sidebarWidth,
-    overlap: GANTT_DEFAULTS.overlap,
-    draggable: GANTT_DEFAULTS.draggable,
-    rowMovable: GANTT_DEFAULTS.rowMovable,
-    resizable: GANTT_DEFAULTS.resizable,
-    progressDraggable: GANTT_DEFAULTS.progressDraggable,
-    linkable: GANTT_DEFAULTS.linkable,
-    dependencyShape: elbowPath,
-    arrowHead: triangleArrow,
-    snapToGrid: GANTT_DEFAULTS.snapToGrid,
-    dragLabelFormat: GANTT_DEFAULTS.dragLabelFormat,
-    dragLabel: undefined,
-    startDate: undefined,
-    endDate: undefined,
-    today: undefined,
-    labelFormat: undefined,
-  },
-)
+  rows: undefined,
+  unit: GANTT_DEFAULTS.unit,
+  tiers: undefined,
+  columnWidth: GANTT_DEFAULTS.columnWidth,
+  groups: undefined,
+  rowHeight: GANTT_DEFAULTS.rowHeight,
+  headerRowHeight: GANTT_DEFAULTS.headerRowHeight,
+  groupHeaderHeight: GANTT_DEFAULTS.groupHeaderHeight,
+  sidebarWidth: GANTT_DEFAULTS.sidebarWidth,
+  overlap: GANTT_DEFAULTS.overlap,
+  draggable: GANTT_DEFAULTS.draggable,
+  rowMovable: GANTT_DEFAULTS.rowMovable,
+  resizable: GANTT_DEFAULTS.resizable,
+  progressDraggable: GANTT_DEFAULTS.progressDraggable,
+  linkable: GANTT_DEFAULTS.linkable,
+  dependencyShape: elbowPath,
+  arrowHead: triangleArrow,
+  snapToGrid: GANTT_DEFAULTS.snapToGrid,
+  dragLabelFormat: GANTT_DEFAULTS.dragLabelFormat,
+  dragLabel: undefined,
+  startDate: undefined,
+  endDate: undefined,
+  today: undefined,
+  labelFormat: undefined,
+})
 
 const emit = defineEmits<{
   move: [event: GanttMoveEvent]
@@ -123,13 +122,13 @@ function dispatch<K extends keyof GanttEventMap>(name: K, payload: GanttEventMap
   // Mirror dependency edits into `v-model:rows`.
   if (name === 'dependency-create') {
     const p = payload as GanttDependencyChange
-    emitModelUpdate((rows) => addDependency(rows, p.from, p.to))
+    emitModelUpdate(rows => addDependency(rows, p.from, p.to))
   } else if (name === 'dependency-remove') {
     const p = payload as GanttDependencyChange
-    emitModelUpdate((rows) => removeDependency(rows, p.from, p.to))
+    emitModelUpdate(rows => removeDependency(rows, p.from, p.to))
   } else if (name === 'dependency-update') {
     const p = payload as GanttDependencyUpdate
-    emitModelUpdate((rows) =>
+    emitModelUpdate(rows =>
       addDependency(removeDependency(rows, p.previous.from, p.previous.to), p.from, p.to),
     )
   }
@@ -203,7 +202,7 @@ function isCollapsed(group: GanttGroup): boolean {
 const groupMeta = computed<Map<string, GroupMeta>>(
   () =>
     new Map(
-      sourceGroups.value.map((group) => [
+      sourceGroups.value.map(group => [
         group.id,
         {
           name: group.name ?? group.id,
@@ -215,7 +214,7 @@ const groupMeta = computed<Map<string, GroupMeta>>(
 )
 
 function toggleGroup(id: string): void {
-  const group = sourceGroups.value.find((g) => g.id === id)
+  const group = sourceGroups.value.find(g => g.id === id)
   const current = group ? isCollapsed(group) : (collapseOverrides.get(id) ?? false)
   collapseOverrides.set(id, !current)
   emit('group-toggle', { id, collapsed: !current })
@@ -238,7 +237,7 @@ const rows = computed<ResolvedRow[]>(() => layout.value.rows)
 const groups = computed<ResolvedGroup[]>(() => layout.value.groups)
 
 // All tasks flattened across rows (each carries its row's order + lane).
-const tasks = computed<ResolvedTask[]>(() => rows.value.flatMap((row) => row.tasks))
+const tasks = computed<ResolvedTask[]>(() => rows.value.flatMap(row => row.tasks))
 
 const taskOrder = computed(() => {
   const map = new Map<string, number>()
@@ -248,14 +247,14 @@ const taskOrder = computed(() => {
 
 const start = computed<Date>(() => {
   if (props.startDate != null) return toDate(props.startDate)
-  const starts = tasks.value.map((t) => t.start)
+  const starts = tasks.value.map(t => t.start)
   const base = starts.length ? minDate(starts) : today.value
   return floorToUnit(base, coarsestUnit.value)
 })
 
 const end = computed<Date>(() => {
   if (props.endDate != null) return toDate(props.endDate)
-  const ends = tasks.value.map((t) => t.end)
+  const ends = tasks.value.map(t => t.end)
   const base = ends.length ? maxDate(ends) : addDays(today.value, 14)
   return ceilToUnit(base, coarsestUnit.value)
 })
@@ -347,6 +346,7 @@ function setScroller(el: HTMLElement | null): void {
   scrollerEl.value = el
 }
 
+
 // Edge auto-scroll during a drag (move/resize/link): scrolls the viewport toward
 // whichever edge the pointer approaches so off-screen destinations are reachable.
 // Clamp to the content extent (not `el.scrollWidth/Height`, which a dragged ghost
@@ -360,7 +360,11 @@ const autoscroll = useGanttAutoscroll(
 )
 onUnmounted(() => autoscroll.update(null))
 
-function applyScroll(left: number | undefined, top: number | undefined, behavior: ScrollBehavior): void {
+function applyScroll(
+  left: number | undefined,
+  top: number | undefined,
+  behavior: ScrollBehavior,
+): void {
   const el = scrollerEl.value
   if (!el) return
   const x = left == null ? undefined : Math.max(0, left)
@@ -381,19 +385,27 @@ function leftForDate(date: Date | string | number, align: 'start' | 'center'): n
   return x
 }
 
-function scrollToDate(date: Date | string | number, options: { behavior?: ScrollBehavior; align?: 'start' | 'center' } = {}): void {
+function scrollToDate(
+  date: Date | string | number,
+  options: { behavior?: ScrollBehavior; align?: 'start' | 'center' } = {},
+): void {
   applyScroll(leftForDate(date, options.align ?? 'start'), undefined, options.behavior ?? 'smooth')
 }
 
-function scrollToTask(id: string, options: { behavior?: ScrollBehavior; align?: 'start' | 'center' } = {}): void {
-  const task = tasks.value.find((t) => t.id === id)
+function scrollToTask(
+  id: string,
+  options: { behavior?: ScrollBehavior; align?: 'start' | 'center' } = {},
+): void {
+  const task = tasks.value.find(t => t.id === id)
   if (!task) return
   const row = rowByOrder.value[task.order]
   const top = row ? row.top : task.order * props.rowHeight
   applyScroll(leftForDate(task.start, options.align ?? 'start'), top, options.behavior ?? 'smooth')
 }
 
-function scrollToToday(options: { behavior?: ScrollBehavior; align?: 'start' | 'center' } = {}): void {
+function scrollToToday(
+  options: { behavior?: ScrollBehavior; align?: 'start' | 'center' } = {},
+): void {
   scrollToDate(today.value, options)
 }
 
@@ -427,12 +439,12 @@ function bandInWindow(top: number, height: number): boolean {
 
 // Collapsed groups hide their member rows: drop `hidden` rows from every view.
 const visibleRows = computed<ResolvedRow[]>(() =>
-  rows.value.filter((r) => !r.hidden && rowInWindow(r.order)),
+  rows.value.filter(r => !r.hidden && rowInWindow(r.order)),
 )
 
 const visibleTasks = computed<ResolvedTask[]>(() => {
   const h = horizontalWindow.value
-  return tasks.value.filter((t) => {
+  return tasks.value.filter(t => {
     const row = rowByOrder.value[t.order]
     if (row?.hidden) return false
     if (!rowInWindow(t.order)) return false
@@ -444,7 +456,7 @@ const visibleTasks = computed<ResolvedTask[]>(() => {
 })
 
 const visibleGroups = computed<ResolvedGroup[]>(() =>
-  groups.value.filter((g) => bandInWindow(g.top, g.height)),
+  groups.value.filter(g => bandInWindow(g.top, g.height)),
 )
 
 function visibleColumnsFor(tier: GanttUnit): GanttColumn[] {
@@ -495,8 +507,8 @@ const context: GanttContext = {
   widthBetween: scale.widthBetween,
   xToDate: scale.xToDate,
   snap: scale.snap,
-  rowIndexOf: (rowId) => rows.value.findIndex((r) => r.id === rowId),
-  rowOf: (taskId) => taskOrder.value.get(taskId) ?? -1,
+  rowIndexOf: rowId => rows.value.findIndex(r => r.id === rowId),
+  rowOf: taskId => taskOrder.value.get(taskId) ?? -1,
   taskBand,
   conflicts,
   registerRow,
@@ -506,17 +518,17 @@ const context: GanttContext = {
   toggleGroup,
   registerTask,
   unregisterTask,
-  moveTask: (event) => {
+  moveTask: event => {
     emit('move', event)
-    emitModelUpdate((rows) => applyMove(rows, event))
+    emitModelUpdate(rows => applyMove(rows, event))
   },
-  resizeTask: (event) => {
+  resizeTask: event => {
     emit('resize', event)
-    emitModelUpdate((rows) => updateTask(rows, event.id, { start: event.start, end: event.end }))
+    emitModelUpdate(rows => updateTask(rows, event.id, { start: event.start, end: event.end }))
   },
-  progressTask: (event) => {
+  progressTask: event => {
     emit('progress', event)
-    emitModelUpdate((rows) => updateTask(rows, event.id, { progress: event.progress }))
+    emitModelUpdate(rows => updateTask(rows, event.id, { progress: event.progress }))
   },
   autoScroll: autoscroll.update,
   linkDraft,
@@ -582,7 +594,15 @@ function ceilToUnit(date: Date, unit: GanttUnit): Date {
   }
 }
 
-defineExpose({ rows, tasks, columns: scale.columns, config, scrollToDate, scrollToTask, scrollToToday })
+defineExpose({
+  rows,
+  tasks,
+  columns: scale.columns,
+  config,
+  scrollToDate,
+  scrollToTask,
+  scrollToToday,
+})
 </script>
 
 <template>

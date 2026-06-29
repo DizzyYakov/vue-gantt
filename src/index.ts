@@ -31,7 +31,15 @@ export { useGanttViewport } from './composables/useGanttViewport'
 export { useGanttDrag } from './composables/useGanttDrag'
 
 // Context primitives + layout helpers
-export { GANTT_CONTEXT, GANTT_ROW, GANTT_GROUP, GANTT_DEFAULTS, normalizeRow, normalizeTask, toDate } from './context'
+export {
+  GANTT_CONTEXT,
+  GANTT_ROW,
+  GANTT_GROUP,
+  GANTT_DEFAULTS,
+  normalizeRow,
+  normalizeTask,
+  toDate,
+} from './context'
 export { assignLanes, layoutRows, layoutGroups, conflictSegments } from './layout'
 export type { GroupMeta, GroupedLayout, LayoutGroupsOptions } from './layout'
 

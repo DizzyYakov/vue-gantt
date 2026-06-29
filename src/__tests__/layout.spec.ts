@@ -10,12 +10,9 @@ const task = (id: string, start: string, end: string): ResolvedTask => {
 
 describe('assignLanes', () => {
   it('keeps sequential (touching) tasks in one lane', () => {
-    const tasks = [
-      task('a', '2026-06-01', '2026-06-05'),
-      task('b', '2026-06-05', '2026-06-09'),
-    ]
+    const tasks = [task('a', '2026-06-01', '2026-06-05'), task('b', '2026-06-05', '2026-06-09')]
     expect(assignLanes(tasks)).toBe(1)
-    expect(tasks.map((t) => t.lane)).toEqual([0, 0])
+    expect(tasks.map(t => t.lane)).toEqual([0, 0])
   })
 
   it('splits overlapping tasks into separate lanes', () => {
@@ -38,7 +35,13 @@ describe('assignLanes', () => {
 
 describe('layoutRows', () => {
   const rows: GanttRow[] = [
-    { id: 'r1', tasks: [{ id: 'a', start: '2026-06-01', end: '2026-06-10' }, { id: 'b', start: '2026-06-05', end: '2026-06-15' }] },
+    {
+      id: 'r1',
+      tasks: [
+        { id: 'a', start: '2026-06-01', end: '2026-06-10' },
+        { id: 'b', start: '2026-06-05', end: '2026-06-15' },
+      ],
+    },
     { id: 'r2', tasks: [{ id: 'c', start: '2026-06-01', end: '2026-06-03' }] },
   ]
   const resolve = () => rows.map((r, i) => normalizeRow(r, i))
@@ -60,9 +63,7 @@ describe('layoutRows', () => {
 })
 
 describe('layoutGroups', () => {
-  const meta = (
-    entries: Record<string, Partial<GroupMeta>>,
-  ): Map<string, GroupMeta> =>
+  const meta = (entries: Record<string, Partial<GroupMeta>>): Map<string, GroupMeta> =>
     new Map(
       Object.entries(entries).map(([id, m]) => [
         id,
@@ -84,7 +85,7 @@ describe('layoutGroups', () => {
       groupHeaderHeight: 20,
       groupMeta: meta({ g1: { name: 'Group 1' }, g2: {} }),
     })
-    expect(out.groups.map((g) => g.id)).toEqual(['g1', 'g2'])
+    expect(out.groups.map(g => g.id)).toEqual(['g1', 'g2'])
     expect(out.groups[0]!.name).toBe('Group 1')
 
     // g1 header at 0 (h20) → r1 at 20 → r2 at 50 → g2 header at 80 → r3 at 100.
@@ -138,14 +139,24 @@ describe('layoutGroups', () => {
 
   it('leaves ungrouped rows exactly where layoutRows puts them', () => {
     const ungrouped: GanttRow[] = [
-      { id: 'r1', tasks: [{ id: 'a', start: '2026-06-01', end: '2026-06-10' }, { id: 'b', start: '2026-06-05', end: '2026-06-15' }] },
+      {
+        id: 'r1',
+        tasks: [
+          { id: 'a', start: '2026-06-01', end: '2026-06-10' },
+          { id: 'b', start: '2026-06-05', end: '2026-06-15' },
+        ],
+      },
       { id: 'r2', tasks: [{ id: 'c', start: '2026-06-01', end: '2026-06-03' }] },
     ]
     const opts = { mode: 'lanes' as const, rowHeight: 30 }
     const flat = layoutRows(resolve(ungrouped), opts)
-    const out = layoutGroups(resolve(ungrouped), { ...opts, groupHeaderHeight: 20, groupMeta: new Map() })
+    const out = layoutGroups(resolve(ungrouped), {
+      ...opts,
+      groupHeaderHeight: 20,
+      groupMeta: new Map(),
+    })
     expect(out.groups).toHaveLength(0)
-    expect(out.rows.map((r) => [r.top, r.height])).toEqual(flat.map((r) => [r.top, r.height]))
+    expect(out.rows.map(r => [r.top, r.height])).toEqual(flat.map(r => [r.top, r.height]))
     expect(out.contentHeight).toBe(flat[flat.length - 1]!.top + flat[flat.length - 1]!.height)
   })
 })
@@ -163,7 +174,10 @@ describe('conflictSegments', () => {
 
   it('ignores touching (non-overlapping) tasks', () => {
     expect(
-      conflictSegments([task('a', '2026-06-01', '2026-06-05'), task('b', '2026-06-05', '2026-06-09')]),
+      conflictSegments([
+        task('a', '2026-06-01', '2026-06-05'),
+        task('b', '2026-06-05', '2026-06-09'),
+      ]),
     ).toHaveLength(0)
   })
 })

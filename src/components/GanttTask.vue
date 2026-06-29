@@ -110,18 +110,20 @@ const tooltipStyle = computed(() =>
       @contextmenu="onContextmenu"
     >
       <slot :task="resolved" :progress="liveProgress">
-        <div
-          class="gantt-bar__progress"
-          :style="progressStyle"
-          :aria-label="`${liveProgress}%`"
-        />
+        <div class="gantt-bar__progress" :style="progressStyle" :aria-label="`${liveProgress}%`" />
         <span class="gantt-bar__label">{{ resolved.name }}</span>
       </slot>
 
       <!-- Edge handles for resizing (drag a side; sides flip past each other). -->
       <template v-if="resizable">
-        <div class="gantt-bar__resize gantt-bar__resize--start" @pointerdown.stop="startResize($event, 'start')" />
-        <div class="gantt-bar__resize gantt-bar__resize--end" @pointerdown.stop="startResize($event, 'end')" />
+        <div
+          class="gantt-bar__resize gantt-bar__resize--start"
+          @pointerdown.stop="startResize($event, 'start')"
+        />
+        <div
+          class="gantt-bar__resize gantt-bar__resize--end"
+          @pointerdown.stop="startResize($event, 'end')"
+        />
       </template>
 
       <!-- Progress handle: drag to change completion. -->

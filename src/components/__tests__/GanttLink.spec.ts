@@ -32,7 +32,12 @@ describe('dependency create / re-route (link drag)', () => {
     const { wrapper, ctx } = mountInRoot(GanttDependencies, {
       rootProps: { rows, unit: 'day', linkable: true },
     })
-    ctx().beginLink({ anchorId: 'a', anchorEdge: 'finish', mode: 'create', pointer: { x: 0, y: 0 } })
+    ctx().beginLink({
+      anchorId: 'a',
+      anchorEdge: 'finish',
+      mode: 'create',
+      pointer: { x: 0, y: 0 },
+    })
     ctx().endLink('c')
     expect(wrapper.emitted('dependency-create')![0]![0]).toEqual({ from: 'a', to: 'c' })
   })
@@ -41,9 +46,19 @@ describe('dependency create / re-route (link drag)', () => {
     const { wrapper, ctx } = mountInRoot(GanttDependencies, {
       rootProps: { rows, unit: 'day', linkable: true },
     })
-    ctx().beginLink({ anchorId: 'a', anchorEdge: 'finish', mode: 'create', pointer: { x: 0, y: 0 } })
+    ctx().beginLink({
+      anchorId: 'a',
+      anchorEdge: 'finish',
+      mode: 'create',
+      pointer: { x: 0, y: 0 },
+    })
     ctx().endLink('b') // b already depends on a
-    ctx().beginLink({ anchorId: 'a', anchorEdge: 'finish', mode: 'create', pointer: { x: 0, y: 0 } })
+    ctx().beginLink({
+      anchorId: 'a',
+      anchorEdge: 'finish',
+      mode: 'create',
+      pointer: { x: 0, y: 0 },
+    })
     ctx().endLink('a') // self
     expect(wrapper.emitted('dependency-create')).toBeUndefined()
   })
@@ -68,7 +83,12 @@ describe('dependency create / re-route (link drag)', () => {
     const { wrapper, ctx } = mountInRoot(GanttDependencies, {
       rootProps: { rows, unit: 'day', linkable: true },
     })
-    ctx().beginLink({ anchorId: 'a', anchorEdge: 'finish', mode: 'create', pointer: { x: 0, y: 0 } })
+    ctx().beginLink({
+      anchorId: 'a',
+      anchorEdge: 'finish',
+      mode: 'create',
+      pointer: { x: 0, y: 0 },
+    })
     ctx().endLink(null)
     expect(wrapper.emitted('dependency-create')).toBeUndefined()
   })

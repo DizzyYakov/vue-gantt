@@ -7,7 +7,10 @@ const modules = import.meta.glob('../*.stories.ts', { eager: true }) as Record<
   { default: Record<string, unknown>; [name: string]: unknown }
 >
 
-type AnyStory = { args?: Record<string, unknown>; render?: (args: unknown, ctx: unknown) => unknown }
+type AnyStory = {
+  args?: Record<string, unknown>
+  render?: (args: unknown, ctx: unknown) => unknown
+}
 type AnyMeta = {
   component?: unknown
   args?: Record<string, unknown>

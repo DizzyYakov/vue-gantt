@@ -52,7 +52,7 @@ describe('Gantt (prop-driven)', () => {
   it('renders one timeline row per enabled time group, ordered coarse→fine', () => {
     const wrapper = mount(Gantt, { props: { rows, tiers: ['day', 'month', 'week'] } })
     const timelineRows = wrapper.findAll('.gantt-timeline__row')
-    expect(timelineRows.map((r) => r.attributes('data-tier'))).toEqual(['month', 'week', 'day'])
+    expect(timelineRows.map(r => r.attributes('data-tier'))).toEqual(['month', 'week', 'day'])
   })
 })
 
@@ -395,7 +395,13 @@ describe('current-time line', () => {
       },
     })
     await nextTick()
-    const leftPx = () => parseFloat(wrapper.find('.gantt-today').attributes('style')!.match(/left:\s*([\d.]+)px/)![1]!)
+    const leftPx = () =>
+      parseFloat(
+        wrapper
+          .find('.gantt-today')
+          .attributes('style')!
+          .match(/left:\s*([\d.]+)px/)![1]!,
+      )
     // Jan 2 00:00 → 1 day from origin × 48px.
     expect(leftPx()).toBeCloseTo(48, 5)
 
@@ -534,7 +540,15 @@ describe('slot forwarding', () => {
       },
     })
 
-    for (const cls of ['s-corner', 's-timeline', 's-sidebar', 's-grid', 's-deps', 's-today', 's-extra']) {
+    for (const cls of [
+      's-corner',
+      's-timeline',
+      's-sidebar',
+      's-grid',
+      's-deps',
+      's-today',
+      's-extra',
+    ]) {
       expect(wrapper.find(`.${cls}`).exists()).toBe(true)
     }
   })
@@ -543,10 +557,12 @@ describe('slot forwarding', () => {
     const wrapper = mount(Gantt, {
       props: { rows, today: '2026-01-03' },
       slots: {
-        row: (p: { row: unknown }) => h('span', { class: 's-row' }, (p.row as { name: string }).name),
+        row: (p: { row: unknown }) =>
+          h('span', { class: 's-row' }, (p.row as { name: string }).name),
         column: (p: { column: unknown }) =>
           h('span', { class: 's-col' }, (p.column as { label: string }).label),
-        bar: (p: { task: unknown }) => h('span', { class: 's-bar' }, (p.task as { name: string }).name),
+        bar: (p: { task: unknown }) =>
+          h('span', { class: 's-bar' }, (p.task as { name: string }).name),
         milestone: (p: { task: unknown }) =>
           h('span', { class: 's-ms' }, (p.task as { name: string }).name),
       },
@@ -651,7 +667,7 @@ describe('section slot scoped payloads', () => {
   it('bars → { tasks } array of the plotted (visible) tasks', () => {
     const { cap } = capture('bars')
     expect(Array.isArray(cap.tasks)).toBe(true)
-    expect((cap.tasks as { id: string }[]).map((t) => t.id).sort()).toEqual(['a', 'b', 'm'])
+    expect((cap.tasks as { id: string }[]).map(t => t.id).sort()).toEqual(['a', 'b', 'm'])
   })
 
   it('bars slot replaces the default task/milestone layer', () => {
@@ -670,7 +686,7 @@ describe('section slot scoped payloads', () => {
     expect(Array.isArray(cap.tasks)).toBe(true)
     // a + b + milestone m = 3 tasks across both rows.
     expect((cap.tasks as unknown[]).length).toBe(3)
-    expect((cap.tasks as { id: string }[]).map((t) => t.id).sort()).toEqual(['a', 'b', 'm'])
+    expect((cap.tasks as { id: string }[]).map(t => t.id).sort()).toEqual(['a', 'b', 'm'])
   })
 
   it('today → { today: Date, dateToX: fn } where dateToX(today) is a number', () => {

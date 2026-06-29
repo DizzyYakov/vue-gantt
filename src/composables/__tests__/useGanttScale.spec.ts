@@ -37,9 +37,9 @@ describe('useGanttScale', () => {
     it('generates one column per day with the today flag set', () => {
       const cols = scale.columns.value
       expect(cols).toHaveLength(10)
-      expect(cols.every((c) => c.width === 40)).toBe(true)
-      expect(cols.filter((c) => c.isToday)).toHaveLength(1)
-      expect(cols.find((c) => c.isToday)?.date.getTime()).toBe(day(2026, 1, 3).getTime())
+      expect(cols.every(c => c.width === 40)).toBe(true)
+      expect(cols.filter(c => c.isToday)).toHaveLength(1)
+      expect(cols.find(c => c.isToday)?.date.getTime()).toBe(day(2026, 1, 3).getTime())
     })
 
     it('reports total content width covering every column', () => {
@@ -56,7 +56,7 @@ describe('useGanttScale', () => {
         end: ref(new Date(2026, 0, 1, 6, 0)),
         today: ref(new Date(2026, 0, 1, 3, 30)), // 03:30
       })
-      const today = scale.columnsFor('hour').filter((c) => c.isToday)
+      const today = scale.columnsFor('hour').filter(c => c.isToday)
       expect(today).toHaveLength(1)
       expect(today[0]!.date.getHours()).toBe(3) // the 03:00 hour, not 00:00
     })
@@ -129,8 +129,8 @@ describe('useGanttScale', () => {
       const weeks = monthScale.columnsFor('week')
       expect(weeks.length).toBeGreaterThan(0)
       // Nothing starts before the origin or extends past the content width.
-      expect(Math.min(...weeks.map((c) => c.x))).toBeGreaterThanOrEqual(0)
-      expect(Math.max(...weeks.map((c) => c.x + c.width))).toBeLessThanOrEqual(max)
+      expect(Math.min(...weeks.map(c => c.x))).toBeGreaterThanOrEqual(0)
+      expect(Math.max(...weeks.map(c => c.x + c.width))).toBeLessThanOrEqual(max)
     })
 
     it('builds sub-day tiers when they fit', () => {

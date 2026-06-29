@@ -34,7 +34,7 @@ type Story = StoryObj<typeof Gantt>
 
 /** Wrap the chart in a host element that maps `--gantt-*` to a system's tokens. */
 function themed(vars: Record<string, string>): Story['render'] {
-  return (args) => ({
+  return args => ({
     components: { Gantt },
     setup: () => ({ args, vars }),
     template: `<div :style="vars"><Gantt v-bind="args" /></div>`,

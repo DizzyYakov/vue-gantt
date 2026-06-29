@@ -76,7 +76,7 @@ describe('useGanttItem (declarative)', () => {
     })
     mount(GanttRoot, { props: { unit: 'day' }, slots: { default: () => h(Harness) } })
     await nextTick()
-    expect(api!.ctx.tasks.value.some((t) => t.id === 'd')).toBe(true)
+    expect(api!.ctx.tasks.value.some(t => t.id === 'd')).toBe(true)
     expect(api!.resolved.value.order).toBe(1) // r2 is the second row
     expect(api!.resolved.value.rowId).toBe('r2')
   })

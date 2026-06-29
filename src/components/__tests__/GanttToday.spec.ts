@@ -6,7 +6,9 @@ import { mountInRoot } from '../../__tests__/helpers'
 
 const rows: GanttRow[] = [{ id: 'r', tasks: [{ id: 'a', start: '2026-01-01', end: '2026-01-10' }] }]
 
-function leftPx(wrapper: { find: (s: string) => { attributes: (a: string) => string | undefined } }): number {
+function leftPx(wrapper: {
+  find: (s: string) => { attributes: (a: string) => string | undefined }
+}): number {
   const style = wrapper.find('.gantt-today').attributes('style')!
   return parseFloat(style.match(/left:\s*([\d.]+)px/)![1]!)
 }

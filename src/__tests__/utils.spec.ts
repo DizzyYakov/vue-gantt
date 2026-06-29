@@ -31,7 +31,7 @@ const sample = (): GanttRow[] => [
 describe('lookups & traversal', () => {
   it('flattenTasks / findTask / findRow', () => {
     const rows = sample()
-    expect(flattenTasks(rows).map((t) => t.id)).toEqual(['a', 'b'])
+    expect(flattenTasks(rows).map(t => t.id)).toEqual(['a', 'b'])
     expect(findTask(rows, 'b')?.row.id).toBe('r2')
     expect(findTask(rows, 'x')).toBeUndefined()
     expect(findRow(rows, 'r1')?.id).toBe('r1')
@@ -58,14 +58,23 @@ describe('immutable edits', () => {
 
   it('applyMove is a no-op for an unknown target', () => {
     const rows = sample()
-    const e = { id: 'a', start: new Date(), end: new Date(), fromRowId: 'r1', toRowId: 'nope', task: {} as never }
+    const e = {
+      id: 'a',
+      start: new Date(),
+      end: new Date(),
+      fromRowId: 'r1',
+      toRowId: 'nope',
+      task: {} as never,
+    }
     expect(applyMove(rows, e)).toBe(rows)
   })
 
   it('updateTask / addTask / removeTask', () => {
     const rows = sample()
     expect(findTask(updateTask(rows, 'b', { progress: 90 }), 'b')?.task.progress).toBe(90)
-    expect(flattenTasks(addTask(rows, 'r1', { id: 'c', start: '2026-01-02' })).map((t) => t.id)).toContain('c')
+    expect(
+      flattenTasks(addTask(rows, 'r1', { id: 'c', start: '2026-01-02' })).map(t => t.id),
+    ).toContain('c')
     expect(findTask(removeTask(rows, 'a'), 'a')).toBeUndefined()
   })
 })
@@ -110,10 +119,13 @@ describe('dependencies', () => {
   it('detectCycles finds a cycle and ignores acyclic graphs', () => {
     expect(detectCycles(sample())).toEqual([])
     const cyclic: GanttRow[] = [
-      { id: 'r', tasks: [
-        { id: 'a', start: '2026-01-01', dependencies: ['b'] },
-        { id: 'b', start: '2026-01-01', dependencies: ['a'] },
-      ] },
+      {
+        id: 'r',
+        tasks: [
+          { id: 'a', start: '2026-01-01', dependencies: ['b'] },
+          { id: 'b', start: '2026-01-01', dependencies: ['a'] },
+        ],
+      },
     ]
     expect(detectCycles(cyclic).length).toBe(1)
   })
@@ -125,11 +137,14 @@ describe('dependencies', () => {
 
   it('criticalPath returns the longest chain', () => {
     const rows: GanttRow[] = [
-      { id: 'r', tasks: [
-        { id: 'a', start: '2026-01-01', end: '2026-01-03' },
-        { id: 'b', start: '2026-01-03', end: '2026-01-10', dependencies: ['a'] }, // long
-        { id: 'c', start: '2026-01-03', end: '2026-01-04', dependencies: ['a'] }, // short
-      ] },
+      {
+        id: 'r',
+        tasks: [
+          { id: 'a', start: '2026-01-01', end: '2026-01-03' },
+          { id: 'b', start: '2026-01-03', end: '2026-01-10', dependencies: ['a'] }, // long
+          { id: 'c', start: '2026-01-03', end: '2026-01-04', dependencies: ['a'] }, // short
+        ],
+      },
     ]
     expect(criticalPath(rows)).toEqual(['a', 'b'])
   })
@@ -139,7 +154,10 @@ describe('autoSchedule', () => {
   it('pushes a successor to start no earlier than its predecessor ends', () => {
     const rows: GanttRow[] = [
       { id: 'r1', tasks: [{ id: 'a', start: '2026-01-01', end: '2026-01-05' }] },
-      { id: 'r2', tasks: [{ id: 'b', start: '2026-01-02', end: '2026-01-04', dependencies: ['a'] }] },
+      {
+        id: 'r2',
+        tasks: [{ id: 'b', start: '2026-01-02', end: '2026-01-04', dependencies: ['a'] }],
+      },
     ]
     const b = findTask(autoSchedule(rows), 'b')!.task
     expect(b.start).toEqual(new Date(2026, 0, 5)) // shifted to a.end
@@ -150,14 +168,18 @@ describe('autoSchedule', () => {
 describe('validateRows', () => {
   it('flags duplicate ids, missing deps, bad ranges and orphan groups', () => {
     const rows: GanttRow[] = [
-      { id: 'r1', groupId: 'ghost', tasks: [
-        { id: 'a', start: '2026-01-05', end: '2026-01-01' }, // invalid range
-        { id: 'a', start: '2026-01-01' }, // duplicate task id
-        { id: 'b', start: '2026-01-01', dependencies: ['missing'] }, // missing dep
-      ] },
+      {
+        id: 'r1',
+        groupId: 'ghost',
+        tasks: [
+          { id: 'a', start: '2026-01-05', end: '2026-01-01' }, // invalid range
+          { id: 'a', start: '2026-01-01' }, // duplicate task id
+          { id: 'b', start: '2026-01-01', dependencies: ['missing'] }, // missing dep
+        ],
+      },
       { id: 'r1', tasks: [] }, // duplicate row id
     ]
-    const types = validateRows(rows, []).map((i) => i.type)
+    const types = validateRows(rows, []).map(i => i.type)
     expect(types).toContain('duplicate-row-id')
     expect(types).toContain('duplicate-task-id')
     expect(types).toContain('invalid-range')
