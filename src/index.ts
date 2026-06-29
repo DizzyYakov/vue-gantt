@@ -83,6 +83,7 @@ export type {
   GanttGroupToggleEvent,
   GanttIssue,
   GanttIssueType,
+  GanttLabelFormat,
   GanttItemType,
   GanttLinkDraft,
   GanttLinkMode,

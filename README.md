@@ -220,7 +220,7 @@ parent collapses to the content height and simply grows to fit (as before).
 | `dragLabel`           | `(info: GanttDragLabelInfo) => string`            | —               | Override the drag tooltip text (move/resize/progress).       |
 | `startDate` / `endDate` | `Date \| string \| number`                      | auto            | Explicit axis bounds (auto-derived from tasks otherwise).    |
 | `today`               | `Date \| string \| number`                        | now             | The "today" reference.                                      |
-| `labelFormat`         | `string`                                          | per tier        | date-fns format for column labels.                          |
+| `labelFormat`         | `GanttLabelFormat`                                | per tier        | Column label formatting. A date-fns `string` (base unit only — other tiers keep defaults), a per-tier map `Partial<Record<GanttUnit, string>>`, or a `(date, tier) => string` function (full control). E.g. `{ month: 'LLLL yyyy', week: "'W'w", day: 'd' }`. |
 
 ### Item props (`GanttItemProps`, for `<GanttTask>` / `<GanttMilestone>`)
 

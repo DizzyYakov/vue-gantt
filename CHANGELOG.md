@@ -28,6 +28,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Added
+
+- Per-tier timeline label formatting. The `labelFormat` prop on `Gantt`/`GanttRoot`
+  is now a `GanttLabelFormat`: a date-fns `string` (applied to the base unit only,
+  as before), a per-tier map `Partial<Record<GanttUnit, string>>` (missing tiers
+  keep their defaults), or a `(date, tier) => string` function for full control.
+  The `GanttLabelFormat` type is exported from the package.
+
 ### Release / tooling
 
 - The package is published as **`@dizzy_yakov/vue-gantt`** (scoped, public access).

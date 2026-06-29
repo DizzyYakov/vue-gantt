@@ -17,7 +17,7 @@ import {
 } from 'date-fns'
 import { computed, toValue, type MaybeRefOrGetter } from 'vue'
 import { toDate } from '../context'
-import type { GanttColumn, GanttUnit } from '../types'
+import type { GanttColumn, GanttLabelFormat, GanttUnit } from '../types'
 
 const MS_PER_DAY = 86_400_000
 
@@ -79,8 +79,13 @@ export interface ScaleOptions {
   start: MaybeRefOrGetter<Date>
   end: MaybeRefOrGetter<Date>
   today?: MaybeRefOrGetter<Date>
-  /** Override the label formatting for the base unit's columns. */
-  labelFormat?: MaybeRefOrGetter<string | undefined>
+  /**
+   * Override column label formatting (string = base unit, per-tier map, or
+   * `(date, tier) => string`). NOTE: when the value is the function form, pass it
+   * wrapped in a ref/getter (e.g. `toRef(props, 'labelFormat')`) — a bare function
+   * is treated by `toValue` as a getter and called with no arguments.
+   */
+  labelFormat?: MaybeRefOrGetter<GanttLabelFormat | undefined>
 }
 
 /**
@@ -147,8 +152,24 @@ export function useGanttScale(options: ScaleOptions) {
     if (hi <= lo) return []
 
     const today = options.today ? toValue(options.today) : undefined
-    const override = tier === toValue(options.unit) ? toValue(options.labelFormat) : undefined
-    const fmt = override ?? DEFAULT_LABEL_FORMAT[tier]
+
+    // Resolve the label strategy once per call (not per cell): a function gets
+    // full control; a per-tier map overrides specific tiers; a bare string
+    // overrides the base unit only (back-compat); anything unset falls back to
+    // the tier's default format.
+    const lf = toValue(options.labelFormat)
+    let labelFor: (date: Date) => string
+    if (typeof lf === 'function') {
+      labelFor = (date) => lf(date, tier)
+    } else {
+      const fmt =
+        lf && typeof lf === 'object'
+          ? (lf[tier] ?? DEFAULT_LABEL_FORMAT[tier])
+          : typeof lf === 'string' && tier === toValue(options.unit)
+            ? lf
+            : DEFAULT_LABEL_FORMAT[tier]
+      labelFor = (date) => format(date, fmt)
+    }
 
     // First cell boundary at/just left of the window, never before the range.
     let cursor = FLOOR[tier](xToDate(lo))
@@ -172,7 +193,7 @@ export function useGanttScale(options: ScaleOptions) {
         out.push({
           key: `${tier}-${cursor.toISOString()}`,
           date: cursor,
-          label: format(cursor, fmt),
+          label: labelFor(cursor),
           x,
           width,
           isToday: today ? isWithin(today, cursor, next) : false,

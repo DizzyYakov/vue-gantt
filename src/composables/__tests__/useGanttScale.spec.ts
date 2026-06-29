@@ -1,5 +1,7 @@
+import { format } from 'date-fns'
 import { describe, expect, it } from 'vitest'
 import { ref } from 'vue'
+import type { GanttLabelFormat } from '../../types'
 import { useGanttScale } from '../useGanttScale'
 
 const day = (y: number, m: number, d: number) => new Date(y, m - 1, d)
@@ -154,6 +156,83 @@ describe('useGanttScale', () => {
     it('snaps to the nearest base-unit boundary', () => {
       expect(scale.snap(new Date(2026, 0, 3, 5)).getDate()).toBe(3) // 05:00 → day 3
       expect(scale.snap(new Date(2026, 0, 3, 18)).getDate()).toBe(4) // 18:00 → day 4
+    })
+  })
+
+  describe('labelFormat', () => {
+    // A day base over a full year so quarter/month/week/day tiers are all
+    // available via columnsFor and there's a non-base tier to assert against.
+    // labelFormat is wrapped in a ref to mirror how GanttRoot feeds it
+    // (`toRef(props, 'labelFormat')`) — important for the function form, since a
+    // bare function would be (correctly) treated as a getter by `toValue`.
+    const makeScale = (labelFormat: GanttLabelFormat | undefined) =>
+      useGanttScale({
+        unit: ref<'day'>('day'),
+        columnWidth: ref(40),
+        start: ref(day(2026, 1, 1)),
+        end: ref(day(2026, 12, 31)),
+        labelFormat: ref(labelFormat),
+      })
+
+    it('per-tier map: each listed tier uses its format, others fall back to default', () => {
+      const scale = makeScale({ month: 'LLLL', day: 'd' })
+
+      const month0 = scale.columnsFor('month')[0]!
+      const day0 = scale.columnsFor('day')[0]!
+      const week0 = scale.columnsFor('week')[0]!
+
+      // Mapped tiers use the supplied format.
+      expect(month0.label).toBe(format(month0.date, 'LLLL'))
+      expect(month0.label).toBe('January')
+      expect(day0.label).toBe(format(day0.date, 'd'))
+
+      // A tier absent from the map keeps its default ("'W'w" for week).
+      expect(week0.label).toBe(format(week0.date, "'W'w"))
+    })
+
+    it('function: receives the correct (date, tier) and its result is the label verbatim', () => {
+      const scale = makeScale((date, tier) => `${tier}:${date.getDate()}`)
+
+      const month0 = scale.columnsFor('month')[0]!
+      const day0 = scale.columnsFor('day')[0]!
+      const quarter0 = scale.columnsFor('quarter')[0]!
+
+      // Each label is prefixed with the tier it was generated for.
+      expect(month0.label).toBe(`month:${month0.date.getDate()}`)
+      expect(day0.label).toBe(`day:${day0.date.getDate()}`)
+      expect(quarter0.label).toBe(`quarter:${quarter0.date.getDate()}`)
+
+      // The tier argument matches the requested tier across the whole set.
+      expect(scale.columnsFor('month').every((c) => c.label.startsWith('month:'))).toBe(true)
+      expect(scale.columnsFor('day').every((c) => c.label.startsWith('day:'))).toBe(true)
+    })
+
+    it('string back-compat: applies only to the base unit, non-base tiers stay default', () => {
+      const scale = makeScale('yyyy-MM')
+
+      const day0 = scale.columnsFor('day')[0]! // base unit
+      const month0 = scale.columnsFor('month')[0]! // non-base tier
+
+      // Base unit (day) picks up the bare string.
+      expect(day0.label).toBe(format(day0.date, 'yyyy-MM'))
+      // Non-base tier (month) is untouched — default 'MMM'.
+      expect(month0.label).toBe(format(month0.date, 'MMM'))
+    })
+
+    it('default: omitting labelFormat keeps every tier on its default format', () => {
+      const scale = makeScale(undefined)
+
+      const defaults: Record<string, string> = {
+        year: 'yyyy',
+        quarter: 'QQQ',
+        month: 'MMM',
+        week: "'W'w",
+        day: 'd',
+      }
+      for (const [tier, fmt] of Object.entries(defaults)) {
+        const col = scale.columnsFor(tier as 'day')[0]!
+        expect(col.label).toBe(format(col.date, fmt))
+      }
     })
   })
 
