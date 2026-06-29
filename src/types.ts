@@ -537,6 +537,12 @@ export interface GanttContext {
   resizeTask: (event: GanttResizeEvent) => void
   /** Emit a completed progress drag (called by `GanttTask`). */
   progressTask: (event: GanttProgressEvent) => void
+  /**
+   * Drive edge auto-scroll during a drag: pass the live pointer (client coords)
+   * to scroll the viewport toward whichever edge it approaches; pass `null` to
+   * stop. Called by the move/resize drag and the dependency link drag.
+   */
+  autoScroll: (pointer: { x: number; y: number } | null) => void
   /** In-progress dependency drag, or `null` when idle. */
   linkDraft: ComputedRef<GanttLinkDraft | null>
   /** Start a dependency drag (connector handle or arrow endpoint). */

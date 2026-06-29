@@ -48,8 +48,17 @@ export function useGanttDrag(options: DragOptions) {
 
   let originX = 0
   let originY = 0
+  // Viewport scroll at drag start — folded into the deltas so the preview stays
+  // anchored to the content (not the screen) while edge auto-scroll moves it.
+  let originScrollLeft = 0
+  let originScrollTop = 0
   let capturedEl: HTMLElement | null = null
   let capturedId = 0
+
+  // Drag deltas in content space: client delta + how far the viewport has
+  // auto-scrolled since the drag began.
+  const effDx = computed(() => dx.value + (ctx.viewport.scrollLeft - originScrollLeft))
+  const effDy = computed(() => dy.value + (ctx.viewport.scrollTop - originScrollTop))
 
   function onPointerDown(event: PointerEvent, dragMode: DragMode = 'move'): void {
     const cfg = ctx.config.value
@@ -65,6 +74,8 @@ export function useGanttDrag(options: DragOptions) {
     moved.value = false
     originX = event.clientX
     originY = event.clientY
+    originScrollLeft = ctx.viewport.scrollLeft
+    originScrollTop = ctx.viewport.scrollTop
     dx.value = 0
     dy.value = 0
     capturedEl = event.currentTarget as HTMLElement
@@ -93,6 +104,10 @@ export function useGanttDrag(options: DragOptions) {
     }
     if (Math.abs(dx.value) > MOVE_THRESHOLD || Math.abs(dy.value) > MOVE_THRESHOLD) {
       moved.value = true
+    }
+    // Auto-scroll toward the viewport edge for move/resize (not progress).
+    if (mode.value !== 'progress') {
+      ctx.autoScroll({ x: event.clientX, y: event.clientY })
     }
   }
 
@@ -129,7 +144,7 @@ export function useGanttDrag(options: DragOptions) {
     if (mode.value !== 'move') {
       const isStart = mode.value === 'resize-start'
       const baseX = ctx.dateToX(isStart ? task.start : task.end)
-      const draggedRaw = ctx.xToDate(baseX + dx.value)
+      const draggedRaw = ctx.xToDate(baseX + effDx.value)
       const dragged = config.snapToGrid ? ctx.snap(draggedRaw) : draggedRaw
       const fixed = isStart ? task.end : task.start
       const start = dragged < fixed ? dragged : fixed
@@ -142,22 +157,22 @@ export function useGanttDrag(options: DragOptions) {
     let order = task.order
     let rowId = task.rowId
 
-    if (config.draggable && dx.value !== 0) {
-      const target = ctx.xToDate(options.baseLeft.value + dx.value)
+    if (config.draggable && effDx.value !== 0) {
+      const target = ctx.xToDate(options.baseLeft.value + effDx.value)
       // Full precision by default; snap to the grid only when asked.
       start = config.snapToGrid ? ctx.snap(target) : target
       // Preserve the duration (a milestone keeps end === start).
       end = new Date(start.getTime() + (task.end.getTime() - task.start.getTime()))
     }
 
-    if (config.rowMovable && dy.value !== 0) {
+    if (config.rowMovable && effDy.value !== 0) {
       // Move the task into the row under the pointer (not reorder the rows).
       // Anchor at the dragged bar's own band centre (its lane), not the row
       // centre — otherwise a task in a lower lane of a tall `lanes` row would
       // need an extra row-height of drag to cross into the next row.
       const rows = ctx.rows.value
       const band = ctx.taskBand(task)
-      const pointerY = band.top + band.height / 2 + dy.value
+      const pointerY = band.top + band.height / 2 + effDy.value
       let target = task.order
       for (const row of rows) {
         // Collapsed-group rows take no space and aren't drop targets.
@@ -223,6 +238,7 @@ export function useGanttDrag(options: DragOptions) {
 
   function teardown(): void {
     dragging.value = false
+    ctx.autoScroll(null)
     try {
       capturedEl?.releasePointerCapture(capturedId)
     } catch {

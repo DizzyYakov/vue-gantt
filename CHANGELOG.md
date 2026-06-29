@@ -40,6 +40,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Added
 
+- **Drag auto-scroll** — while dragging a task (move/resize) or pulling a
+  dependency link, the viewport auto-scrolls on both axes when the pointer nears
+  an edge of the scroll container, so off-screen drop targets stay reachable. The
+  preview (ghost / drop target / draft arrow) keeps following the content;
+  scrolling stops on release. No new props — it kicks in automatically whenever
+  `draggable`/`rowMovable`/`resizable`/`linkable` is enabled.
 - **Progress drag** — drag a handle on the bar to change a task's progress
   (opt-in via `progressDraggable`). Emits a `progress` event (`GanttProgressEvent`);
   the consumer applies it (e.g. `updateTask`). The bar fills live while dragging.
