@@ -1,0 +1,15 @@
+# Build / generated output
+dist
+dist-ssr
+coverage
+storybook-static
+
+# Test / tooling artifacts
+test-results
+playwright-report
+.playwright-mcp
+graphify-out
+
+# Lockfile + release-please-managed changelog
+bun.lock
+CHANGELOG.md
