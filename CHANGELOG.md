@@ -4,6 +4,20 @@ All notable changes to this project are documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [1.3.0](https://github.com/LavaYasha/vue-gantt/compare/vue-gantt-v1.2.0...vue-gantt-v1.3.0) (2026-06-27)
+
+
+### Features
+
+* auto-scroll the viewport while dragging ([bac5c8c](https://github.com/LavaYasha/vue-gantt/commit/bac5c8c75c002957978c7d9370ea72ca4c384fd0))
+* auto-scroll the viewport while dragging ([6cb1443](https://github.com/LavaYasha/vue-gantt/commit/6cb14435590dcba273b296cd29ba3401be54b39b))
+
+
+### Bug Fixes
+
+* clamp drag auto-scroll to the content, not scrollWidth ([512e8b2](https://github.com/LavaYasha/vue-gantt/commit/512e8b2e8d7407741407c58a2fb0f09de4c05285))
+* restore ctx.autoScroll dropped by the develop merge ([1b56f68](https://github.com/LavaYasha/vue-gantt/commit/1b56f685493c92e7c32e9b9872ec460e52ad7223))
+
 ## [1.2.0](https://github.com/LavaYasha/vue-gantt/compare/vue-gantt-v1.1.0...vue-gantt-v1.2.0) (2026-06-25)
 
 
