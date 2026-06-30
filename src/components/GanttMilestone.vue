@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import { computed } from 'vue'
+import { format } from 'date-fns'
 import { useGanttItem, type GanttItemProps } from '../composables/useGanttItem'
+import { useHoverTooltip } from '../composables/useHoverTooltip'
 import type { GanttTaskEvent } from '../types'
 
 const props = defineProps<GanttItemProps>()
@@ -59,6 +61,10 @@ const labelStyle = computed(() =>
     ? { left: `${ghost.value.left}px`, transform: `translateY(${ghost.value.translateY}px)` }
     : undefined,
 )
+
+// Opt-in hover tooltip (enabled by the `tooltip` flag or a `tooltip` slot);
+// `tipStyle` clamps the centred tooltip within the content (no edge clipping).
+const { hovered, show: showHoverTip, tipStyle: hoverTipStyle } = useHoverTooltip(dragging, left, true)
 </script>
 
 <template>
@@ -76,12 +82,22 @@ const labelStyle = computed(() =>
       :data-link-target="linkTarget || undefined"
       :style="markerStyle"
       @pointerdown="onPointerDown"
+      @pointerenter="hovered = true"
+      @pointerleave="hovered = false"
       @click="onClick"
       @dblclick="onDblclick"
       @contextmenu="onContextmenu"
     >
       <slot :task="resolved">
         <div class="gantt-milestone__diamond" />
+      </slot>
+    </div>
+
+    <!-- Opt-in hover tooltip (default content or the `tooltip` slot). -->
+    <div v-if="showHoverTip" ref="tip" class="gantt-tooltip" :style="hoverTipStyle" role="tooltip">
+      <slot name="tooltip" :task="resolved">
+        <span class="gantt-tooltip__name">{{ resolved.name }}</span>
+        <span class="gantt-tooltip__dates">{{ format(resolved.start, 'd MMM yyyy') }}</span>
       </slot>
     </div>
 
@@ -121,6 +137,10 @@ const labelStyle = computed(() =>
   justify-content: center;
   /* Center the marker on the milestone date. */
   transform: translateX(-50%);
+  /* Sit above the dependency SVG layer (painted later in `.gantt__body`), whose
+     arrow strokes (`pointer-events: stroke`) would otherwise steal the marker's
+     hover/click/drag where a connector crosses it. */
+  z-index: 1;
   pointer-events: auto;
 }
 
@@ -164,5 +184,29 @@ const labelStyle = computed(() =>
   color: var(--gantt-drag-label-color, #fff);
   background: var(--gantt-drag-label-bg, #1e293b);
   border-radius: var(--gantt-drag-label-radius, 4px);
+}
+
+/* Opt-in hover tooltip, floating just above the marker (defaults mirror the drag label). */
+.gantt-tooltip {
+  position: absolute;
+  top: 0;
+  margin-top: -2em;
+  z-index: 6;
+  display: flex;
+  gap: 8px;
+  align-items: baseline;
+  padding: 2px 8px;
+  max-width: max-content;
+  white-space: nowrap;
+  pointer-events: none;
+  transform: translateX(-50%);
+  font-size: var(--gantt-tooltip-font-size, var(--gantt-drag-label-font-size, 0.72em));
+  color: var(--gantt-tooltip-color, var(--gantt-drag-label-color, #fff));
+  background: var(--gantt-tooltip-bg, var(--gantt-drag-label-bg, #1e293b));
+  border-radius: var(--gantt-tooltip-radius, var(--gantt-drag-label-radius, 4px));
+  box-shadow: var(--gantt-tooltip-shadow, 0 2px 8px rgb(0 0 0 / 25%));
+}
+.gantt-tooltip__name {
+  font-weight: 600;
 }
 </style>

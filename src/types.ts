@@ -222,6 +222,8 @@ export interface GanttRootProps {
   resizable?: boolean
   /** Allow editing a task's progress by dragging a handle on the bar. */
   progressDraggable?: boolean
+  /** Show a hover tooltip on bars/milestones (override its content via the `tooltip` slot). */
+  tooltip?: boolean
   /** Allow creating/editing dependencies by dragging between tasks. */
   linkable?: boolean
   /**
@@ -276,6 +278,8 @@ export interface GanttConfig {
   resizable: boolean
   /** Whether progress can be edited by dragging a handle. */
   progressDraggable: boolean
+  /** Whether a hover tooltip is shown on bars/milestones. */
+  tooltip: boolean
   /** Whether dependencies can be created/edited by dragging. */
   linkable: boolean
   /** Connector path builder `(tail, head) => string` (resolved, never undefined). */

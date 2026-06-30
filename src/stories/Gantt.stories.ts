@@ -53,6 +53,10 @@ const meta: Meta<typeof Gantt> = {
       control: 'boolean',
       description: 'Create/edit dependencies by dragging between tasks.',
     },
+    tooltip: {
+      control: 'boolean',
+      description: 'Show a hover tooltip on bars/milestones.',
+    },
     snapToGrid: {
       control: 'boolean',
       description: 'Snap dragged dates to the base unit (off = full precision).',
@@ -325,6 +329,34 @@ export const Grouping: Story = {
     tiers: ['month', 'week', 'day'],
     height: 300,
   },
+}
+
+/**
+ * Opt in to the hover tooltip with the `tooltip` prop: hover any bar or
+ * milestone to see a floating summary. The default content is the name plus
+ * `start – end` and `progress%` for a bar, or the name plus the date for a
+ * milestone. It's hidden while dragging.
+ */
+export const Tooltip: Story = {
+  args: { tooltip: true },
+}
+
+/**
+ * Override the tooltip content with the scoped `tooltip` slot (`{ task }`).
+ * Providing the slot also enables the tooltip — the `tooltip` prop isn't needed.
+ */
+export const CustomTooltipSlot: Story = {
+  render: args => ({
+    components: { Gantt },
+    setup: () => ({ args }),
+    template: `
+      <Gantt v-bind="args">
+        <template #tooltip="{ task }">
+          <strong>{{ task.name }}</strong>
+          <span style="opacity:.8">{{ task.progress }}% complete</span>
+        </template>
+      </Gantt>`,
+  }),
 }
 
 /** Override a bar's content with the `bar` slot. */

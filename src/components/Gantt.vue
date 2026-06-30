@@ -61,6 +61,7 @@ defineSlots<{
   column?: (props: { column: unknown; tier: unknown }) => unknown
   bar?: (props: { task: unknown; progress: number }) => unknown
   milestone?: (props: { task: unknown }) => unknown
+  tooltip?: (props: { task: unknown }) => unknown
   bars?: (props: { tasks: unknown }) => unknown
   grid?: (props: { columns: unknown; rows: unknown }) => unknown
   conflicts?: (props: { conflicts: unknown }) => unknown
@@ -156,6 +157,9 @@ defineExpose({
       <template v-if="$slots.bar" #bar="slotProps"><slot name="bar" v-bind="slotProps" /></template>
       <template v-if="$slots.milestone" #milestone="slotProps">
         <slot name="milestone" v-bind="slotProps" />
+      </template>
+      <template v-if="$slots.tooltip" #tooltip="slotProps">
+        <slot name="tooltip" v-bind="slotProps" />
       </template>
     </GanttView>
   </GanttRoot>

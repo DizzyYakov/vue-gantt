@@ -110,10 +110,16 @@ const scrollStyle = computed(() => {
               <template v-if="$slots.milestone" #default="slotProps">
                 <slot name="milestone" v-bind="slotProps" />
               </template>
+              <template v-if="$slots.tooltip" #tooltip="slotProps">
+                <slot name="tooltip" v-bind="slotProps" />
+              </template>
             </GanttMilestone>
             <GanttTask v-else :task="task">
               <template v-if="$slots.bar" #default="slotProps">
                 <slot name="bar" v-bind="slotProps" />
+              </template>
+              <template v-if="$slots.tooltip" #tooltip="slotProps">
+                <slot name="tooltip" v-bind="slotProps" />
               </template>
             </GanttTask>
           </template>

@@ -157,7 +157,15 @@ and `conflicts` is `GanttConflict[]` (empty unless `overlap: 'conflict'`).
 
 **Leaf slots** customize a single repeated item: `row` (`{ row, index }`),
 `group` (`{ group, collapsed, toggle }`), `groupBar` (`{ group }`), `column`
-(`{ column, tier }`), `bar` (`{ task, progress }`), `milestone` (`{ task }`).
+(`{ column, tier }`), `bar` (`{ task, progress }`), `milestone` (`{ task }`),
+`tooltip` (`{ task }`).
+
+The `tooltip` slot overrides the content of the opt-in hover tooltip shown on
+bars and milestones; providing it also **enables** the tooltip (you don't need
+the `tooltip` prop too). Its `task` is the resolved task under the pointer. When
+the tooltip is enabled without the slot, the default content is the name plus
+`start – end` (and `progress%`) for a bar, or the name plus the date for a
+milestone. The tooltip is hidden while a drag is in progress.
 
 ```vue
 <Gantt :rows="rows" :tiers="['month', 'week', 'day']" :height="480">
@@ -243,6 +251,7 @@ parent collapses to the content height and simply grows to fit (as before).
 | `rowMovable`            | `boolean`                                         | `false`         | Drag a task into another row (implies `draggable`).                                                                                                                                                                                                           |
 | `resizable`             | `boolean`                                         | `false`         | Resize bars by dragging an edge (sides flip past each other).                                                                                                                                                                                                 |
 | `progressDraggable`     | `boolean`                                         | `false`         | Edit progress by dragging a handle on the bar.                                                                                                                                                                                                                |
+| `tooltip`               | `boolean`                                         | `false`         | Show a hover tooltip on bars/milestones (override its content via the `tooltip` slot).                                                                                                                                                                        |
 | `linkable`              | `boolean`                                         | `false`         | Create/edit dependencies by dragging between tasks.                                                                                                                                                                                                           |
 | `dependencyShape`       | `(tail, head) => string`                          | `elbowPath`     | Connector path builder. Pass `elbowPath`/`straightPath`/`bezierPath` or your own.                                                                                                                                                                             |
 | `arrowHead`             | `() => ArrowHeadShape \| null`                    | `triangleArrow` | Arrowhead builder. Pass `triangleArrow`/`openArrow`/`noArrow` or your own (`null` = no head).                                                                                                                                                                 |
@@ -553,6 +562,16 @@ default slot (`<slot :links>`).
 | `--gantt-connector-bg`          | `#fff`             | Dependency connector dot fill.         |
 | `--gantt-connector-color`       | progress bg        | Dependency connector dot border.       |
 | `--gantt-link-target-outline`   | `2px solid …`      | Outline on a hovered link drop target. |
+
+**Tooltip** (opt-in hover tooltip; defaults inherit the drag-label look)
+
+| Variable                    | Default                    | Purpose                      |
+| --------------------------- | -------------------------- | ---------------------------- |
+| `--gantt-tooltip-bg`        | drag-label bg              | Hover tooltip background.    |
+| `--gantt-tooltip-color`     | drag-label colour          | Hover tooltip text colour.   |
+| `--gantt-tooltip-radius`    | drag-label radius          | Hover tooltip corner radius. |
+| `--gantt-tooltip-font-size` | drag-label font size       | Hover tooltip font size.     |
+| `--gantt-tooltip-shadow`    | `0 2px 8px rgb(0 0 0/25%)` | Hover tooltip drop shadow.   |
 
 **Today**
 
