@@ -47,6 +47,16 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   the new `--gantt-tooltip-bg` / `-color` / `-radius` / `-font-size` / `-shadow`
   CSS variables (which inherit the drag-label look by default).
 
+### Fixed
+
+- Hover tooltip / milestone interaction polish:
+  - A dependency arrow crossing a milestone marker no longer swallows the marker's
+    pointer events — the marker now sits above the dependency layer, so its
+    hover/click/drag (and tooltip) work even under an arrow.
+  - The floating hover tooltip is clamped to the chart's content bounds, so a bar
+    or milestone tooltip near the right/left edge (e.g. the last column) is no
+    longer clipped.
+
 ### Release / tooling
 
 - The package is published as **`@dizzy_yakov/vue-gantt`** (scoped, public access).

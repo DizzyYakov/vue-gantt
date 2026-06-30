@@ -89,9 +89,9 @@ const tooltipStyle = computed(() =>
     : { left: `${left.value}px` },
 )
 
-// Opt-in hover tooltip (enabled by the `tooltip` flag or a `tooltip` slot).
-const { hovered, show: showHoverTip } = useHoverTooltip(dragging)
-const hoverTipStyle = computed(() => ({ left: `${left.value}px` }))
+// Opt-in hover tooltip (enabled by the `tooltip` flag or a `tooltip` slot);
+// `tipStyle` clamps the left-anchored tooltip within the content (no edge clipping).
+const { hovered, show: showHoverTip, tipStyle: hoverTipStyle } = useHoverTooltip(dragging, left, false)
 </script>
 
 <template>
@@ -162,7 +162,7 @@ const hoverTipStyle = computed(() => ({ left: `${left.value}px` }))
     <div v-if="showTooltip" class="gantt-drag-label" :style="tooltipStyle">{{ previewLabel }}</div>
 
     <!-- Opt-in hover tooltip (default content or the `tooltip` slot). -->
-    <div v-if="showHoverTip" class="gantt-tooltip" :style="hoverTipStyle" role="tooltip">
+    <div v-if="showHoverTip" ref="tip" class="gantt-tooltip" :style="hoverTipStyle" role="tooltip">
       <slot name="tooltip" :task="resolved">
         <span class="gantt-tooltip__name">{{ resolved.name }}</span>
         <span class="gantt-tooltip__dates">

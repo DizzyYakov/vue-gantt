@@ -62,9 +62,9 @@ const labelStyle = computed(() =>
     : undefined,
 )
 
-// Opt-in hover tooltip (enabled by the `tooltip` flag or a `tooltip` slot).
-const { hovered, show: showHoverTip } = useHoverTooltip(dragging)
-const hoverTipStyle = computed(() => ({ left: `${left.value}px` }))
+// Opt-in hover tooltip (enabled by the `tooltip` flag or a `tooltip` slot);
+// `tipStyle` clamps the centred tooltip within the content (no edge clipping).
+const { hovered, show: showHoverTip, tipStyle: hoverTipStyle } = useHoverTooltip(dragging, left, true)
 </script>
 
 <template>
@@ -94,7 +94,7 @@ const hoverTipStyle = computed(() => ({ left: `${left.value}px` }))
     </div>
 
     <!-- Opt-in hover tooltip (default content or the `tooltip` slot). -->
-    <div v-if="showHoverTip" class="gantt-tooltip" :style="hoverTipStyle" role="tooltip">
+    <div v-if="showHoverTip" ref="tip" class="gantt-tooltip" :style="hoverTipStyle" role="tooltip">
       <slot name="tooltip" :task="resolved">
         <span class="gantt-tooltip__name">{{ resolved.name }}</span>
         <span class="gantt-tooltip__dates">{{ format(resolved.start, 'd MMM yyyy') }}</span>
@@ -137,6 +137,10 @@ const hoverTipStyle = computed(() => ({ left: `${left.value}px` }))
   justify-content: center;
   /* Center the marker on the milestone date. */
   transform: translateX(-50%);
+  /* Sit above the dependency SVG layer (painted later in `.gantt__body`), whose
+     arrow strokes (`pointer-events: stroke`) would otherwise steal the marker's
+     hover/click/drag where a connector crosses it. */
+  z-index: 1;
   pointer-events: auto;
 }
 
