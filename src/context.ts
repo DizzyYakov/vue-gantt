@@ -33,6 +33,7 @@ export const GANTT_DEFAULTS = {
   tooltip: false,
   linkable: false,
   snapToGrid: false,
+  autoSchedule: false,
   dragLabelFormat: 'd MMM HH:mm',
 } as const
 

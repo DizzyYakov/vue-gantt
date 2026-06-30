@@ -62,6 +62,12 @@ const meta: Meta<typeof Gantt> = {
       control: 'boolean',
       description: 'Snap dragged dates to the base unit (off = full precision).',
     },
+    autoSchedule: {
+      control: 'boolean',
+      description:
+        'Push finish-to-start successors forward on a move/resize/link change ' +
+        '(MS-Project style). Effective only with `v-model:rows`.',
+    },
     today: { control: 'text' },
     labelFormat: { control: 'text' },
     'onZoom-change': { action: 'zoom-change', table: { category: 'events' } },
@@ -239,6 +245,69 @@ export const VModelRows: Story = {
     components: { Gantt },
     setup() {
       const rows = ref<GanttRow[]>(JSON.parse(JSON.stringify(sampleRows)))
+      return { args, rows }
+    },
+    template: `<Gantt v-bind="args" v-model:rows="rows" />`,
+  }),
+}
+
+/**
+ * With `auto-schedule`, moving or resizing a task — or creating / re-routing a
+ * dependency — pushes every finish-to-start successor forward so none starts
+ * before its predecessor ends (MS-Project style), preserving durations. The
+ * cascade is transitive (a → b → c), so dragging **A** later also shifts **B**
+ * and **C**. It applies to the emitted `update:rows`, so it works only with
+ * `v-model:rows` (used here); `dependency-remove` and progress edits don't
+ * cascade, and the live drag ghost doesn't preview it — successors snap into
+ * place on release.
+ */
+export const AutoScheduling: Story = {
+  args: {
+    autoSchedule: true,
+    draggable: true,
+    resizable: true,
+    linkable: true,
+  },
+  render: args => ({
+    components: { Gantt },
+    setup() {
+      // A finish-to-start chain a → b → c on its own rows; drag A to watch the
+      // successors cascade.
+      const rows = ref<GanttRow[]>([
+        {
+          id: 'a',
+          name: 'A',
+          tasks: [{ id: 'a', name: 'A', start: '2026-06-01', end: '2026-06-06', progress: 60 }],
+        },
+        {
+          id: 'b',
+          name: 'B',
+          tasks: [
+            {
+              id: 'b',
+              name: 'B',
+              start: '2026-06-06',
+              end: '2026-06-12',
+              progress: 30,
+              dependencies: ['a'],
+            },
+          ],
+        },
+        {
+          id: 'c',
+          name: 'C',
+          tasks: [
+            {
+              id: 'c',
+              name: 'C',
+              start: '2026-06-12',
+              end: '2026-06-18',
+              progress: 0,
+              dependencies: ['b'],
+            },
+          ],
+        },
+      ])
       return { args, rows }
     },
     template: `<Gantt v-bind="args" v-model:rows="rows" />`,

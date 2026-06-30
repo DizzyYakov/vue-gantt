@@ -259,6 +259,7 @@ parent collapses to the content height and simply grows to fit (as before).
 | `dependencyShape`       | `(tail, head) => string`                          | `elbowPath`     | Connector path builder. Pass `elbowPath`/`straightPath`/`bezierPath` or your own.                                                                                                                                                                             |
 | `arrowHead`             | `() => ArrowHeadShape \| null`                    | `triangleArrow` | Arrowhead builder. Pass `triangleArrow`/`openArrow`/`noArrow` or your own (`null` = no head).                                                                                                                                                                 |
 | `snapToGrid`            | `boolean`                                         | `false`         | Snap dragged dates to the base unit (off = full precision).                                                                                                                                                                                                   |
+| `autoSchedule`          | `boolean`                                         | `false`         | On a move/resize or a dependency create/update, push finish-to-start successors forward so none starts before a predecessor ends (MS-Project style), preserving each task's duration. Effective only with `v-model:rows` (or prop-driven `rows`).             |
 | `dragLabelFormat`       | `string`                                          | `'d MMM HH:mm'` | date-fns format for the live drag tooltip.                                                                                                                                                                                                                    |
 | `dragLabel`             | `(info: GanttDragLabelInfo) => string`            | —               | Override the drag tooltip text (move/resize/progress).                                                                                                                                                                                                        |
 | `startDate` / `endDate` | `Date \| string \| number`                        | auto            | Explicit axis bounds (auto-derived from tasks otherwise).                                                                                                                                                                                                     |
@@ -389,6 +390,27 @@ The plain controlled events (`@move`, `@resize`, `@progress`, `@dependency-*`)
 are still emitted alongside `update:rows`. Choose **one** approach: use
 `v-model:rows` for automatic sync, or the manual events to apply changes
 yourself — combining both double-applies each change.
+
+### Auto-scheduling
+
+The `autoSchedule` prop turns the chart into an MS-Project-style scheduler: when
+you move or resize a task, or create / re-route a dependency, every finish-to-start
+successor is pushed forward so none starts before its predecessor ends — each
+task's duration is preserved. It cascades transitively (a → b → c), so dragging
+`a` later also shifts `b` and `c`.
+
+```vue
+<Gantt v-model:rows="rows" auto-schedule draggable resizable linkable />
+```
+
+It is built on top of the exported [`autoSchedule(rows, changedId?)`](#utilities)
+utility, applied to the emitted `update:rows`. So it is effective **only** in
+prop-driven / `v-model:rows` mode; in the purely event-driven flow (`@move` +
+your own `applyMove`, no `v-model`) and in declarative mode (`<GanttRow>` children)
+the prop is a no-op — call `autoSchedule` yourself where you apply the change.
+`dependency-remove` and progress edits do **not** trigger the cascade. The live
+drag preview (ghost) does not show the cascade; successors snap into place on
+release.
 
 ### Imperative methods
 
