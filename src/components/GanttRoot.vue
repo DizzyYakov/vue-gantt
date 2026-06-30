@@ -27,7 +27,14 @@ import { triangleArrow } from '../arrowHeads'
 import { GANTT_CONTEXT, GANTT_DEFAULTS, normalizeRow, toDate } from '../context'
 import { elbowPath } from '../dependencyPaths'
 import { conflictSegments, layoutGroups, type GroupMeta } from '../layout'
-import { addDependency, applyMove, removeDependency, updateTask } from '../utils'
+import {
+  addDependency,
+  applyMove,
+  criticalPath,
+  removeDependency,
+  slack,
+  updateTask,
+} from '../utils'
 import { DEFAULT_ZOOM_LEVELS } from '../zoom'
 import type {
   GanttBand,
@@ -75,6 +82,8 @@ const props = withDefaults(defineProps<GanttRootProps>(), {
   resizable: GANTT_DEFAULTS.resizable,
   progressDraggable: GANTT_DEFAULTS.progressDraggable,
   tooltip: GANTT_DEFAULTS.tooltip,
+  criticalPath: GANTT_DEFAULTS.criticalPath,
+  slack: GANTT_DEFAULTS.slack,
   linkable: GANTT_DEFAULTS.linkable,
   dependencyShape: elbowPath,
   arrowHead: triangleArrow,
@@ -349,6 +358,8 @@ const config = computed<GanttConfig>(() => ({
   resizable: props.resizable,
   progressDraggable: props.progressDraggable,
   tooltip: props.tooltip,
+  criticalPath: props.criticalPath,
+  slack: props.slack,
   linkable: props.linkable,
   dependencyShape: props.dependencyShape,
   arrowHead: props.arrowHead,
@@ -548,6 +559,16 @@ const conflicts = computed<GanttConflict[]>(() => {
   return out
 })
 
+// Critical-path ids + free-float slack (days) per task. Gated by their props so
+// the pure utilities only run when the visualization is on. Both read the source
+// model (the controlled `rows` / declarative registration).
+const criticalTasks = computed<Set<string>>(() =>
+  props.criticalPath ? new Set(criticalPath(sourceRows.value)) : new Set(),
+)
+const slackMap = computed<Map<string, number>>(() =>
+  props.slack ? slack(sourceRows.value) : new Map(),
+)
+
 // Interactive dependency creation / re-routing (emits intents; data is controlled).
 const { linkDraft, beginLink, endLink, refresh: refreshLink } = useGanttLink({
   dispatch,
@@ -579,6 +600,8 @@ const context: GanttContext = {
   rowOf: taskId => taskOrder.value.get(taskId) ?? -1,
   taskBand,
   conflicts,
+  criticalTasks,
+  slack: slackMap,
   registerRow,
   unregisterRow,
   registerGroup,

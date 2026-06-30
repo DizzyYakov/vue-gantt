@@ -37,6 +37,8 @@ const progressDraggable = computed(() => ctx.config.value.progressDraggable)
 const linkable = computed(() => ctx.config.value.linkable)
 // Highlight this bar while a dependency drag hovers it as a drop target.
 const linkTarget = computed(() => ctx.linkDraft.value?.over === resolved.value.id)
+// Whether this task is on the critical path (only when `criticalPath` is on).
+const critical = computed(() => ctx.criticalTasks.value.has(resolved.value.id))
 
 // Start dragging a new finish-to-start dependency from this task's finish edge.
 function onConnectorDown(event: PointerEvent): void {
@@ -109,6 +111,7 @@ const { hovered, show: showHoverTip, tipStyle: hoverTipStyle } = useHoverTooltip
       :data-id="resolved.id"
       :data-draggable="draggable || undefined"
       :data-link-target="linkTarget || undefined"
+      :data-critical="critical || undefined"
       :style="barStyle"
       @pointerdown="onPointerDown"
       @pointerenter="hovered = true"
@@ -267,6 +270,12 @@ const { hovered, show: showHoverTip, tipStyle: hoverTipStyle } = useHoverTooltip
 /* Drop-target affordance while a dependency is being dragged onto this bar. */
 .gantt-bar[data-link-target] {
   outline: var(--gantt-link-target-outline, 2px solid var(--gantt-progress-bg, #6366f1));
+  outline-offset: 1px;
+}
+
+/* Critical-path highlight. */
+.gantt-bar[data-critical] {
+  outline: var(--gantt-critical-outline, 2px solid var(--gantt-critical-color, #dc2626));
   outline-offset: 1px;
 }
 
