@@ -59,6 +59,7 @@ defineSlots<{
   group?: (props: { group: unknown; collapsed: boolean; toggle: () => void }) => unknown
   groupBar?: (props: { group: unknown }) => unknown
   'group-bars'?: (props: { groups: unknown }) => unknown
+  baselines?: (props: { tasks: unknown }) => unknown
   corner?: (props: { config: unknown }) => unknown
   timeline?: (props: { config: unknown; visibleColumnsFor: unknown }) => unknown
   column?: (props: { column: unknown; tier: unknown }) => unknown
@@ -68,6 +69,8 @@ defineSlots<{
   bars?: (props: { tasks: unknown }) => unknown
   grid?: (props: { columns: unknown; rows: unknown }) => unknown
   conflicts?: (props: { conflicts: unknown }) => unknown
+  slack?: (props: { slack: unknown }) => unknown
+  deadlines?: (props: { tasks: unknown }) => unknown
   dependencies?: (props: { tasks: unknown }) => unknown
   today?: (props: { today: unknown; dateToX: unknown }) => unknown
   'body-extra'?: (props: { contentWidth: number; contentHeight: number }) => unknown
@@ -140,8 +143,17 @@ defineExpose({
       <template v-if="$slots['group-bars']" #group-bars="slotProps">
         <slot name="group-bars" v-bind="slotProps" />
       </template>
+      <template v-if="$slots.baselines" #baselines="slotProps">
+        <slot name="baselines" v-bind="slotProps" />
+      </template>
       <template v-if="$slots.conflicts" #conflicts="slotProps">
         <slot name="conflicts" v-bind="slotProps" />
+      </template>
+      <template v-if="$slots.slack" #slack="slotProps">
+        <slot name="slack" v-bind="slotProps" />
+      </template>
+      <template v-if="$slots.deadlines" #deadlines="slotProps">
+        <slot name="deadlines" v-bind="slotProps" />
       </template>
       <template v-if="$slots.dependencies" #dependencies="slotProps">
         <slot name="dependencies" v-bind="slotProps" />

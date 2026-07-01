@@ -31,8 +31,11 @@ export const GANTT_DEFAULTS = {
   resizable: false,
   progressDraggable: false,
   tooltip: false,
+  criticalPath: false,
+  slack: false,
   linkable: false,
   snapToGrid: false,
+  autoSchedule: false,
   dragLabelFormat: 'd MMM HH:mm',
 } as const
 
@@ -69,6 +72,13 @@ export function normalizeTask(task: GanttTask, rowId: string, order: number): Re
     dependencies: task.dependencies ?? [],
     type,
     segments: task.segments?.map(s => ({ start: toDate(s.start), end: toDate(s.end) })),
+    deadline: task.deadline != null ? toDate(task.deadline) : undefined,
+    constraint: task.constraint
+      ? { type: task.constraint.type, date: toDate(task.constraint.date) }
+      : undefined,
+    // A baseline is always an interval — never collapsed like a milestone's end.
+    baselineStart: task.baselineStart != null ? toDate(task.baselineStart) : undefined,
+    baselineEnd: task.baselineEnd != null ? toDate(task.baselineEnd) : undefined,
     meta: task.meta ?? {},
     rowId,
     order,

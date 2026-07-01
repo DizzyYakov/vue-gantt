@@ -1,6 +1,6 @@
 import { computed, inject } from 'vue'
 import { GANTT_ROW, normalizeTask } from '../context'
-import type { GanttSegment, GanttTask, ResolvedTask } from '../types'
+import type { GanttConstraint, GanttSegment, GanttTask, ResolvedTask } from '../types'
 import { useGanttContext } from './useGanttContext'
 import { useGanttDrag } from './useGanttDrag'
 import { useRegisteredTask } from './useTaskRegistry'
@@ -17,6 +17,10 @@ export interface GanttItemProps {
   progress?: number
   dependencies?: string[]
   segments?: GanttSegment[]
+  deadline?: Date | string | number
+  constraint?: GanttConstraint
+  baselineStart?: Date | string | number
+  baselineEnd?: Date | string | number
   meta?: Record<string, unknown>
   /** Explicit row id (declarative mode, overrides the enclosing `GanttRow`). */
   rowId?: string
@@ -49,6 +53,10 @@ export function useGanttItem(props: GanttItemProps, overrides: Partial<GanttTask
     progress: props.progress,
     dependencies: props.dependencies,
     segments: props.segments,
+    deadline: props.deadline,
+    constraint: props.constraint,
+    baselineStart: props.baselineStart,
+    baselineEnd: props.baselineEnd,
     meta: props.meta,
     ...(props.task as GanttTask | undefined),
     ...overrides,

@@ -18,7 +18,7 @@ design system. One runtime dependency (`date-fns`), fully typed.
 - ⏱️ **Multi-tier time axis** (year · quarter · month · week · day · hour ·
   minute) — show any subset via `tiers`.
 - 📊 Task **bars with progress**, **milestones**, finish-to-start **dependency
-  arrows**, and a live **"today"** line.
+  arrows**, **baselines** (planned vs actual), and a live **"today"** line.
 - 🧩 **Two APIs** — a prop-driven `<Gantt :rows>` or composable primitives.
 - 🗂️ Collapsible **row groups** with rolled-up summary bars.
 - ✋ **Drag interactions** (all opt-in, controlled): move, resize an edge, set
@@ -144,6 +144,9 @@ slots for overriding any part. Every slot is scoped — its props give you the s
 | `bars`         | `{ tasks }`                       | the task bar / milestone layer      |
 | `group-bars`   | `{ groups }`                      | `<GanttGroupBar>` (group rollups)   |
 | `conflicts`    | `{ conflicts }`                   | `<GanttConflicts>`                  |
+| `baselines`    | `{ tasks }`                       | `<GanttBaselines>` (planned bars)   |
+| `slack`        | `{ slack }`                       | `<GanttSlack>` (free-float bars)    |
+| `deadlines`    | `{ tasks }`                       | `<GanttDeadlines>` (deadline lines) |
 | `dependencies` | `{ tasks }`                       | `<GanttDependencies>`               |
 | `today`        | `{ today, dateToX }`              | `<GanttToday>`                      |
 | `body-extra`   | `{ contentWidth, contentHeight }` | (extra layer over the body)         |
@@ -152,8 +155,10 @@ slots for overriding any part. Every slot is scoped — its props give you the s
 is `(date: Date \| string \| number) => number`, `rows`/`groups` are the visible
 `ResolvedRow[]` / `ResolvedGroup[]`, `columns` are the visible base-unit
 `GanttColumn[]`, `tasks` are `ResolvedTask[]` (all of them for `dependencies`,
-the plotted/visible ones for `bars`), `today` is the configured reference `Date`,
-and `conflicts` is `GanttConflict[]` (empty unless `overlap: 'conflict'`).
+the plotted/visible ones for `bars`, `baselines` and `deadlines`), `today` is the
+configured reference `Date`, `conflicts` is `GanttConflict[]` (empty unless
+`overlap: 'conflict'`), and `slack` is a `Map<string, number>` of free-float days by
+task id (empty unless `slack` is on).
 
 **Leaf slots** customize a single repeated item: `row` (`{ row, index }`),
 `group` (`{ group, collapsed, toggle }`), `groupBar` (`{ group }`), `column`
@@ -219,6 +224,9 @@ every [chart event](#events); the rest are the building blocks.
 | `<GanttGrid>`         | `tier?: GanttUnit`                               | `cell-click` · `cell-dblclick`                   |
 | `<GanttDependencies>` | —                                                | `dependency-click`                               |
 | `<GanttConflicts>`    | —                                                | —                                                |
+| `<GanttSlack>`        | — (default slot `{ taskId, slack }`)             | —                                                |
+| `<GanttDeadlines>`    | — (default slot `{ taskId, deadline }`)          | —                                                |
+| `<GanttBaselines>`    | — (default slot `{ task }`)                      | —                                                |
 | `<GanttToday>`        | `interval?: number` (ms, default `1000`)         | —                                                |
 | `<GanttZoom>`         | — (reads context; default slot for custom UI)    | — (calls `setZoom`/`zoomIn`/`zoomOut` on root)   |
 
@@ -255,10 +263,13 @@ parent collapses to the content height and simply grows to fit (as before).
 | `resizable`             | `boolean`                                         | `false`         | Resize bars by dragging an edge (sides flip past each other).                                                                                                                                                                                                 |
 | `progressDraggable`     | `boolean`                                         | `false`         | Edit progress by dragging a handle on the bar.                                                                                                                                                                                                                |
 | `tooltip`               | `boolean`                                         | `false`         | Show a hover tooltip on bars/milestones (override its content via the `tooltip` slot).                                                                                                                                                                        |
+| `criticalPath`          | `boolean`                                         | `false`         | Highlight the tasks on the critical path (`data-critical` on their bars/markers; styled via `--gantt-critical-*`).                                                                                                                                            |
+| `slack`                 | `boolean`                                         | `false`         | Draw each task's free-float slack as a translucent bar after its end (the `<GanttSlack>` overlay; styled via `--gantt-slack-*`).                                                                                                                               |
 | `linkable`              | `boolean`                                         | `false`         | Create/edit dependencies by dragging between tasks.                                                                                                                                                                                                           |
 | `dependencyShape`       | `(tail, head) => string`                          | `elbowPath`     | Connector path builder. Pass `elbowPath`/`straightPath`/`bezierPath` or your own.                                                                                                                                                                             |
 | `arrowHead`             | `() => ArrowHeadShape \| null`                    | `triangleArrow` | Arrowhead builder. Pass `triangleArrow`/`openArrow`/`noArrow` or your own (`null` = no head).                                                                                                                                                                 |
 | `snapToGrid`            | `boolean`                                         | `false`         | Snap dragged dates to the base unit (off = full precision).                                                                                                                                                                                                   |
+| `autoSchedule`          | `boolean`                                         | `false`         | On a move/resize or a dependency create/update, push finish-to-start successors forward so none starts before a predecessor ends (MS-Project style), preserving each task's duration. Effective only with `v-model:rows` (or prop-driven `rows`).             |
 | `dragLabelFormat`       | `string`                                          | `'d MMM HH:mm'` | date-fns format for the live drag tooltip.                                                                                                                                                                                                                    |
 | `dragLabel`             | `(info: GanttDragLabelInfo) => string`            | —               | Override the drag tooltip text (move/resize/progress).                                                                                                                                                                                                        |
 | `startDate` / `endDate` | `Date \| string \| number`                        | auto            | Explicit axis bounds (auto-derived from tasks otherwise).                                                                                                                                                                                                     |
@@ -278,6 +289,10 @@ Declarative fields — the item registers into the enclosing `<GanttRow>`:
 | `progress`     | `number`                   | Completion 0–100.                              |
 | `dependencies` | `string[]`                 | Ids of predecessors (finish-to-start).         |
 | `segments`     | `GanttSegment[]`           | Work spans with paused gaps (a "split" task).  |
+| `deadline`     | `Date \| string \| number` | Target date (drawn as a line; flags overdue).  |
+| `constraint`   | `GanttConstraint`          | Scheduling constraint (`{ type, date }`).      |
+| `baselineStart`| `Date \| string \| number` | Planned start (baseline). Needs `baselineEnd`. |
+| `baselineEnd`  | `Date \| string \| number` | Planned end (baseline). Needs `baselineStart`. |
 | `meta`         | `Record<string, unknown>`  | Arbitrary data forwarded to slots.             |
 | `rowId`        | `string`                   | Explicit row id (overrides the enclosing row). |
 
@@ -332,6 +347,49 @@ are both exported. Style the split bits with the `--gantt-split-*`
 > dependency arrow on a target outside the current view. The preview (ghost / drop
 > target / draft arrow) keeps following the content, and scrolling stops on release.
 > This is automatic; there are no extra props.
+
+### Deadlines & constraints
+
+Give a task a `deadline` (a target date) or a scheduling `constraint` and the
+chart reflects both automatically:
+
+- **`deadline`** — `<GanttDeadlines>` (rendered by default; override via the
+  `deadlines` slot) draws a vertical line at the date across the task's band. When
+  the task's `end` passes the deadline the bar is flagged **overdue**
+  (`data-overdue`), tinted and outlined via the `--gantt-overdue-*` /
+  `--gantt-deadline-color` tokens.
+- **`constraint`** — a `{ type, date }` where `type` is a `GanttConstraintType`:
+  `'start-no-earlier-than'`, `'start-no-later-than'`, `'finish-no-earlier-than'`,
+  `'finish-no-later-than'`, `'must-start-on'` or `'must-finish-on'`. Lower-bound
+  types (`*-no-earlier-than`, `must-*-on`) are honored by [`autoSchedule`](#utilities),
+  which pushes the task's start so the bound is met (duration preserved). Upper
+  bounds can't be enforced by the forward-only scheduler, so a breach is surfaced
+  instead: the bar gets `data-constraint-violation` (dashed `--gantt-constraint-*`
+  outline).
+
+```ts
+const rows = [
+  {
+    id: 'delivery',
+    name: 'Delivery',
+    tasks: [
+      {
+        id: 'build',
+        name: 'Build',
+        start: '2026-06-01',
+        end: '2026-06-20',
+        deadline: '2026-06-15', // end > deadline → overdue bar + line
+        constraint: { type: 'start-no-earlier-than', date: '2026-06-03' },
+      },
+    ],
+  },
+]
+```
+
+The pure detectors [`isOverdue(task)`](#utilities) (`end > deadline`) and
+[`violatesConstraint(task)`](#utilities) (upper/exact bound breached) are exported
+so you can flag or filter tasks yourself; they take a `ResolvedTask` (or the
+matching `end`/`deadline` / `start`/`end`/`constraint` subset).
 
 ### Events
 
@@ -433,6 +491,27 @@ are still emitted alongside `update:rows`. Choose **one** approach: use
 `v-model:rows` for automatic sync, or the manual events to apply changes
 yourself — combining both double-applies each change.
 
+### Auto-scheduling
+
+The `autoSchedule` prop turns the chart into an MS-Project-style scheduler: when
+you move or resize a task, or create / re-route a dependency, every finish-to-start
+successor is pushed forward so none starts before its predecessor ends — each
+task's duration is preserved. It cascades transitively (a → b → c), so dragging
+`a` later also shifts `b` and `c`.
+
+```vue
+<Gantt v-model:rows="rows" auto-schedule draggable resizable linkable />
+```
+
+It is built on top of the exported [`autoSchedule(rows, changedId?)`](#utilities)
+utility, applied to the emitted `update:rows`. So it is effective **only** in
+prop-driven / `v-model:rows` mode; in the purely event-driven flow (`@move` +
+your own `applyMove`, no `v-model`) and in declarative mode (`<GanttRow>` children)
+the prop is a no-op — call `autoSchedule` yourself where you apply the change.
+`dependency-remove` and progress edits do **not** trigger the cascade. The live
+drag preview (ghost) does not show the cascade; successors snap into place on
+release.
+
 ### Imperative methods
 
 `<Gantt>` / `<GanttRoot>` expose scroll and zoom helpers via a template ref:
@@ -474,11 +553,22 @@ import {
   detectCycles,
   topologicalOrder,
   criticalPath,
-  autoSchedule,
+  slack, // longest finish-to-start chain · free-float days per task
+  autoSchedule, // honors lower-bound constraints when shifting starts
+  isOverdue,
+  violatesConstraint, // deadline / constraint detectors
   rollupProgress,
   validateRows,
 } from '@dizzy_yakov/vue-gantt'
 ```
+
+`criticalPath(rows)` returns the ids on the longest finish-to-start chain (by total
+duration), and `slack(rows)` returns a `Map<string, number>` of each task's
+**free float** in days — how far its finish can slip before it hits the start of its
+nearest successor (tasks with no successors, or no positive gap, are absent). These
+back the matching `criticalPath` / `slack` props: the prop visualizes what the
+utility computes, so you can also call the utility directly (e.g. to label or report
+the schedule).
 
 ## Row grouping
 
@@ -487,6 +577,45 @@ with a rolled-up summary bar. Provide group labels via the `groups` prop (or the
 declarative `<GanttGroup>`).
 
 ![Row grouping](https://raw.githubusercontent.com/LavaYasha/vue-gantt/main/docs/grouping.png)
+
+## Baselines (planned vs actual)
+
+Give a task both `baselineStart` and `baselineEnd` to draw its **baseline** — the
+planned interval — as a thin "shadow" bar at the bottom of the task's row band,
+under the actual (`start`/`end`) bar. It makes slippage visible at a glance: a
+task running late has its actual bar sitting to the right of / longer than its
+baseline. Both fields are required for the shadow to draw; a baseline is always an
+interval (never collapsed like a milestone's end).
+
+```vue
+<Gantt :rows="rows" />
+```
+
+```ts
+const rows = [
+  {
+    id: 'dev',
+    name: 'Development',
+    tasks: [
+      {
+        id: 'build',
+        name: 'Implementation',
+        start: '2026-06-18',
+        end: '2026-06-30', // actual — running late
+        baselineStart: '2026-06-16',
+        baselineEnd: '2026-06-26', // planned
+        progress: 40,
+      },
+    ],
+  },
+]
+```
+
+Declaratively it's `<GanttTask baseline-start="…" baseline-end="…" />`. The layer
+is rendered by `<GanttBaselines>` (auto-mounted by `<GanttView>` / `<Gantt>`;
+override it via the `baselines` section slot). `<GanttBaselines>` exposes a
+default slot `{ task }` to render each baseline segment yourself. Style the shadow
+bars with the `--gantt-baseline-*` [variables](#css-variables).
 
 ## Zoom / view-mode
 
@@ -524,6 +653,26 @@ Its default slot exposes `{ levels, active, setZoom, zoomIn, zoomOut, canZoomIn,
 for a fully custom UI. You can also drive zoom imperatively
 ([`setZoom`/`zoomIn`/`zoomOut`](#imperative-methods) via a ref) or react to the
 `zoom-change` event ([`GanttZoomEvent`](#events)).
+
+## Critical path & slack
+
+Two opt-in schedule overlays, both off by default:
+
+- **`criticalPath`** highlights the tasks on the longest finish-to-start chain. Each
+  such bar / milestone marker gets a `data-critical` attribute, styled via the
+  `--gantt-critical-*` variables.
+- **`slack`** draws each task's **free float** — the gap between its end and the
+  start of its nearest successor — as a translucent bar (the `<GanttSlack>` overlay),
+  styled via `--gantt-slack-*`. Override the slab per-segment with `<GanttSlack>`'s
+  default slot (`{ taskId, slack }`), or replace the whole layer with the `slack`
+  slot on `<Gantt>` / `<GanttView>`.
+
+```vue
+<Gantt :rows="rows" :tiers="['month', 'week', 'day']" critical-path slack />
+```
+
+The same numbers are available headless via the
+[`criticalPath` / `slack` utilities](#utilities) (no chart needed).
 
 ## Theming
 
@@ -587,6 +736,15 @@ live on `:root`, so the nearest override wins):
 
 > Segments inherit `--gantt-bar-bg` / `--gantt-progress-bg`; set the optional
 > inline `--gantt-split-segment-bg` on a bar to override just the segment track.
+
+**Baselines** (planned vs actual)
+
+| Variable                   | Default   | Purpose                                        |
+| -------------------------- | --------- | ---------------------------------------------- |
+| `--gantt-baseline-bg`      | `#cbd5e1` | Baseline (planned) shadow bar background.      |
+| `--gantt-baseline-height`  | `22%`     | Baseline bar height within the row band.       |
+| `--gantt-baseline-opacity` | `0.8`     | Baseline bar opacity.                          |
+| `--gantt-baseline-radius`  | `2px`     | Baseline bar corner radius.                    |
 
 **Milestones**
 
@@ -660,6 +818,20 @@ default slot (`<slot :links>`).
 | `--gantt-conflict-color`  | `#ef4444` | Hatch colour for clashes (`conflict`). |
 | `--gantt-conflict-width`  | `1.5`     | Hatch stroke width.                    |
 
+**Critical path & slack** (the `criticalPath` / `slack` props)
+
+| Variable                   | Default                            | Purpose                                         |
+| -------------------------- | ---------------------------------- | ----------------------------------------------- |
+| `--gantt-critical-color`   | `#dc2626`                          | Colour of critical-path bars/markers.           |
+| `--gantt-critical-outline` | `2px solid var(--gantt-critical-color)` | Outline on a critical-path bar/marker.     |
+| `--gantt-slack-color`      | `#94a3b8`                          | Colour of the free-float slack bar.             |
+| `--gantt-slack-opacity`    | `0.7`                              | Opacity of the slack bar.                       |
+
+`<GanttSlack>` also reads two un-defaulted hooks for full control of the fill —
+`--gantt-slack-bg` (the bar's `background`, e.g. a flat colour or gradient) and
+`--gantt-slack-border` (its `border` shorthand); set them to override the default
+hatched look.
+
 **Drag & drop**
 
 | Variable                        | Default            | Purpose                                |
@@ -692,6 +864,18 @@ default slot (`<slot :links>`).
 | ---------------------- | ------------------ | -------------------- |
 | `--gantt-today-color`  | `#ef4444`          | "Today" line colour. |
 | `--gantt-today-border` | `2px solid …color` | "Today" line border. |
+
+**Deadlines & constraints**
+
+| Variable                   | Default                | Purpose                                          |
+| -------------------------- | ---------------------- | ------------------------------------------------ |
+| `--gantt-deadline-color`   | `#dc2626`              | Deadline line + overdue accent colour.           |
+| `--gantt-deadline-width`   | `2px`                  | Deadline line thickness.                         |
+| `--gantt-deadline-border`  | `2px solid …color`     | Deadline line border shorthand.                  |
+| `--gantt-overdue-tint`     | `rgb(220 38 38 / 12%)` | Tint over a bar that finished past its deadline. |
+| `--gantt-overdue-outline`  | `1.5px solid …color`   | Outline of an overdue bar.                       |
+| `--gantt-constraint-color` | `#f59e0b`              | Constraint-violation accent colour.              |
+| `--gantt-constraint-outline` | `1.5px dashed …color` | Outline of a bar breaching an upper-bound constraint. |
 
 **Zoom control** (`GanttZoom`)
 
