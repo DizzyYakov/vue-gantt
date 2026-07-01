@@ -1,14 +1,40 @@
 <script setup lang="ts">
+import { computed, ref } from 'vue'
 import { useGanttContext } from '../composables/useGanttContext'
+import { useInlineEdit, vFocus } from '../composables/useInlineEdit'
 import type { GanttRowEvent, ResolvedRow } from '../types'
 
-const { visibleRows, visibleGroups, toggleGroup, dispatch } = useGanttContext()
+const { visibleRows, visibleGroups, toggleGroup, dispatch, config, editRow } = useGanttContext()
 
 const emit = defineEmits<{
   'row-click': [event: GanttRowEvent]
   'row-dblclick': [event: GanttRowEvent]
   'row-contextmenu': [event: GanttRowEvent]
 }>()
+
+const editable = computed(() => config.value.editable)
+
+// Inline rename of a row name (opt-in via `editable`, on double-click). Only one
+// row edits at a time; `editingRow` tracks which.
+const editingRow = ref<ResolvedRow | null>(null)
+const {
+  editing: editingName,
+  draft: nameDraft,
+  start,
+  save,
+  commit,
+  cancel,
+} = useInlineEdit(
+  () => editingRow.value?.name ?? '',
+  name => {
+    const row = editingRow.value
+    if (row) editRow({ id: row.id, patch: { name }, row })
+  },
+)
+function startRowEdit(row: ResolvedRow): void {
+  editingRow.value = row
+  start()
+}
 
 function onRowClick(row: ResolvedRow, event: MouseEvent): void {
   emit('row-click', { row, event })
@@ -17,6 +43,7 @@ function onRowClick(row: ResolvedRow, event: MouseEvent): void {
 function onRowDblclick(row: ResolvedRow, event: MouseEvent): void {
   emit('row-dblclick', { row, event })
   dispatch('row-dblclick', { row, event })
+  if (editable.value) startRowEdit(row)
 }
 function onRowContextmenu(row: ResolvedRow, event: MouseEvent): void {
   emit('row-contextmenu', { row, event })
@@ -65,7 +92,26 @@ function onRowContextmenu(row: ResolvedRow, event: MouseEvent): void {
       @contextmenu="onRowContextmenu(row, $event)"
     >
       <slot name="row" :row="row" :index="row.order">
-        <span class="gantt-task-list__name">{{ row.name }}</span>
+        <slot
+          v-if="editable && editingName && editingRow?.id === row.id"
+          name="rowEditor"
+          :row="row"
+          :value="nameDraft"
+          :commit="commit"
+          :cancel="cancel"
+        >
+          <input
+            v-model="nameDraft"
+            v-focus
+            class="gantt-edit-input gantt-task-list__name"
+            @keydown.enter="save"
+            @keydown.esc="cancel"
+            @blur="save"
+            @click.stop
+            @dblclick.stop
+          />
+        </slot>
+        <span v-else class="gantt-task-list__name">{{ row.name }}</span>
       </slot>
     </div>
   </div>
@@ -97,6 +143,18 @@ function onRowContextmenu(row: ResolvedRow, event: MouseEvent): void {
   white-space: nowrap;
   text-overflow: ellipsis;
   overflow: hidden;
+}
+
+/* Inline editor: an input styled to sit in the same cell as the name. */
+.gantt-edit-input {
+  flex: 1;
+  min-width: 0;
+  box-sizing: border-box;
+  font: inherit;
+  color: var(--gantt-edit-color, inherit);
+  background: var(--gantt-edit-bg, var(--gantt-surface, #fff));
+  border: var(--gantt-edit-border, 1px solid var(--gantt-progress-bg, #6366f1));
+  border-radius: var(--gantt-edit-radius, 3px);
 }
 
 .gantt-task-list__group {

@@ -88,6 +88,9 @@ const scrollStyle = computed(() => {
             <template v-if="$slots.row" #row="rowProps">
               <slot name="row" v-bind="rowProps" />
             </template>
+            <template v-if="$slots.rowEditor" #rowEditor="editorProps">
+              <slot name="rowEditor" v-bind="editorProps" />
+            </template>
             <template v-if="$slots.group" #group="groupProps">
               <slot name="group" v-bind="groupProps" />
             </template>
@@ -125,6 +128,9 @@ const scrollStyle = computed(() => {
             <GanttTask v-else :task="task">
               <template v-if="$slots.bar" #default="slotProps">
                 <slot name="bar" v-bind="slotProps" />
+              </template>
+              <template v-if="$slots.taskEditor" #taskEditor="editorProps">
+                <slot name="taskEditor" v-bind="editorProps" />
               </template>
               <template v-if="$slots.tooltip" #tooltip="slotProps">
                 <slot name="tooltip" v-bind="slotProps" />

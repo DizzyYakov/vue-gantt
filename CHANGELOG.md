@@ -30,6 +30,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Added
 
+- **Inline field editing.** Opt-in `editable` prop: double-click a row name (sidebar) or
+  a bar label to edit it inline (Enter/blur commits, Esc cancels). Surfaced controlled
+  like the other interactions — `row-edit` (`GanttRowEditEvent`) / `task-edit`
+  (`GanttTaskEditEvent`) events, mirrored into `v-model:rows` via the new `updateRow`
+  utility / `updateTask`. Replace the built-in input via the scoped `rowEditor` /
+  `taskEditor` slots (`{ row|task, value, commit, cancel }`). Themeable via
+  `--gantt-edit-*` tokens; exports `updateRow` and the edit event types.
 - **Undo / redo.** New `useGanttHistory(rowsRef, { limit? })` composable — a snapshot
   history over the `rows` ref you bind to `v-model:rows`. Every edit (move/resize/
   progress/dependency, all funnelled through one `update:rows`) is recorded as one

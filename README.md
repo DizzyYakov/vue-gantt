@@ -163,7 +163,14 @@ task id (empty unless `slack` is on).
 **Leaf slots** customize a single repeated item: `row` (`{ row, index }`),
 `group` (`{ group, collapsed, toggle }`), `groupBar` (`{ group }`), `column`
 (`{ column, tier }`), `bar` (`{ task, progress }`), `milestone` (`{ task }`),
-`tooltip` (`{ task }`).
+`tooltip` (`{ task }`), `rowEditor` (`{ row, value, commit, cancel }`) and
+`taskEditor` (`{ task, value, commit, cancel }`).
+
+The `rowEditor` / `taskEditor` slots replace the built-in inline `<input>` (see
+[Inline editing](#inline-editing)) with your own editor — a `<select>`, a masked
+field, etc. They render only while that row/task is being edited (`editable`
+must be on). `value` is the current name; call `commit(newValue)` to save (fires
+`row-edit` / `task-edit`) or `cancel()` to discard.
 
 The `tooltip` slot overrides the content of the opt-in hover tooltip shown on
 bars and milestones; providing it also **enables** the tooltip (you don't need
@@ -262,6 +269,7 @@ parent collapses to the content height and simply grows to fit (as before).
 | `rowMovable`            | `boolean`                                         | `false`         | Drag a task into another row (implies `draggable`).                                                                                                                                                                                                           |
 | `resizable`             | `boolean`                                         | `false`         | Resize bars by dragging an edge (sides flip past each other).                                                                                                                                                                                                 |
 | `progressDraggable`     | `boolean`                                         | `false`         | Edit progress by dragging a handle on the bar.                                                                                                                                                                                                                |
+| `editable`              | `boolean`                                         | `false`         | Inline-edit the row name (sidebar) and task name (bar label) on double-click. Enter/blur commits, Esc cancels; empty/unchanged is ignored. Surfaces `row-edit`/`task-edit` (and syncs `v-model:rows`).                                                         |
 | `tooltip`               | `boolean`                                         | `false`         | Show a hover tooltip on bars/milestones (override its content via the `tooltip` slot).                                                                                                                                                                        |
 | `criticalPath`          | `boolean`                                         | `false`         | Highlight the tasks on the critical path (`data-critical` on their bars/markers; styled via `--gantt-critical-*`).                                                                                                                                            |
 | `slack`                 | `boolean`                                         | `false`         | Draw each task's free-float slack as a translucent bar after its end (the `<GanttSlack>` overlay; styled via `--gantt-slack-*`).                                                                                                                               |
@@ -401,6 +409,8 @@ your data (the [utilities](#utilities) make this one-liners).
 | `move`                         | `GanttMoveEvent`                             | a bar is dragged (start/end, possibly a new row).      |
 | `resize`                       | `GanttResizeEvent`                           | a bar edge is dragged.                                 |
 | `progress`                     | `GanttProgressEvent`                         | the progress handle is dragged.                        |
+| `task-edit`                    | `GanttTaskEditEvent`                         | a bar label is inline-edited (`editable`).             |
+| `row-edit`                     | `GanttRowEditEvent`                          | a sidebar row name is inline-edited (`editable`).      |
 | `update:rows`                  | `GanttRowData[]`                             | a task/dependency change is applied (`v-model:rows`).  |
 | `update:zoom`                  | `string`                                     | the active zoom level changes (`v-model:zoom`).        |
 | `zoom-change`                  | `GanttZoomEvent`                             | the active zoom level changes (carries the level).     |
@@ -436,6 +446,16 @@ interface GanttProgressEvent {
   progress: number
   task: ResolvedTask
 }
+interface GanttTaskEditEvent {
+  id: string
+  patch: Partial<GanttTask> // changed fields to merge (e.g. `{ name }`)
+  task: ResolvedTask
+}
+interface GanttRowEditEvent {
+  id: string
+  patch: Partial<GanttRow> // changed fields to merge (e.g. `{ name }`)
+  row: ResolvedRow
+}
 interface GanttGroupToggleEvent {
   id: string
   collapsed: boolean
@@ -470,15 +490,16 @@ interface GanttZoomEvent {
 
 `v-model:rows` is a convenience layer over the controlled events on `<Gantt>` and
 `<GanttRoot>`. It pairs the existing `rows` prop with an `update:rows` emit: when
-a drag change (`move` / `resize` / `progress`) or a dependency edit
-(`dependency-create` / `dependency-remove` / `dependency-update`) happens, the
-component applies it to your data with the same immutable [utilities](#utilities)
-(`applyMove` / `updateTask` / `addDependency` / `removeDependency`) and emits
+a drag change (`move` / `resize` / `progress`), an inline edit (`row-edit` /
+`task-edit` via `editable`) or a dependency edit (`dependency-create` /
+`dependency-remove` / `dependency-update`) happens, the component applies it to
+your data with the same immutable [utilities](#utilities) (`applyMove` /
+`updateTask` / `updateRow` / `addDependency` / `removeDependency`) and emits
 `update:rows` with the new array — so the chart stays in sync without a manual
 handler.
 
 ```vue
-<Gantt v-model:rows="rows" draggable resizable progress-draggable linkable />
+<Gantt v-model:rows="rows" draggable resizable progress-draggable editable linkable />
 ```
 
 This works **only** in prop-driven mode (when `rows` is passed); in declarative
@@ -486,10 +507,11 @@ mode (`<GanttRow>` without `rows`) there is nothing to update, so `update:rows`
 is not emitted. `group-toggle` is **not** part of the model — it is a view-state
 change, not a task-data change.
 
-The plain controlled events (`@move`, `@resize`, `@progress`, `@dependency-*`)
-are still emitted alongside `update:rows`. Choose **one** approach: use
-`v-model:rows` for automatic sync, or the manual events to apply changes
-yourself — combining both double-applies each change.
+The plain controlled events (`@move`, `@resize`, `@progress`, `@row-edit`,
+`@task-edit`, `@dependency-*`) are still emitted alongside `update:rows`. Choose
+**one** approach: use `v-model:rows` for automatic sync, or the manual events to
+apply changes yourself (`updateRow` / `updateTask` for the inline edits) —
+combining both double-applies each change.
 
 ### Undo / redo (`useGanttHistory`)
 
@@ -548,6 +570,59 @@ the prop is a no-op — call `autoSchedule` yourself where you apply the change.
 drag preview (ghost) does not show the cascade; successors snap into place on
 release.
 
+<h3 id="inline-editing">Inline editing</h3>
+
+The `editable` prop turns on inline renaming: **double-click** a row name in the
+sidebar or a bar's label in the body to open an inline `<input>`. **Enter** or
+**blur** commits, **Esc** cancels; an empty or unchanged value is ignored. Like
+every other interaction the edit is **controlled** — the chart emits an intent and
+you apply it:
+
+- `row-edit` → `GanttRowEditEvent { id, patch: Partial<GanttRow>, row }`
+- `task-edit` → `GanttTaskEditEvent { id, patch: Partial<GanttTask>, task }`
+
+With `v-model:rows` the patch is applied for you (via `updateRow` / `updateTask`)
+and re-emitted through `update:rows`; without it, listen and apply the patch
+yourself.
+
+```vue
+<script setup>
+import { ref } from 'vue'
+import { Gantt, updateRow, updateTask } from '@dizzy_yakov/vue-gantt'
+
+const rows = ref(initialRows)
+</script>
+
+<template>
+  <!-- automatic sync -->
+  <Gantt v-model:rows="rows" editable />
+
+  <!-- or apply the patches yourself -->
+  <Gantt
+    :rows="rows"
+    editable
+    @row-edit="e => (rows = updateRow(rows, e.id, e.patch))"
+    @task-edit="e => (rows = updateTask(rows, e.id, e.patch))"
+  />
+</template>
+```
+
+Replace the built-in input with your own editor via the `rowEditor`
+(`{ row, value, commit, cancel }`) / `taskEditor` (`{ task, value, commit, cancel }`)
+slots — render your control, then call `commit(newValue)` to save or `cancel()` to
+discard:
+
+```vue
+<Gantt v-model:rows="rows" editable>
+  <template #rowEditor="{ value, commit, cancel }">
+    <input :value="value" @keydown.enter="commit($event.target.value)" @keydown.esc="cancel" />
+  </template>
+</Gantt>
+```
+
+Style the default input with the `--gantt-edit-*` [variables](#css-variables)
+(class `.gantt-edit-input`).
+
 ### Imperative methods
 
 `<Gantt>` / `<GanttRoot>` expose scroll and zoom helpers via a template ref:
@@ -575,6 +650,7 @@ edit data, query dependencies, validate:
 import {
   applyMove,
   updateTask,
+  updateRow, // patch a task / row by id (immutable; use with row-edit / task-edit)
   addTask,
   removeTask, // edits (immutable)
   addDependency,
@@ -761,6 +837,15 @@ live on `:root`, so the nearest override wins):
 | `--gantt-bar-font-size`   | `0.8em`   | Bar label font size.                            |
 | `--gantt-bar-text-shadow` | `none`    | Optional halo so the label reads over the fill. |
 | `--gantt-progress-bg`     | `#6366f1` | Progress fill colour.                           |
+
+**Inline editing** (row/task name inputs — see [inline editing](#inline-editing))
+
+| Variable              | Default              | Purpose                                 |
+| --------------------- | -------------------- | --------------------------------------- |
+| `--gantt-edit-bg`     | surface (`#fff`)     | Background of the inline `<input>`.     |
+| `--gantt-edit-color`  | `inherit`            | Text colour of the inline `<input>`.    |
+| `--gantt-edit-border` | `1px solid` progress | Border of the inline `<input>`.         |
+| `--gantt-edit-radius` | `3px`                | Corner radius of the inline `<input>`.  |
 
 **Split tasks** (work spans with paused gaps — see [split tasks](#split-tasks-segments))
 

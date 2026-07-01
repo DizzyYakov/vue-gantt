@@ -57,6 +57,12 @@
   /* Progress */
   --gantt-progress-bg: #6366f1;
 
+  /* Inline editing (row/task name inputs) */
+  --gantt-edit-bg: var(--gantt-surface, #fff);
+  --gantt-edit-color: inherit;
+  --gantt-edit-border: 1px solid var(--gantt-progress-bg, #6366f1);
+  --gantt-edit-radius: 3px;
+
   /* Split segments (work spans with paused gaps) */
   --gantt-split-line-color: var(--gantt-progress-bg, #6366f1);
   --gantt-split-line-width: 2px;

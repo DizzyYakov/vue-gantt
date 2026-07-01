@@ -3,6 +3,7 @@ import { computed } from 'vue'
 import { format } from 'date-fns'
 import { useGanttItem, type GanttItemProps } from '../composables/useGanttItem'
 import { useHoverTooltip } from '../composables/useHoverTooltip'
+import { useInlineEdit, vFocus } from '../composables/useInlineEdit'
 import { isOverdue, violatesConstraint } from '../utils'
 import type { GanttTaskEvent } from '../types'
 
@@ -37,6 +38,19 @@ const {
 const resizable = computed(() => ctx.config.value.resizable)
 const progressDraggable = computed(() => ctx.config.value.progressDraggable)
 const linkable = computed(() => ctx.config.value.linkable)
+const editable = computed(() => ctx.config.value.editable)
+// Inline rename of the bar label (opt-in via `editable`, on double-click).
+const {
+  editing: editingName,
+  draft: nameDraft,
+  start: startNameEdit,
+  save: saveName,
+  commit: commitName,
+  cancel: cancelName,
+} = useInlineEdit(
+  () => resolved.value.name,
+  name => ctx.editTask({ id: resolved.value.id, patch: { name }, task: resolved.value }),
+)
 // Flags: bar finishes past its deadline, or breaches an upper-bound constraint.
 const overdue = computed(() => isOverdue(resolved.value))
 const constraintViolation = computed(() => violatesConstraint(resolved.value))
@@ -66,6 +80,7 @@ function onDblclick(event: MouseEvent): void {
   const payload: GanttTaskEvent = { task: resolved.value, event }
   emit('dblclick', payload)
   ctx.dispatch('task-dblclick', payload)
+  if (editable.value) startNameEdit()
 }
 function onContextmenu(event: MouseEvent): void {
   const payload: GanttTaskEvent = { task: resolved.value, event }
@@ -147,7 +162,28 @@ const { hovered, show: showHoverTip, tipStyle: hoverTipStyle } = useHoverTooltip
           :style="progressStyle"
           :aria-label="`${liveProgress}%`"
         />
-        <span class="gantt-bar__label">{{ resolved.name }}</span>
+        <slot
+          v-if="editable && editingName"
+          name="taskEditor"
+          :task="resolved"
+          :value="nameDraft"
+          :commit="commitName"
+          :cancel="cancelName"
+        >
+          <input
+            v-model="nameDraft"
+            v-focus
+            class="gantt-edit-input gantt-bar__label"
+            @keydown.enter="saveName"
+            @keydown.esc="cancelName"
+            @blur="saveName"
+            @pointerdown.stop
+            @mousedown.stop
+            @click.stop
+            @dblclick.stop
+          />
+        </slot>
+        <span v-else class="gantt-bar__label">{{ resolved.name }}</span>
       </slot>
 
       <!-- Edge handles for resizing (drag a side; sides flip past each other). -->
@@ -397,6 +433,22 @@ const { hovered, show: showHoverTip, tipStyle: hoverTipStyle } = useHoverTooltip
      set a contrasting halo here so the text stays legible over both. */
   text-shadow: var(--gantt-bar-text-shadow, none);
   font-size: var(--gantt-bar-font-size, 0.8em);
+}
+
+/* Inline editor: an input over the bar label (opt-in via `editable`). */
+.gantt-edit-input {
+  position: relative;
+  z-index: 3;
+  flex: 1;
+  min-width: 0;
+  box-sizing: border-box;
+  margin: 0 4px;
+  font: inherit;
+  font-size: var(--gantt-bar-font-size, 0.8em);
+  color: var(--gantt-edit-color, inherit);
+  background: var(--gantt-edit-bg, var(--gantt-surface, #fff));
+  border: var(--gantt-edit-border, 1px solid var(--gantt-progress-bg, #6366f1));
+  border-radius: var(--gantt-edit-radius, 3px);
 }
 
 /* Floating label showing the precise new time during a drag. */
