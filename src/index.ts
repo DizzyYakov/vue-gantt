@@ -33,6 +33,11 @@ export {
 } from './composables/useTaskRegistry'
 export { useGanttViewport } from './composables/useGanttViewport'
 export { useGanttDrag } from './composables/useGanttDrag'
+export {
+  useGanttHistory,
+  type GanttHistory,
+  type GanttHistoryOptions,
+} from './composables/useGanttHistory'
 
 // Context primitives + layout helpers
 export {
