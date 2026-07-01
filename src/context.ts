@@ -71,6 +71,10 @@ export function normalizeTask(task: GanttTask, rowId: string, order: number): Re
     progress: clampProgress(task.progress),
     dependencies: task.dependencies ?? [],
     type,
+    deadline: task.deadline != null ? toDate(task.deadline) : undefined,
+    constraint: task.constraint
+      ? { type: task.constraint.type, date: toDate(task.constraint.date) }
+      : undefined,
     meta: task.meta ?? {},
     rowId,
     order,

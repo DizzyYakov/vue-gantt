@@ -9,7 +9,15 @@
  * the rows/tasks that change) and never mutate the input.
  */
 import { toDate } from './context'
-import type { GanttGroup, GanttIssue, GanttMoveEvent, GanttRow, GanttTask } from './types'
+import type {
+  GanttConstraint,
+  GanttGroup,
+  GanttIssue,
+  GanttMoveEvent,
+  GanttRow,
+  GanttTask,
+  ResolvedTask,
+} from './types'
 
 // --- Lookups & traversal ----------------------------------------------------
 
@@ -340,13 +348,17 @@ export function autoSchedule(rows: GanttRow[], changedId?: string): GanttRow[] {
   for (const id of topologicalOrder(rows)) {
     const t = byId.get(id)
     if (!t || (allowed && !allowed.has(id))) continue
+    const s = start.get(id)!
+    const dur = end.get(id)! - s
     let required = -Infinity
     for (const dep of t.dependencies ?? []) {
       const e = end.get(dep)
       if (e != null && e > required) required = e
     }
-    if (required > -Infinity && start.get(id)! < required) {
-      const dur = end.get(id)! - start.get(id)!
+    // A lower-bound constraint raises the start floor alongside dependencies.
+    const floor = constraintFloor(t.constraint, dur)
+    if (floor != null && floor > required) required = floor
+    if (required > -Infinity && s < required) {
       start.set(id, required)
       end.set(id, required + dur)
       shifted.add(id)
@@ -366,6 +378,53 @@ export function autoSchedule(rows: GanttRow[], changedId?: string): GanttRow[] {
         }
       : row,
   )
+}
+
+/**
+ * The start floor (epoch ms) a lower-bound constraint imposes on a task, or
+ * `null`. A forward-only scheduler can only push starts later, so only the
+ * "no-earlier"/"must" bounds contribute a floor; the "no-later" bounds don't.
+ */
+function constraintFloor(constraint: GanttConstraint | undefined, durMs: number): number | null {
+  if (!constraint) return null
+  const date = toDate(constraint.date).getTime()
+  switch (constraint.type) {
+    case 'start-no-earlier-than':
+    case 'must-start-on':
+      return date
+    case 'finish-no-earlier-than':
+    case 'must-finish-on':
+      return date - durMs
+    default:
+      return null
+  }
+}
+
+/** Whether a task finishes past its `deadline` (false when it has none). */
+export function isOverdue(task: Pick<ResolvedTask, 'end' | 'deadline'>): boolean {
+  return task.deadline != null && task.end > task.deadline
+}
+
+/**
+ * Whether a task breaches an upper/exact-bound constraint (`*-no-later-than` or
+ * `must-*-on` pushed past its date). Lower-only bounds — honored by
+ * `autoSchedule` — never "violate". False when the task has no constraint.
+ */
+export function violatesConstraint(
+  task: Pick<ResolvedTask, 'start' | 'end' | 'constraint'>,
+): boolean {
+  const c = task.constraint
+  if (!c) return false
+  switch (c.type) {
+    case 'start-no-later-than':
+    case 'must-start-on':
+      return task.start > c.date
+    case 'finish-no-later-than':
+    case 'must-finish-on':
+      return task.end > c.date
+    default:
+      return false
+  }
 }
 
 // --- Validation -------------------------------------------------------------

@@ -39,6 +39,27 @@ export type GanttLabelFormat =
 export type GanttItemType = 'task' | 'milestone'
 
 /**
+ * Scheduling constraint on a task (MS-Project style). Lower bounds
+ * (`*-no-earlier-than`, `must-*-on`) are honored by `autoSchedule` — it pushes the
+ * task's start to satisfy them. Upper bounds (`*-no-later-than`) can't be enforced
+ * by a forward-only scheduler; they're surfaced as a violation via
+ * `violatesConstraint` / the bar's `data-constraint-violation`.
+ */
+export type GanttConstraintType =
+  | 'start-no-earlier-than'
+  | 'start-no-later-than'
+  | 'finish-no-earlier-than'
+  | 'finish-no-later-than'
+  | 'must-start-on'
+  | 'must-finish-on'
+
+/** A task's scheduling constraint: a type paired with the boundary date. */
+export interface GanttConstraint {
+  type: GanttConstraintType
+  date: Date | string | number
+}
+
+/**
  * How tasks that overlap in time on the same row are displayed:
  * - `lanes` — stack overlapping tasks into sub-lanes (the row grows taller);
  * - `overlap` — keep one band; overlapping bars become translucent;
@@ -65,6 +86,10 @@ export interface GanttTask {
   /** Ids of tasks that must finish before this one (drawn as arrows). */
   dependencies?: string[]
   type?: GanttItemType
+  /** Target date drawn as a marker; the bar is flagged overdue when `end` passes it. */
+  deadline?: Date | string | number
+  /** Scheduling constraint (honored by `autoSchedule` for lower bounds). */
+  constraint?: GanttConstraint
   /** Arbitrary extra data forwarded to slots untouched. */
   meta?: Record<string, unknown>
 }
@@ -114,6 +139,10 @@ export interface ResolvedTask {
   progress: number
   dependencies: string[]
   type: GanttItemType
+  /** Deadline target, coerced to a `Date` (absent when not set). */
+  deadline?: Date
+  /** Scheduling constraint with its date coerced to a `Date` (absent when not set). */
+  constraint?: { type: GanttConstraintType; date: Date }
   meta: Record<string, unknown>
   /** Id of the row this task belongs to. */
   rowId: string

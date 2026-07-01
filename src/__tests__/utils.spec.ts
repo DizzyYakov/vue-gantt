@@ -11,6 +11,7 @@ import {
   findTask,
   flattenTasks,
   getDependents,
+  isOverdue,
   removeDependency,
   removeTask,
   rollupProgress,
@@ -20,6 +21,7 @@ import {
   topologicalOrder,
   updateTask,
   validateRows,
+  violatesConstraint,
 } from '../utils'
 import type { GanttMoveEvent, GanttRow } from '../types'
 
@@ -245,6 +247,105 @@ describe('autoSchedule', () => {
     const b = findTask(autoSchedule(rows), 'b')!.task
     expect(b.start).toEqual(new Date(2026, 0, 5)) // shifted to a.end
     expect(b.end).toEqual(new Date(2026, 0, 7)) // duration (2 days) preserved
+  })
+
+  it('moves a start-no-earlier-than task without deps to its constraint floor', () => {
+    const rows: GanttRow[] = [
+      {
+        id: 'r1',
+        tasks: [
+          {
+            id: 'a',
+            start: '2026-01-01',
+            end: '2026-01-03',
+            constraint: { type: 'start-no-earlier-than', date: '2026-01-05' },
+          },
+        ],
+      },
+    ]
+    const a = findTask(autoSchedule(rows), 'a')!.task
+    expect(a.start).toEqual(new Date(2026, 0, 5)) // raised to the SNET date
+    expect(a.end).toEqual(new Date(2026, 0, 7)) // duration (2 days) preserved
+  })
+
+  it('honours finish-no-earlier-than / must-finish-on by pushing finish ≥ date', () => {
+    const rows = (type: 'finish-no-earlier-than' | 'must-finish-on'): GanttRow[] => [
+      {
+        id: 'r1',
+        tasks: [{ id: 'a', start: '2026-01-01', end: '2026-01-03', constraint: { type, date: '2026-01-10' } }],
+      },
+    ]
+    for (const type of ['finish-no-earlier-than', 'must-finish-on'] as const) {
+      const a = findTask(autoSchedule(rows(type)), 'a')!.task
+      expect(a.end).toEqual(new Date(2026, 0, 10)) // finish reaches the date
+      expect(a.start).toEqual(new Date(2026, 0, 8)) // date - duration (2 days)
+    }
+  })
+
+  it('does not move a task for an upper-bound constraint (SNLT / FNLT)', () => {
+    const rows = (type: 'start-no-later-than' | 'finish-no-later-than'): GanttRow[] => [
+      {
+        id: 'r1',
+        tasks: [{ id: 'a', start: '2026-01-01', end: '2026-01-03', constraint: { type, date: '2026-01-05' } }],
+      },
+    ]
+    for (const type of ['start-no-later-than', 'finish-no-later-than'] as const) {
+      const input = rows(type)
+      expect(autoSchedule(input)).toBe(input) // unchanged (no shift → same reference)
+    }
+  })
+})
+
+describe('isOverdue', () => {
+  it('is true when finish is past the deadline', () => {
+    expect(isOverdue({ end: new Date(2026, 0, 10), deadline: new Date(2026, 0, 5) })).toBe(true)
+  })
+
+  it('is false when finish is on or before the deadline', () => {
+    expect(isOverdue({ end: new Date(2026, 0, 5), deadline: new Date(2026, 0, 5) })).toBe(false)
+    expect(isOverdue({ end: new Date(2026, 0, 1), deadline: new Date(2026, 0, 5) })).toBe(false)
+  })
+
+  it('is false when there is no deadline', () => {
+    expect(isOverdue({ end: new Date(2026, 0, 10), deadline: undefined })).toBe(false)
+  })
+})
+
+describe('violatesConstraint', () => {
+  const at = (d: number) => new Date(2026, 0, d)
+
+  it('is true for finish-no-later-than when the finish is past the date', () => {
+    expect(
+      violatesConstraint({
+        start: at(1),
+        end: at(10),
+        constraint: { type: 'finish-no-later-than', date: at(5) },
+      }),
+    ).toBe(true)
+  })
+
+  it('is true for start-no-later-than when the start is past the date', () => {
+    expect(
+      violatesConstraint({
+        start: at(10),
+        end: at(12),
+        constraint: { type: 'start-no-later-than', date: at(5) },
+      }),
+    ).toBe(true)
+  })
+
+  it('is false for a lower-bound constraint (start-no-earlier-than)', () => {
+    expect(
+      violatesConstraint({
+        start: at(10),
+        end: at(12),
+        constraint: { type: 'start-no-earlier-than', date: at(5) },
+      }),
+    ).toBe(false)
+  })
+
+  it('is false when there is no constraint', () => {
+    expect(violatesConstraint({ start: at(1), end: at(10), constraint: undefined })).toBe(false)
   })
 })
 

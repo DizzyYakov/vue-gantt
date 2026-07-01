@@ -3,6 +3,7 @@ import { computed, onMounted, onUnmounted, useTemplateRef, watch } from 'vue'
 import { useGanttContext } from '../composables/useGanttContext'
 import { useGanttViewport } from '../composables/useGanttViewport'
 import GanttConflicts from './GanttConflicts.vue'
+import GanttDeadlines from './GanttDeadlines.vue'
 import GanttDependencies from './GanttDependencies.vue'
 import GanttGrid from './GanttGrid.vue'
 import GanttGroupBar from './GanttGroupBar.vue'
@@ -132,6 +133,10 @@ const scrollStyle = computed(() => {
 
         <slot name="slack" :slack="slack">
           <GanttSlack v-if="config.slack" />
+        </slot>
+
+        <slot name="deadlines" :tasks="visibleTasks">
+          <GanttDeadlines />
         </slot>
 
         <slot name="dependencies" :tasks="tasks">

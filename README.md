@@ -145,6 +145,7 @@ slots for overriding any part. Every slot is scoped — its props give you the s
 | `group-bars`   | `{ groups }`                      | `<GanttGroupBar>` (group rollups)   |
 | `conflicts`    | `{ conflicts }`                   | `<GanttConflicts>`                  |
 | `slack`        | `{ slack }`                       | `<GanttSlack>` (free-float bars)    |
+| `deadlines`    | `{ tasks }`                       | `<GanttDeadlines>` (deadline lines) |
 | `dependencies` | `{ tasks }`                       | `<GanttDependencies>`               |
 | `today`        | `{ today, dateToX }`              | `<GanttToday>`                      |
 | `body-extra`   | `{ contentWidth, contentHeight }` | (extra layer over the body)         |
@@ -223,6 +224,7 @@ every [chart event](#events); the rest are the building blocks.
 | `<GanttDependencies>` | —                                                | `dependency-click`                               |
 | `<GanttConflicts>`    | —                                                | —                                                |
 | `<GanttSlack>`        | — (default slot `{ taskId, slack }`)             | —                                                |
+| `<GanttDeadlines>`    | — (default slot `{ taskId, deadline }`)          | —                                                |
 | `<GanttToday>`        | `interval?: number` (ms, default `1000`)         | —                                                |
 | `<GanttZoom>`         | — (reads context; default slot for custom UI)    | — (calls `setZoom`/`zoomIn`/`zoomOut` on root)   |
 
@@ -284,6 +286,8 @@ Declarative fields — the item registers into the enclosing `<GanttRow>`:
 | `end`          | `Date \| string \| number` | End date (ignored for milestones).             |
 | `progress`     | `number`                   | Completion 0–100.                              |
 | `dependencies` | `string[]`                 | Ids of predecessors (finish-to-start).         |
+| `deadline`     | `Date \| string \| number` | Target date (drawn as a line; flags overdue).  |
+| `constraint`   | `GanttConstraint`          | Scheduling constraint (`{ type, date }`).      |
 | `meta`         | `Record<string, unknown>`  | Arbitrary data forwarded to slots.             |
 | `rowId`        | `string`                   | Explicit row id (overrides the enclosing row). |
 
@@ -296,6 +300,49 @@ Declarative fields — the item registers into the enclosing `<GanttRow>`:
 > dependency arrow on a target outside the current view. The preview (ghost / drop
 > target / draft arrow) keeps following the content, and scrolling stops on release.
 > This is automatic; there are no extra props.
+
+### Deadlines & constraints
+
+Give a task a `deadline` (a target date) or a scheduling `constraint` and the
+chart reflects both automatically:
+
+- **`deadline`** — `<GanttDeadlines>` (rendered by default; override via the
+  `deadlines` slot) draws a vertical line at the date across the task's band. When
+  the task's `end` passes the deadline the bar is flagged **overdue**
+  (`data-overdue`), tinted and outlined via the `--gantt-overdue-*` /
+  `--gantt-deadline-color` tokens.
+- **`constraint`** — a `{ type, date }` where `type` is a `GanttConstraintType`:
+  `'start-no-earlier-than'`, `'start-no-later-than'`, `'finish-no-earlier-than'`,
+  `'finish-no-later-than'`, `'must-start-on'` or `'must-finish-on'`. Lower-bound
+  types (`*-no-earlier-than`, `must-*-on`) are honored by [`autoSchedule`](#utilities),
+  which pushes the task's start so the bound is met (duration preserved). Upper
+  bounds can't be enforced by the forward-only scheduler, so a breach is surfaced
+  instead: the bar gets `data-constraint-violation` (dashed `--gantt-constraint-*`
+  outline).
+
+```ts
+const rows = [
+  {
+    id: 'delivery',
+    name: 'Delivery',
+    tasks: [
+      {
+        id: 'build',
+        name: 'Build',
+        start: '2026-06-01',
+        end: '2026-06-20',
+        deadline: '2026-06-15', // end > deadline → overdue bar + line
+        constraint: { type: 'start-no-earlier-than', date: '2026-06-03' },
+      },
+    ],
+  },
+]
+```
+
+The pure detectors [`isOverdue(task)`](#utilities) (`end > deadline`) and
+[`violatesConstraint(task)`](#utilities) (upper/exact bound breached) are exported
+so you can flag or filter tasks yourself; they take a `ResolvedTask` (or the
+matching `end`/`deadline` / `start`/`end`/`constraint` subset).
 
 ### Events
 
@@ -460,7 +507,9 @@ import {
   topologicalOrder,
   criticalPath,
   slack, // longest finish-to-start chain · free-float days per task
-  autoSchedule,
+  autoSchedule, // honors lower-bound constraints when shifting starts
+  isOverdue,
+  violatesConstraint, // deadline / constraint detectors
   rollupProgress,
   validateRows,
 } from '@dizzy_yakov/vue-gantt'
@@ -709,6 +758,18 @@ hatched look.
 | ---------------------- | ------------------ | -------------------- |
 | `--gantt-today-color`  | `#ef4444`          | "Today" line colour. |
 | `--gantt-today-border` | `2px solid …color` | "Today" line border. |
+
+**Deadlines & constraints**
+
+| Variable                   | Default                | Purpose                                          |
+| -------------------------- | ---------------------- | ------------------------------------------------ |
+| `--gantt-deadline-color`   | `#dc2626`              | Deadline line + overdue accent colour.           |
+| `--gantt-deadline-width`   | `2px`                  | Deadline line thickness.                         |
+| `--gantt-deadline-border`  | `2px solid …color`     | Deadline line border shorthand.                  |
+| `--gantt-overdue-tint`     | `rgb(220 38 38 / 12%)` | Tint over a bar that finished past its deadline. |
+| `--gantt-overdue-outline`  | `1.5px solid …color`   | Outline of an overdue bar.                       |
+| `--gantt-constraint-color` | `#f59e0b`              | Constraint-violation accent colour.              |
+| `--gantt-constraint-outline` | `1.5px dashed …color` | Outline of a bar breaching an upper-bound constraint. |
 
 **Zoom control** (`GanttZoom`)
 

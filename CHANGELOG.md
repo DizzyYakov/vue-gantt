@@ -30,6 +30,16 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Added
 
+- **Task constraints & deadlines.** New `GanttTask` fields: `deadline` (a target date,
+  rendered as a per-task vertical line by the new headless `GanttDeadlines` overlay; the
+  bar is flagged `data-overdue` when it finishes past it) and `constraint`
+  (`{ type: GanttConstraintType; date }`, the full MS-Project set SNET/SNLT/FNET/FNLT/
+  MSO/MFO). `autoSchedule` honors the lower bounds (pushes a task's start to satisfy
+  `*-no-earlier-than` / `must-*-on`); upper bounds are surfaced as violations
+  (`data-constraint-violation`). New exported pure helpers `isOverdue` /
+  `violatesConstraint`, the `GanttDeadlines` component and `deadlines` slot, the
+  `GanttConstraint` / `GanttConstraintType` types, and `--gantt-deadline-*` /
+  `--gantt-overdue-*` / `--gantt-constraint-*` theme tokens.
 - **Interactive auto-scheduling** — opt-in `autoSchedule` prop on `Gantt`/`GanttRoot`.
   When on, a move/resize or a dependency create/update pushes the changed task's
   finish-to-start successors forward (preserving durations, MS-Project style) by

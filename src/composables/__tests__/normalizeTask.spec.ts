@@ -32,6 +32,38 @@ describe('normalizeTask', () => {
     const d = new Date(2026, 0, 1)
     expect(toDate(d)).toBe(d)
   })
+
+  it('parses a deadline string into a local Date', () => {
+    const task = normalizeTask(
+      { id: 'a', start: '2026-01-01', end: '2026-01-05', deadline: '2026-01-10' },
+      'r',
+      0,
+    )
+    expect(task.deadline).toBeInstanceOf(Date)
+    expect(task.deadline).toEqual(new Date(2026, 0, 10))
+  })
+
+  it('parses a constraint, coercing its date to a Date and keeping the type', () => {
+    const task = normalizeTask(
+      {
+        id: 'a',
+        start: '2026-01-01',
+        end: '2026-01-05',
+        constraint: { type: 'start-no-earlier-than', date: '2026-01-05' },
+      },
+      'r',
+      0,
+    )
+    expect(task.constraint?.type).toBe('start-no-earlier-than')
+    expect(task.constraint?.date).toBeInstanceOf(Date)
+    expect(task.constraint?.date).toEqual(new Date(2026, 0, 5))
+  })
+
+  it('leaves deadline and constraint undefined when absent', () => {
+    const task = normalizeTask({ id: 'a', start: '2026-01-01', end: '2026-01-05' }, 'r', 0)
+    expect(task.deadline).toBeUndefined()
+    expect(task.constraint).toBeUndefined()
+  })
 })
 
 describe('normalizeRow', () => {

@@ -93,4 +93,13 @@
   /* Today marker */
   --gantt-today-color: #ef4444;
   --gantt-today-border: 2px solid var(--gantt-today-color);
+
+  /* Deadlines & constraints */
+  --gantt-deadline-color: #dc2626;
+  --gantt-deadline-width: 2px;
+  --gantt-deadline-border: var(--gantt-deadline-width) solid var(--gantt-deadline-color);
+  --gantt-overdue-tint: rgb(220 38 38 / 12%);
+  --gantt-overdue-outline: 1.5px solid var(--gantt-deadline-color);
+  --gantt-constraint-color: #f59e0b;
+  --gantt-constraint-outline: 1.5px dashed var(--gantt-constraint-color);
 }
