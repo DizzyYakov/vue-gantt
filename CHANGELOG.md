@@ -30,6 +30,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Added
 
+- **Interactive auto-scheduling** — opt-in `autoSchedule` prop on `Gantt`/`GanttRoot`.
+  When on, a move/resize or a dependency create/update pushes the changed task's
+  finish-to-start successors forward (preserving durations, MS-Project style) by
+  applying the existing `autoSchedule` utility to the emitted `update:rows`. Effective
+  only with `v-model:rows` / prop-driven `rows`; the live drag ghost is unaffected
+  (successors snap into place on release).
 - **Critical path & slack** visualization. Two opt-in props on `Gantt`/`GanttRoot`:
   `criticalPath` highlights the critical-path tasks (a `data-critical` attribute on
   their bars/milestone markers, themed via `--gantt-critical-color` /

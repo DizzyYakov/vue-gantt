@@ -259,6 +259,13 @@ export interface GanttRootProps {
   arrowHead?: ArrowHeadBuilder
   /** Snap dragged dates to the base-unit grid. Off by default (full precision). */
   snapToGrid?: boolean
+  /**
+   * On a move/resize or a dependency create/update, push finish-to-start
+   * successors forward so none starts before a predecessor ends (MS-Project
+   * style), preserving each task's duration. Effective only with `v-model:rows`
+   * (or prop-driven `rows`) — the cascade is applied to the emitted `update:rows`.
+   */
+  autoSchedule?: boolean
   /** date-fns format for the live date label shown while dragging. */
   dragLabelFormat?: string
   /** Override the drag tooltip text (move / resize / progress). */
@@ -323,6 +330,8 @@ export interface GanttConfig {
   arrowHead: ArrowHeadBuilder
   /** Whether dragged dates snap to the base-unit grid. */
   snapToGrid: boolean
+  /** Whether successors are auto-rescheduled on a move/resize/link change. */
+  autoSchedule: boolean
   /** date-fns format for the live drag date label. */
   dragLabelFormat: string
   /** Optional override for the drag tooltip text (move / resize / progress). */

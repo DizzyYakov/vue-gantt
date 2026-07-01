@@ -70,6 +70,12 @@ const meta: Meta<typeof Gantt> = {
       control: 'boolean',
       description: 'Snap dragged dates to the base unit (off = full precision).',
     },
+    autoSchedule: {
+      control: 'boolean',
+      description:
+        'Push finish-to-start successors forward on a move/resize/link change ' +
+        '(MS-Project style). Effective only with `v-model:rows`.',
+    },
     today: { control: 'text' },
     labelFormat: { control: 'text' },
     'onZoom-change': { action: 'zoom-change', table: { category: 'events' } },

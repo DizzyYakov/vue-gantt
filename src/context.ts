@@ -35,6 +35,7 @@ export const GANTT_DEFAULTS = {
   slack: false,
   linkable: false,
   snapToGrid: false,
+  autoSchedule: false,
   dragLabelFormat: 'd MMM HH:mm',
 } as const
 
