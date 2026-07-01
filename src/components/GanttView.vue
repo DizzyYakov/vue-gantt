@@ -4,10 +4,12 @@ import { useGanttContext } from '../composables/useGanttContext'
 import { useGanttViewport } from '../composables/useGanttViewport'
 import GanttBaselines from './GanttBaselines.vue'
 import GanttConflicts from './GanttConflicts.vue'
+import GanttDeadlines from './GanttDeadlines.vue'
 import GanttDependencies from './GanttDependencies.vue'
 import GanttGrid from './GanttGrid.vue'
 import GanttGroupBar from './GanttGroupBar.vue'
 import GanttMilestone from './GanttMilestone.vue'
+import GanttSlack from './GanttSlack.vue'
 import GanttTask from './GanttTask.vue'
 import GanttTaskList from './GanttTaskList.vue'
 import GanttTimeline from './GanttTimeline.vue'
@@ -29,6 +31,7 @@ const {
   tasks,
   config,
   conflicts,
+  slack,
   visibleColumnsFor,
   dateToX,
   contentWidth,
@@ -131,6 +134,14 @@ const scrollStyle = computed(() => {
         </slot>
         <slot name="conflicts" :conflicts="conflicts">
           <GanttConflicts v-if="config.overlap === 'conflict'" />
+        </slot>
+
+        <slot name="slack" :slack="slack">
+          <GanttSlack v-if="config.slack" />
+        </slot>
+
+        <slot name="deadlines" :tasks="visibleTasks">
+          <GanttDeadlines />
         </slot>
 
         <slot name="dependencies" :tasks="tasks">

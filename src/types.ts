@@ -39,6 +39,27 @@ export type GanttLabelFormat =
 export type GanttItemType = 'task' | 'milestone'
 
 /**
+ * Scheduling constraint on a task (MS-Project style). Lower bounds
+ * (`*-no-earlier-than`, `must-*-on`) are honored by `autoSchedule` — it pushes the
+ * task's start to satisfy them. Upper bounds (`*-no-later-than`) can't be enforced
+ * by a forward-only scheduler; they're surfaced as a violation via
+ * `violatesConstraint` / the bar's `data-constraint-violation`.
+ */
+export type GanttConstraintType =
+  | 'start-no-earlier-than'
+  | 'start-no-later-than'
+  | 'finish-no-earlier-than'
+  | 'finish-no-later-than'
+  | 'must-start-on'
+  | 'must-finish-on'
+
+/** A task's scheduling constraint: a type paired with the boundary date. */
+export interface GanttConstraint {
+  type: GanttConstraintType
+  date: Date | string | number
+}
+
+/**
  * How tasks that overlap in time on the same row are displayed:
  * - `lanes` — stack overlapping tasks into sub-lanes (the row grows taller);
  * - `overlap` — keep one band; overlapping bars become translucent;
@@ -65,6 +86,10 @@ export interface GanttTask {
   /** Ids of tasks that must finish before this one (drawn as arrows). */
   dependencies?: string[]
   type?: GanttItemType
+  /** Target date drawn as a marker; the bar is flagged overdue when `end` passes it. */
+  deadline?: Date | string | number
+  /** Scheduling constraint (honored by `autoSchedule` for lower bounds). */
+  constraint?: GanttConstraint
   /** Planned start (baseline). Drawn as a shadow bar under the actual bar. */
   baselineStart?: Date | string | number
   /** Planned end (baseline). Drawn together with `baselineStart`. */
@@ -118,6 +143,10 @@ export interface ResolvedTask {
   progress: number
   dependencies: string[]
   type: GanttItemType
+  /** Deadline target, coerced to a `Date` (absent when not set). */
+  deadline?: Date
+  /** Scheduling constraint with its date coerced to a `Date` (absent when not set). */
+  constraint?: { type: GanttConstraintType; date: Date }
   /** Planned start, coerced to a `Date` (absent when no baseline). */
   baselineStart?: Date
   /** Planned end, coerced to a `Date` (absent when no baseline). */
@@ -247,6 +276,10 @@ export interface GanttRootProps {
   progressDraggable?: boolean
   /** Show a hover tooltip on bars/milestones (override its content via the `tooltip` slot). */
   tooltip?: boolean
+  /** Highlight the tasks on the critical path (`data-critical` on their bars). */
+  criticalPath?: boolean
+  /** Show each task's free-float slack as a translucent bar after its end. */
+  slack?: boolean
   /** Allow creating/editing dependencies by dragging between tasks. */
   linkable?: boolean
   /**
@@ -263,6 +296,13 @@ export interface GanttRootProps {
   arrowHead?: ArrowHeadBuilder
   /** Snap dragged dates to the base-unit grid. Off by default (full precision). */
   snapToGrid?: boolean
+  /**
+   * On a move/resize or a dependency create/update, push finish-to-start
+   * successors forward so none starts before a predecessor ends (MS-Project
+   * style), preserving each task's duration. Effective only with `v-model:rows`
+   * (or prop-driven `rows`) — the cascade is applied to the emitted `update:rows`.
+   */
+  autoSchedule?: boolean
   /** date-fns format for the live date label shown while dragging. */
   dragLabelFormat?: string
   /** Override the drag tooltip text (move / resize / progress). */
@@ -315,6 +355,10 @@ export interface GanttConfig {
   progressDraggable: boolean
   /** Whether a hover tooltip is shown on bars/milestones. */
   tooltip: boolean
+  /** Whether critical-path tasks are highlighted. */
+  criticalPath: boolean
+  /** Whether free-float slack bars are shown. */
+  slack: boolean
   /** Whether dependencies can be created/edited by dragging. */
   linkable: boolean
   /** Connector path builder `(tail, head) => string` (resolved, never undefined). */
@@ -323,6 +367,8 @@ export interface GanttConfig {
   arrowHead: ArrowHeadBuilder
   /** Whether dragged dates snap to the base-unit grid. */
   snapToGrid: boolean
+  /** Whether successors are auto-rescheduled on a move/resize/link change. */
+  autoSchedule: boolean
   /** date-fns format for the live drag date label. */
   dragLabelFormat: string
   /** Optional override for the drag tooltip text (move / resize / progress). */
@@ -579,6 +625,10 @@ export interface GanttContext {
   taskBand: (task: ResolvedTask) => GanttBand
   /** Overlap spans per row (non-empty only in `conflict` mode). */
   conflicts: ComputedRef<GanttConflict[]>
+  /** Ids of the critical-path tasks (empty unless `criticalPath` is on). */
+  criticalTasks: ComputedRef<Set<string>>
+  /** Free-float slack (days) by task id (empty unless `slack` is on). */
+  slack: ComputedRef<Map<string, number>>
   /** Register a declaratively-declared row (used by `GanttRow`). */
   registerRow: (row: GanttRow) => void
   /** Remove a previously registered row. */

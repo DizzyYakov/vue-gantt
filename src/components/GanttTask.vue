@@ -3,6 +3,7 @@ import { computed } from 'vue'
 import { format } from 'date-fns'
 import { useGanttItem, type GanttItemProps } from '../composables/useGanttItem'
 import { useHoverTooltip } from '../composables/useHoverTooltip'
+import { isOverdue, violatesConstraint } from '../utils'
 import type { GanttTaskEvent } from '../types'
 
 const props = defineProps<GanttItemProps>()
@@ -35,8 +36,13 @@ const {
 const resizable = computed(() => ctx.config.value.resizable)
 const progressDraggable = computed(() => ctx.config.value.progressDraggable)
 const linkable = computed(() => ctx.config.value.linkable)
+// Flags: bar finishes past its deadline, or breaches an upper-bound constraint.
+const overdue = computed(() => isOverdue(resolved.value))
+const constraintViolation = computed(() => violatesConstraint(resolved.value))
 // Highlight this bar while a dependency drag hovers it as a drop target.
 const linkTarget = computed(() => ctx.linkDraft.value?.over === resolved.value.id)
+// Whether this task is on the critical path (only when `criticalPath` is on).
+const critical = computed(() => ctx.criticalTasks.value.has(resolved.value.id))
 
 // Start dragging a new finish-to-start dependency from this task's finish edge.
 function onConnectorDown(event: PointerEvent): void {
@@ -109,6 +115,9 @@ const { hovered, show: showHoverTip, tipStyle: hoverTipStyle } = useHoverTooltip
       :data-id="resolved.id"
       :data-draggable="draggable || undefined"
       :data-link-target="linkTarget || undefined"
+      :data-critical="critical || undefined"
+      :data-overdue="overdue || undefined"
+      :data-constraint-violation="constraintViolation || undefined"
       :style="barStyle"
       @pointerdown="onPointerDown"
       @pointerenter="hovered = true"
@@ -267,6 +276,28 @@ const { hovered, show: showHoverTip, tipStyle: hoverTipStyle } = useHoverTooltip
 /* Drop-target affordance while a dependency is being dragged onto this bar. */
 .gantt-bar[data-link-target] {
   outline: var(--gantt-link-target-outline, 2px solid var(--gantt-progress-bg, #6366f1));
+  outline-offset: 1px;
+}
+
+/* Critical-path highlight. */
+.gantt-bar[data-critical] {
+  outline: var(--gantt-critical-outline, 2px solid var(--gantt-critical-color, #dc2626));
+  outline-offset: 1px;
+}
+
+/* Bar finishes past its deadline. */
+.gantt-bar[data-overdue] {
+  outline: var(--gantt-overdue-outline, 1.5px solid var(--gantt-deadline-color, #dc2626));
+  outline-offset: 1px;
+  background-image: var(
+    --gantt-overdue-bg,
+    linear-gradient(var(--gantt-overdue-tint, rgb(220 38 38 / 12%)), var(--gantt-overdue-tint, rgb(220 38 38 / 12%)))
+  );
+}
+
+/* Bar breaches an upper-bound scheduling constraint. */
+.gantt-bar[data-constraint-violation] {
+  outline: var(--gantt-constraint-outline, 1.5px dashed var(--gantt-constraint-color, #f59e0b));
   outline-offset: 1px;
 }
 

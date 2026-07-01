@@ -62,6 +62,12 @@
   --gantt-conflict-color: #ef4444;
   --gantt-conflict-width: 1.5;
 
+  /* Critical path & slack */
+  --gantt-critical-color: #dc2626;
+  --gantt-critical-outline: 2px solid var(--gantt-critical-color);
+  --gantt-slack-color: #94a3b8;
+  --gantt-slack-opacity: 0.7;
+
   /* Drag & drop (ghost copy + live time label) */
   --gantt-ghost-opacity: 0.55;
   --gantt-drag-label-bg: #1e293b;
@@ -93,4 +99,13 @@
   /* Today marker */
   --gantt-today-color: #ef4444;
   --gantt-today-border: 2px solid var(--gantt-today-color);
+
+  /* Deadlines & constraints */
+  --gantt-deadline-color: #dc2626;
+  --gantt-deadline-width: 2px;
+  --gantt-deadline-border: var(--gantt-deadline-width) solid var(--gantt-deadline-color);
+  --gantt-overdue-tint: rgb(220 38 38 / 12%);
+  --gantt-overdue-outline: 1.5px solid var(--gantt-deadline-color);
+  --gantt-constraint-color: #f59e0b;
+  --gantt-constraint-outline: 1.5px dashed var(--gantt-constraint-color);
 }

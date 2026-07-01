@@ -27,7 +27,15 @@ import { triangleArrow } from '../arrowHeads'
 import { GANTT_CONTEXT, GANTT_DEFAULTS, normalizeRow, toDate } from '../context'
 import { elbowPath } from '../dependencyPaths'
 import { conflictSegments, layoutGroups, type GroupMeta } from '../layout'
-import { addDependency, applyMove, removeDependency, updateTask } from '../utils'
+import {
+  addDependency,
+  applyMove,
+  autoSchedule,
+  criticalPath,
+  removeDependency,
+  slack,
+  updateTask,
+} from '../utils'
 import { DEFAULT_ZOOM_LEVELS } from '../zoom'
 import type {
   GanttBand,
@@ -75,10 +83,13 @@ const props = withDefaults(defineProps<GanttRootProps>(), {
   resizable: GANTT_DEFAULTS.resizable,
   progressDraggable: GANTT_DEFAULTS.progressDraggable,
   tooltip: GANTT_DEFAULTS.tooltip,
+  criticalPath: GANTT_DEFAULTS.criticalPath,
+  slack: GANTT_DEFAULTS.slack,
   linkable: GANTT_DEFAULTS.linkable,
   dependencyShape: elbowPath,
   arrowHead: triangleArrow,
   snapToGrid: GANTT_DEFAULTS.snapToGrid,
+  autoSchedule: GANTT_DEFAULTS.autoSchedule,
   dragLabelFormat: GANTT_DEFAULTS.dragLabelFormat,
   dragLabel: undefined,
   startDate: undefined,
@@ -124,6 +135,13 @@ function emitModelUpdate(apply: (rows: GanttRow[]) => GanttRow[]): void {
   if (props.rows) emit('update:rows', apply(props.rows))
 }
 
+// Opt-in auto-scheduling: after an interactive edit cascades into `v-model:rows`,
+// push `changedId`'s finish-to-start successors forward (preserving durations).
+// A no-op (returns the same rows) when off or when nothing needs shifting.
+function maybeAutoSchedule(rows: GanttRow[], changedId: string): GanttRow[] {
+  return props.autoSchedule ? autoSchedule(rows, changedId) : rows
+}
+
 // Bubble child interactions up as the matching chart event. Components call this
 // via the context so prop-driven `<Gantt>` consumers can listen at the root.
 function dispatch<K extends keyof GanttEventMap>(name: K, payload: GanttEventMap[K]): void {
@@ -131,14 +149,17 @@ function dispatch<K extends keyof GanttEventMap>(name: K, payload: GanttEventMap
   // Mirror dependency edits into `v-model:rows`.
   if (name === 'dependency-create') {
     const p = payload as GanttDependencyChange
-    emitModelUpdate(rows => addDependency(rows, p.from, p.to))
+    emitModelUpdate(rows => maybeAutoSchedule(addDependency(rows, p.from, p.to), p.from))
   } else if (name === 'dependency-remove') {
     const p = payload as GanttDependencyChange
     emitModelUpdate(rows => removeDependency(rows, p.from, p.to))
   } else if (name === 'dependency-update') {
     const p = payload as GanttDependencyUpdate
     emitModelUpdate(rows =>
-      addDependency(removeDependency(rows, p.previous.from, p.previous.to), p.from, p.to),
+      maybeAutoSchedule(
+        addDependency(removeDependency(rows, p.previous.from, p.previous.to), p.from, p.to),
+        p.from,
+      ),
     )
   }
 }
@@ -349,10 +370,13 @@ const config = computed<GanttConfig>(() => ({
   resizable: props.resizable,
   progressDraggable: props.progressDraggable,
   tooltip: props.tooltip,
+  criticalPath: props.criticalPath,
+  slack: props.slack,
   linkable: props.linkable,
   dependencyShape: props.dependencyShape,
   arrowHead: props.arrowHead,
   snapToGrid: props.snapToGrid,
+  autoSchedule: props.autoSchedule,
   dragLabelFormat: props.dragLabelFormat,
   dragLabel: props.dragLabel,
   start: start.value,
@@ -548,6 +572,16 @@ const conflicts = computed<GanttConflict[]>(() => {
   return out
 })
 
+// Critical-path ids + free-float slack (days) per task. Gated by their props so
+// the pure utilities only run when the visualization is on. Both read the source
+// model (the controlled `rows` / declarative registration).
+const criticalTasks = computed<Set<string>>(() =>
+  props.criticalPath ? new Set(criticalPath(sourceRows.value)) : new Set(),
+)
+const slackMap = computed<Map<string, number>>(() =>
+  props.slack ? slack(sourceRows.value) : new Map(),
+)
+
 // Interactive dependency creation / re-routing (emits intents; data is controlled).
 const { linkDraft, beginLink, endLink, refresh: refreshLink } = useGanttLink({
   dispatch,
@@ -579,6 +613,8 @@ const context: GanttContext = {
   rowOf: taskId => taskOrder.value.get(taskId) ?? -1,
   taskBand,
   conflicts,
+  criticalTasks,
+  slack: slackMap,
   registerRow,
   unregisterRow,
   registerGroup,
@@ -588,11 +624,13 @@ const context: GanttContext = {
   unregisterTask,
   moveTask: event => {
     emit('move', event)
-    emitModelUpdate(rows => applyMove(rows, event))
+    emitModelUpdate(rows => maybeAutoSchedule(applyMove(rows, event), event.id))
   },
   resizeTask: event => {
     emit('resize', event)
-    emitModelUpdate(rows => updateTask(rows, event.id, { start: event.start, end: event.end }))
+    emitModelUpdate(rows =>
+      maybeAutoSchedule(updateTask(rows, event.id, { start: event.start, end: event.end }), event.id),
+    )
   },
   progressTask: event => {
     emit('progress', event)

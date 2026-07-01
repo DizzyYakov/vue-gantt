@@ -37,6 +37,31 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   tokens). Coerced to `Date` in `normalizeTask` (never milestone-collapsed); rendered
   only for tasks that set both fields; supported declaratively via
   `<GanttTask baseline-start baseline-end>`.
+- **Task constraints & deadlines.** New `GanttTask` fields: `deadline` (a target date,
+  rendered as a per-task vertical line by the new headless `GanttDeadlines` overlay; the
+  bar is flagged `data-overdue` when it finishes past it) and `constraint`
+  (`{ type: GanttConstraintType; date }`, the full MS-Project set SNET/SNLT/FNET/FNLT/
+  MSO/MFO). `autoSchedule` honors the lower bounds (pushes a task's start to satisfy
+  `*-no-earlier-than` / `must-*-on`); upper bounds are surfaced as violations
+  (`data-constraint-violation`). New exported pure helpers `isOverdue` /
+  `violatesConstraint`, the `GanttDeadlines` component and `deadlines` slot, the
+  `GanttConstraint` / `GanttConstraintType` types, and `--gantt-deadline-*` /
+  `--gantt-overdue-*` / `--gantt-constraint-*` theme tokens.
+- **Interactive auto-scheduling** — opt-in `autoSchedule` prop on `Gantt`/`GanttRoot`.
+  When on, a move/resize or a dependency create/update pushes the changed task's
+  finish-to-start successors forward (preserving durations, MS-Project style) by
+  applying the existing `autoSchedule` utility to the emitted `update:rows`. Effective
+  only with `v-model:rows` / prop-driven `rows`; the live drag ghost is unaffected
+  (successors snap into place on release).
+- **Critical path & slack** visualization. Two opt-in props on `Gantt`/`GanttRoot`:
+  `criticalPath` highlights the critical-path tasks (a `data-critical` attribute on
+  their bars/milestone markers, themed via `--gantt-critical-color` /
+  `--gantt-critical-outline`), reusing the existing `criticalPath(rows)` utility;
+  `slack` renders each task's free float as a translucent bar from its end to its
+  nearest successor's start, via the new headless `GanttSlack` overlay (default
+  slot `{ taskId, slack }`, `slack` section slot, `--gantt-slack-*` tokens). The
+  new pure `slack(rows): Map<string, number>` utility (free float in days) is
+  exported alongside `GanttSlack`.
 - `sortRows` / `filterRows` data utilities — pure, immutable helpers to reorder or
   filter `GanttRow[]` by a comparator/predicate (the chart stays controlled: pass
   the result back as `rows`). Build comparators from row data, e.g. `tasksExtent`

@@ -57,6 +57,8 @@ const rowMovable = ref(true)
 const resizable = ref(true)
 const progressDraggable = ref(true)
 const linkable = ref(true)
+// Auto-scheduling (cascade successors on move/resize/link) — v-model:rows only.
+const autoSchedule = ref(true)
 
 // Custom drag tooltip text for every drag kind (move / resize / progress).
 const dragLabel = (i: GanttDragLabelInfo) =>
@@ -254,6 +256,10 @@ const onMoveGrouped = (e: GanttMoveEvent) => (groupedRows.value = applyMove(grou
         <input v-model="linkable" type="checkbox" />
         edit dependencies
       </label>
+      <label class="control__item">
+        <input v-model="autoSchedule" type="checkbox" />
+        auto-schedule (v-model only)
+      </label>
     </fieldset>
 
     <section>
@@ -303,6 +309,7 @@ const onMoveGrouped = (e: GanttMoveEvent) => (groupedRows.value = applyMove(grou
           :resizable="resizable"
           :progress-draggable="progressDraggable"
           :linkable="linkable"
+          :auto-schedule="autoSchedule"
           :drag-label="dragLabel"
         />
       </div>

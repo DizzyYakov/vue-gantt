@@ -58,9 +58,23 @@ const meta: Meta<typeof Gantt> = {
       control: 'boolean',
       description: 'Show a hover tooltip on bars/milestones.',
     },
+    criticalPath: {
+      control: 'boolean',
+      description: 'Highlight the tasks on the critical path (`data-critical`).',
+    },
+    slack: {
+      control: 'boolean',
+      description: "Draw each task's free-float slack as a translucent bar.",
+    },
     snapToGrid: {
       control: 'boolean',
       description: 'Snap dragged dates to the base unit (off = full precision).',
+    },
+    autoSchedule: {
+      control: 'boolean',
+      description:
+        'Push finish-to-start successors forward on a move/resize/link change ' +
+        '(MS-Project style). Effective only with `v-model:rows`.',
     },
     today: { control: 'text' },
     labelFormat: { control: 'text' },
@@ -429,4 +443,89 @@ export const CustomTodaySlot: Story = {
         </template>
       </Gantt>`,
   }),
+}
+
+/**
+ * Two opt-in schedule overlays. `critical-path` highlights the longest
+ * finish-to-start chain (`spec → design → build → ship`) — those bars/markers get
+ * `data-critical`, styled via `--gantt-critical-*`. `slack` draws each task's free
+ * float (the gap to its nearest successor's start) as a translucent bar, styled via
+ * `--gantt-slack-*`: here `spec` and `qa` finish well before their successors begin,
+ * so a slack bar trails them; the critical-path tasks are back-to-back, so they have
+ * none. The `criticalPath` / `slack` utilities expose the same numbers headless.
+ */
+export const CriticalPathAndSlack: Story = {
+  args: {
+    criticalPath: true,
+    slack: true,
+    tiers: ['month', 'week', 'day'],
+    columnWidth: 40,
+    height: 300,
+    rows: [
+      {
+        id: 'planning',
+        name: 'Planning',
+        tasks: [
+          // Finishes Jun-08 but `design` only starts Jun-12 → 4 days of slack.
+          { id: 'spec', name: 'Spec', start: '2026-06-01', end: '2026-06-08', progress: 100 },
+        ],
+      },
+      {
+        id: 'design',
+        name: 'Design',
+        tasks: [
+          {
+            id: 'design',
+            name: 'Design',
+            start: '2026-06-12',
+            end: '2026-06-20',
+            progress: 60,
+            dependencies: ['spec'],
+          },
+        ],
+      },
+      {
+        id: 'dev',
+        name: 'Development',
+        tasks: [
+          {
+            id: 'build',
+            name: 'Implementation',
+            start: '2026-06-20',
+            end: '2026-06-30',
+            progress: 30,
+            dependencies: ['design'],
+          },
+        ],
+      },
+      {
+        id: 'qa',
+        name: 'QA',
+        tasks: [
+          // Off the critical path; finishes Jun-18 but `ship` waits → slack.
+          {
+            id: 'qa',
+            name: 'Testing',
+            start: '2026-06-12',
+            end: '2026-06-18',
+            progress: 20,
+            dependencies: ['spec'],
+          },
+        ],
+      },
+      {
+        id: 'release',
+        name: 'Release',
+        tasks: [
+          {
+            id: 'ship',
+            name: 'Ship',
+            type: 'milestone',
+            start: '2026-06-30',
+            dependencies: ['build', 'qa'],
+          },
+        ],
+      },
+    ],
+  },
 }
