@@ -17,6 +17,7 @@ import {
   GanttToday,
   removeDependency,
   updateTask,
+  useGanttHistory,
   type GanttDependencyChange,
   type GanttDependencyUpdate,
   type GanttDragLabelInfo,
@@ -158,6 +159,14 @@ const vmodelRows = ref<GanttRowData[]>([
   },
 ])
 
+// Undo/redo over the same `vmodelRows` ref — every `update:rows` is one snapshot.
+const {
+  undo: undoVmodel,
+  redo: redoVmodel,
+  canUndo: canUndoVmodel,
+  canRedo: canRedoVmodel,
+} = useGanttHistory(vmodelRows)
+
 // Apply a completed drag with the library's `applyMove` helper (controlled data).
 const onMoveRows = (e: GanttMoveEvent) => (rows.value = applyMove(rows.value, e))
 const onMoveMany = (e: GanttMoveEvent) => (manyRows.value = applyMove(manyRows.value, e))
@@ -294,8 +303,15 @@ const onMoveGrouped = (e: GanttMoveEvent) => (groupedRows.value = applyMove(grou
     <section>
       <h2>1b. Two-way binding (<code>v-model:rows</code>) — no manual handlers</h2>
       <p class="hint">
-        Drag / resize / progress / dependency edits apply straight to
-        <code>vmodelRows</code>. First task: <strong>{{ vmodelRows[0]?.tasks?.[0]?.start }}</strong
+        <button type="button" class="btn" :disabled="!canUndoVmodel" @click="undoVmodel">
+          Undo
+        </button>
+        <button type="button" class="btn" :disabled="!canRedoVmodel" @click="redoVmodel">
+          Redo
+        </button>
+        — undo/redo через <code>useGanttHistory(vmodelRows)</code>. Drag / resize / progress /
+        dependency edits apply straight to <code>vmodelRows</code>. First task:
+        <strong>{{ vmodelRows[0]?.tasks?.[0]?.start }}</strong
         >.
       </p>
       <div class="card">

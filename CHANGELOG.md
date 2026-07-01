@@ -30,6 +30,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Added
 
+- **Undo / redo.** New `useGanttHistory(rowsRef, { limit? })` composable — a snapshot
+  history over the `rows` ref you bind to `v-model:rows`. Every edit (move/resize/
+  progress/dependency, all funnelled through one `update:rows`) is recorded as one
+  entry; `undo` / `redo` restore a snapshot into the ref without recording it, with
+  reactive `canUndo` / `canRedo` and `clear`. Snapshots are cheap (the immutable edit
+  utilities share structure — no deep clone); the composable is context-free and
+  SSR-safe. Exports `GanttHistory` / `GanttHistoryOptions`.
 - **Split tasks.** A new `GanttTask.segments` field (`{ start, end }[]`) draws the bar
   as separate work spans with a thin connector line through the paused gaps, all inside
   the single `.gantt-bar` (so drag/resize/handles are unchanged; `start`/`end` still

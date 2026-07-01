@@ -491,6 +491,42 @@ are still emitted alongside `update:rows`. Choose **one** approach: use
 `v-model:rows` for automatic sync, or the manual events to apply changes
 yourself — combining both double-applies each change.
 
+### Undo / redo (`useGanttHistory`)
+
+`useGanttHistory(rows)` adds undo/redo over the same `rows` ref you bind to
+`v-model:rows`. Every reassignment is recorded as a snapshot — each drag / resize /
+progress / link edit goes through one `update:rows`, so one user action is one
+history entry. It returns `{ undo, redo, canUndo, canRedo, clear }`.
+
+```vue
+<script setup>
+import { ref } from 'vue'
+import { Gantt, useGanttHistory } from '@dizzy_yakov/vue-gantt'
+
+const rows = ref(initialRows)
+const { undo, redo, canUndo, canRedo } = useGanttHistory(rows)
+</script>
+
+<template>
+  <button :disabled="!canUndo" @click="undo">Undo</button>
+  <button :disabled="!canRedo" @click="redo">Redo</button>
+  <Gantt v-model:rows="rows" draggable resizable progress-draggable linkable />
+</template>
+```
+
+- `undo()` / `redo()` restore a snapshot back into the ref without recording it; a
+  fresh edit after an undo drops the redo tail.
+- `canUndo` / `canRedo` are `ComputedRef<boolean>` — wire them to your buttons'
+  `:disabled`.
+- `clear()` drops all history, keeping the current value as the only entry.
+- `useGanttHistory(rows, { limit })` caps the stack size, dropping the oldest
+  snapshots (default: unlimited).
+
+Snapshots are cheap: the edit [utilities](#utilities) are immutable, so entries
+share structure — no deep clone. The composable is pure and context-free (no
+`GanttRoot`, SSR-safe). Keyboard shortcuts are yours to wire — e.g. bind Ctrl+Z /
+Ctrl+Shift+Z to `undo` / `redo`.
+
 ### Auto-scheduling
 
 The `autoSchedule` prop turns the chart into an MS-Project-style scheduler: when
