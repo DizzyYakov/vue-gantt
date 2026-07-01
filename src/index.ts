@@ -117,6 +117,7 @@ export type {
   GanttRow as GanttRowData,
   GanttRowEvent,
   GanttScrollOptions,
+  GanttSegment,
   GanttTask as GanttTaskData,
   GanttTaskEvent,
   GanttUnit,
@@ -125,5 +126,6 @@ export type {
   GanttZoomLevel,
   ResolvedGroup,
   ResolvedRow,
+  ResolvedSegment,
   ResolvedTask,
 } from './types'

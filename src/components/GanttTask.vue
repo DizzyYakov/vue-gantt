@@ -27,6 +27,7 @@ const {
   startResize,
   startProgress,
   liveProgress,
+  segmentBars,
   ghost,
   previewLabel,
   overlapping,
@@ -118,6 +119,7 @@ const { hovered, show: showHoverTip, tipStyle: hoverTipStyle } = useHoverTooltip
       :data-critical="critical || undefined"
       :data-overdue="overdue || undefined"
       :data-constraint-violation="constraintViolation || undefined"
+      :data-split="segmentBars.length ? '' : undefined"
       :style="barStyle"
       @pointerdown="onPointerDown"
       @pointerenter="hovered = true"
@@ -127,7 +129,24 @@ const { hovered, show: showHoverTip, tipStyle: hoverTipStyle } = useHoverTooltip
       @contextmenu="onContextmenu"
     >
       <slot :task="resolved" :progress="liveProgress">
-        <div class="gantt-bar__progress" :style="progressStyle" :aria-label="`${liveProgress}%`" />
+        <!-- Split task: work segments with paused gaps, progress flowing through them. -->
+        <template v-if="segmentBars.length">
+          <div class="gantt-bar__split-line" />
+          <div
+            v-for="(seg, i) in segmentBars"
+            :key="i"
+            class="gantt-bar__segment"
+            :style="{ left: `${seg.leftPct}%`, width: `${seg.widthPct}%` }"
+          >
+            <div class="gantt-bar__segment-progress" :style="{ width: `${seg.progressPct}%` }" />
+          </div>
+        </template>
+        <div
+          v-else
+          class="gantt-bar__progress"
+          :style="progressStyle"
+          :aria-label="`${liveProgress}%`"
+        />
         <span class="gantt-bar__label">{{ resolved.name }}</span>
       </slot>
 
@@ -328,6 +347,39 @@ const { hovered, show: showHoverTip, tipStyle: hoverTipStyle } = useHoverTooltip
 }
 
 .gantt-bar__progress {
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  background: var(--gantt-progress-bg, #6366f1);
+}
+
+/* Split task: the bar itself is transparent; segments carry the fill, and the
+   connector line shows through the paused gaps between them. */
+.gantt-bar[data-split] {
+  background: transparent;
+}
+
+.gantt-bar__split-line {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 50%;
+  height: var(--gantt-split-line-width, 2px);
+  transform: translateY(-50%);
+  background: var(--gantt-split-line-color, var(--gantt-progress-bg, #6366f1));
+}
+
+.gantt-bar__segment {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  overflow: hidden;
+  background: var(--gantt-split-segment-bg, var(--gantt-bar-bg, #c7d2fe));
+  border-radius: var(--gantt-split-segment-radius, var(--gantt-bar-radius, 4px));
+}
+
+.gantt-bar__segment-progress {
   position: absolute;
   left: 0;
   top: 0;

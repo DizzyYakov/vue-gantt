@@ -30,6 +30,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Added
 
+- **Split tasks.** A new `GanttTask.segments` field (`{ start, end }[]`) draws the bar
+  as separate work spans with a thin connector line through the paused gaps, all inside
+  the single `.gantt-bar` (so drag/resize/handles are unchanged; `start`/`end` still
+  define the overall extent). Progress fills cumulatively through the segments' working
+  time (early segments first). Coerced to `Date`s in `normalizeTask`; supported
+  declaratively via `<GanttTask :segments>`. The `GanttSegment` / `ResolvedSegment`
+  types are exported, with `--gantt-split-*` theme tokens.
 - **Baselines (planned vs actual).** New `GanttTask` fields `baselineStart` /
   `baselineEnd` (the planned interval) are drawn as a thin "shadow" bar at the bottom
   of the task's row band, under the actual bar, by the new headless `GanttBaselines`

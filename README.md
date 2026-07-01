@@ -288,6 +288,7 @@ Declarative fields — the item registers into the enclosing `<GanttRow>`:
 | `end`          | `Date \| string \| number` | End date (ignored for milestones).             |
 | `progress`     | `number`                   | Completion 0–100.                              |
 | `dependencies` | `string[]`                 | Ids of predecessors (finish-to-start).         |
+| `segments`     | `GanttSegment[]`           | Work spans with paused gaps (a "split" task).  |
 | `deadline`     | `Date \| string \| number` | Target date (drawn as a line; flags overdue).  |
 | `constraint`   | `GanttConstraint`          | Scheduling constraint (`{ type, date }`).      |
 | `baselineStart`| `Date \| string \| number` | Planned start (baseline). Needs `baselineEnd`. |
@@ -297,6 +298,48 @@ Declarative fields — the item registers into the enclosing `<GanttRow>`:
 
 > `<GanttTask :task>` / `<GanttMilestone :task>` also accept an already-resolved
 > task — this is how `<Gantt>` renders bars internally.
+
+#### Split tasks (`segments`)
+
+A task can carry `segments` — an array of `{ start, end }` work spans. When set,
+the bar renders as those spans with **paused gaps** between them (a "split" task):
+a thin connecting line bridges the gaps, and each span is drawn as its own segment
+inside the single bar. The task's own `start`/`end` still define the overall
+extent; the segments are drawn within it.
+
+```vue
+<GanttTask
+  id="build"
+  name="Build"
+  start="2026-06-01"
+  end="2026-06-20"
+  :progress="55"
+  :segments="[
+    { start: '2026-06-01', end: '2026-06-06' },
+    { start: '2026-06-10', end: '2026-06-14' },
+    { start: '2026-06-17', end: '2026-06-20' },
+  ]"
+/>
+```
+
+Prop-driven, the same field lives on the task:
+
+```ts
+{ id: 'build', name: 'Build', start: '2026-06-01', end: '2026-06-20', progress: 55,
+  segments: [
+    { start: '2026-06-01', end: '2026-06-06' },
+    { start: '2026-06-10', end: '2026-06-14' },
+    { start: '2026-06-17', end: '2026-06-20' },
+  ] }
+```
+
+Progress on a split bar is **cumulative**: the task's overall `progress` is spread
+across the segments' combined working duration, so the fill "flows" through the
+work spans — earlier segments fill first (MS-Project style). Drag/resize still move
+the whole task (its `start`/`end`); the segments are purely visual. The raw
+`GanttSegment` and coerced `ResolvedSegment` (`{ start: Date; end: Date }`) types
+are both exported. Style the split bits with the `--gantt-split-*`
+[variables](#css-variables).
 
 > While a drag is in progress (move/resize via `draggable`/`rowMovable`/`resizable`,
 > or linking via `linkable`), the viewport **auto-scrolls** on both axes when the
@@ -682,6 +725,17 @@ live on `:root`, so the nearest override wins):
 | `--gantt-bar-font-size`   | `0.8em`   | Bar label font size.                            |
 | `--gantt-bar-text-shadow` | `none`    | Optional halo so the label reads over the fill. |
 | `--gantt-progress-bg`     | `#6366f1` | Progress fill colour.                           |
+
+**Split tasks** (work spans with paused gaps — see [split tasks](#split-tasks-segments))
+
+| Variable                       | Default          | Purpose                                                       |
+| ------------------------------ | ---------------- | ------------------------------------------------------------ |
+| `--gantt-split-line-color`     | progress bg      | Colour of the connecting line across the paused gaps.        |
+| `--gantt-split-line-width`     | `2px`            | Thickness of the connecting line.                            |
+| `--gantt-split-segment-radius` | bar radius       | Corner radius of each work-span segment.                     |
+
+> Segments inherit `--gantt-bar-bg` / `--gantt-progress-bg`; set the optional
+> inline `--gantt-split-segment-bg` on a bar to override just the segment track.
 
 **Baselines** (planned vs actual)
 

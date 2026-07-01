@@ -38,6 +38,18 @@ export type GanttLabelFormat =
 /** Type of an item plotted on a row. */
 export type GanttItemType = 'task' | 'milestone'
 
+/** A single work span of a split task (dates as accepted from the consumer). */
+export interface GanttSegment {
+  start: Date | string | number
+  end: Date | string | number
+}
+
+/** A work span after its dates are coerced to `Date`. */
+export interface ResolvedSegment {
+  start: Date
+  end: Date
+}
+
 /**
  * Scheduling constraint on a task (MS-Project style). Lower bounds
  * (`*-no-earlier-than`, `must-*-on`) are honored by `autoSchedule` — it pushes the
@@ -86,6 +98,11 @@ export interface GanttTask {
   /** Ids of tasks that must finish before this one (drawn as arrows). */
   dependencies?: string[]
   type?: GanttItemType
+  /**
+   * Work segments — when set, the bar is drawn as these spans with paused gaps
+   * between them (a "split" task). `start`/`end` still define the overall extent.
+   */
+  segments?: GanttSegment[]
   /** Target date drawn as a marker; the bar is flagged overdue when `end` passes it. */
   deadline?: Date | string | number
   /** Scheduling constraint (honored by `autoSchedule` for lower bounds). */
@@ -143,6 +160,8 @@ export interface ResolvedTask {
   progress: number
   dependencies: string[]
   type: GanttItemType
+  /** Work segments coerced to `Date`s (absent when the task isn't split). */
+  segments?: ResolvedSegment[]
   /** Deadline target, coerced to a `Date` (absent when not set). */
   deadline?: Date
   /** Scheduling constraint with its date coerced to a `Date` (absent when not set). */
