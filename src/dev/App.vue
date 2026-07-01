@@ -57,6 +57,7 @@ const draggable = ref(true)
 const rowMovable = ref(true)
 const resizable = ref(true)
 const progressDraggable = ref(true)
+const editable = ref(true)
 const linkable = ref(true)
 // Auto-scheduling (cascade successors on move/resize/link) — v-model:rows only.
 const autoSchedule = ref(true)
@@ -262,6 +263,10 @@ const onMoveGrouped = (e: GanttMoveEvent) => (groupedRows.value = applyMove(grou
         drag progress
       </label>
       <label class="control__item">
+        <input v-model="editable" type="checkbox" />
+        edit names (dbl-click)
+      </label>
+      <label class="control__item">
         <input v-model="linkable" type="checkbox" />
         edit dependencies
       </label>
@@ -324,6 +329,7 @@ const onMoveGrouped = (e: GanttMoveEvent) => (groupedRows.value = applyMove(grou
           :row-movable="rowMovable"
           :resizable="resizable"
           :progress-draggable="progressDraggable"
+          :editable="editable"
           :linkable="linkable"
           :auto-schedule="autoSchedule"
           :drag-label="dragLabel"

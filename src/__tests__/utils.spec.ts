@@ -19,6 +19,7 @@ import {
   sortRows,
   tasksExtent,
   topologicalOrder,
+  updateRow,
   updateTask,
   validateRows,
   violatesConstraint,
@@ -110,6 +111,25 @@ describe('immutable edits', () => {
       flattenTasks(addTask(rows, 'r1', { id: 'c', start: '2026-01-02' })).map(t => t.id),
     ).toContain('c')
     expect(findTask(removeTask(rows, 'a'), 'a')).toBeUndefined()
+  })
+
+  it('updateRow merges a patch into the row by id and leaves the others untouched', () => {
+    const rows = sample()
+    const next = updateRow(rows, 'r1', { name: 'X' })
+    expect(findRow(next, 'r1')?.name).toBe('X')
+    // sibling row unchanged
+    expect(findRow(next, 'r2')).toStrictEqual(findRow(rows, 'r2'))
+    // original untouched
+    expect(findRow(rows, 'r1')?.name).toBeUndefined()
+  })
+
+  it('updateRow is a no-op for an unknown id (names unchanged)', () => {
+    const rows = sample()
+    const next = updateRow(rows, 'nope', { name: 'X' })
+    // Like updateTask, it always returns a fresh top-level array — so compare by
+    // value, not reference. Row data must be untouched.
+    expect(next.map(r => r.name)).toEqual(rows.map(r => r.name))
+    expect(next).toStrictEqual(rows)
   })
 })
 

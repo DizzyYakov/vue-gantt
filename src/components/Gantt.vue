@@ -12,8 +12,10 @@ import type {
   GanttResizeEvent,
   GanttRootProps,
   GanttRow as GanttRowData,
+  GanttRowEditEvent,
   GanttRowEvent,
   GanttScrollOptions,
+  GanttTaskEditEvent,
   GanttTaskEvent,
   GanttZoomEvent,
 } from '../types'
@@ -31,6 +33,8 @@ const emit = defineEmits<{
   move: [event: GanttMoveEvent]
   resize: [event: GanttResizeEvent]
   progress: [event: GanttProgressEvent]
+  'task-edit': [event: GanttTaskEditEvent]
+  'row-edit': [event: GanttRowEditEvent]
   'update:rows': [rows: GanttRowData[]]
   'update:zoom': [id: string]
   'zoom-change': [event: GanttZoomEvent]
@@ -56,6 +60,18 @@ const emit = defineEmits<{
 defineSlots<{
   sidebar?: (props: { rows: unknown; groups: unknown }) => unknown
   row?: (props: { row: unknown; index: number }) => unknown
+  rowEditor?: (props: {
+    row: unknown
+    value: string
+    commit: (value: string) => void
+    cancel: () => void
+  }) => unknown
+  taskEditor?: (props: {
+    task: unknown
+    value: string
+    commit: (value: string) => void
+    cancel: () => void
+  }) => unknown
   group?: (props: { group: unknown; collapsed: boolean; toggle: () => void }) => unknown
   groupBar?: (props: { group: unknown }) => unknown
   'group-bars'?: (props: { groups: unknown }) => unknown
@@ -103,6 +119,8 @@ defineExpose({
     @move="emit('move', $event)"
     @resize="emit('resize', $event)"
     @progress="emit('progress', $event)"
+    @task-edit="emit('task-edit', $event)"
+    @row-edit="emit('row-edit', $event)"
     @update:rows="emit('update:rows', $event)"
     @update:zoom="emit('update:zoom', $event)"
     @zoom-change="emit('zoom-change', $event)"
@@ -165,6 +183,12 @@ defineExpose({
         <slot name="body-extra" v-bind="slotProps" />
       </template>
       <template v-if="$slots.row" #row="slotProps"><slot name="row" v-bind="slotProps" /></template>
+      <template v-if="$slots.rowEditor" #rowEditor="slotProps">
+        <slot name="rowEditor" v-bind="slotProps" />
+      </template>
+      <template v-if="$slots.taskEditor" #taskEditor="slotProps">
+        <slot name="taskEditor" v-bind="slotProps" />
+      </template>
       <template v-if="$slots.group" #group="slotProps"
         ><slot name="group" v-bind="slotProps"
       /></template>

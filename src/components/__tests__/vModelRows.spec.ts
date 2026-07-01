@@ -12,6 +12,7 @@ import {
   autoSchedule,
   findTask,
   removeDependency,
+  updateRow,
   updateTask,
 } from '../../utils'
 import type {
@@ -20,6 +21,9 @@ import type {
   GanttProgressEvent,
   GanttResizeEvent,
   GanttRow as GanttRowType,
+  GanttRowEditEvent,
+  GanttTaskEditEvent,
+  ResolvedRow,
   ResolvedTask,
 } from '../../types'
 
@@ -47,6 +51,12 @@ function taskById(ctx: GanttContext, id: string): ResolvedTask {
   const t = ctx.tasks.value.find(t => t.id === id)
   if (!t) throw new Error(`task ${id} not found in context`)
   return t
+}
+
+function rowById(ctx: GanttContext, id: string): ResolvedRow {
+  const r = ctx.rows.value.find(r => r.id === id)
+  if (!r) throw new Error(`row ${id} not found in context`)
+  return r
 }
 
 // Last `update:rows` payload (avoids Array.prototype.at — lib target predates es2022).
@@ -110,6 +120,40 @@ describe('v-model:rows on GanttRoot (prop-driven)', () => {
 
     expect(lastModelRows(wrapper)).toStrictEqual(updateTask(rows, 'a', { progress: 42 }))
     expect(wrapper.emitted('progress')).toHaveLength(1)
+  })
+
+  it('editRow: emits update:rows === updateRow(rows, id, patch) + row-edit once', () => {
+    const rows = makeRows()
+    const { wrapper, ctx } = mountInRoot(Noop, { rootProps: { rows, unit: 'day' } })
+    const ev: GanttRowEditEvent = {
+      id: 'r1',
+      patch: { name: 'Backend v2' },
+      row: rowById(ctx(), 'r1'),
+    }
+
+    ctx().editRow(ev)
+
+    expect(lastModelRows(wrapper)).toStrictEqual(updateRow(rows, 'r1', { name: 'Backend v2' }))
+    const editEmits = wrapper.emitted('row-edit')
+    expect(editEmits).toHaveLength(1)
+    expect(editEmits![0]![0]).toStrictEqual(ev)
+  })
+
+  it('editTask: emits update:rows === updateTask(rows, id, patch) + task-edit once', () => {
+    const rows = makeRows()
+    const { wrapper, ctx } = mountInRoot(Noop, { rootProps: { rows, unit: 'day' } })
+    const ev: GanttTaskEditEvent = {
+      id: 'a',
+      patch: { name: 'Alpha v2' },
+      task: taskById(ctx(), 'a'),
+    }
+
+    ctx().editTask(ev)
+
+    expect(lastModelRows(wrapper)).toStrictEqual(updateTask(rows, 'a', { name: 'Alpha v2' }))
+    const editEmits = wrapper.emitted('task-edit')
+    expect(editEmits).toHaveLength(1)
+    expect(editEmits![0]![0]).toStrictEqual(ev)
   })
 
   it('dependency-create: emits update:rows === addDependency + legacy dependency-create', () => {
@@ -213,6 +257,22 @@ describe('v-model:rows on GanttRoot (declarative — no rows prop)', () => {
     // legacy events still fire
     expect(root.emitted('move')).toHaveLength(1)
     expect(root.emitted('dependency-create')).toHaveLength(1)
+  })
+
+  it('editRow/editTask do NOT emit update:rows but still emit the edit events', async () => {
+    const wrapper = mount(Harness)
+    await nextTick()
+    const root = wrapper.findComponent(GanttRoot)
+    const ctx = (wrapper.vm as unknown as { ctx: () => GanttContext }).ctx()
+
+    ctx.editRow({ id: 'r1', patch: { name: 'R1 v2' }, row: rowById(ctx, 'r1') })
+    ctx.editTask({ id: 'a', patch: { name: 'A v2' }, task: taskById(ctx, 'a') })
+
+    // no v-model emit without a rows prop
+    expect(root.emitted('update:rows')).toBeUndefined()
+    // edit events still fire
+    expect(root.emitted('row-edit')).toHaveLength(1)
+    expect(root.emitted('task-edit')).toHaveLength(1)
   })
 })
 

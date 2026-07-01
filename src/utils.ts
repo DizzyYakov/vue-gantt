@@ -98,6 +98,11 @@ export function updateTask(rows: GanttRow[], id: string, patch: Partial<GanttTas
   )
 }
 
+/** Patch a row by id (shallow merge). No-op if the id is unknown. */
+export function updateRow(rows: GanttRow[], id: string, patch: Partial<GanttRow>): GanttRow[] {
+  return rows.map(row => (row.id === id ? { ...row, ...patch } : row))
+}
+
 /** Append a task to a row. No-op if the row id is unknown. */
 export function addTask(rows: GanttRow[], rowId: string, task: GanttTask): GanttRow[] {
   return rows.map(row => (row.id === rowId ? { ...row, tasks: [...(row.tasks ?? []), task] } : row))
