@@ -51,6 +51,11 @@
   /* Progress */
   --gantt-progress-bg: #6366f1;
 
+  /* Split segments (work spans with paused gaps) */
+  --gantt-split-line-color: var(--gantt-progress-bg, #6366f1);
+  --gantt-split-line-width: 2px;
+  --gantt-split-segment-radius: var(--gantt-bar-radius, 4px);
+
   /* Overlap handling (overlap / cascade / conflict modes) */
   --gantt-overlap-opacity: 0.6;
   --gantt-conflict-color: #ef4444;

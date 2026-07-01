@@ -30,6 +30,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Added
 
+- **Split tasks.** A new `GanttTask.segments` field (`{ start, end }[]`) draws the bar
+  as separate work spans with a thin connector line through the paused gaps, all inside
+  the single `.gantt-bar` (so drag/resize/handles are unchanged; `start`/`end` still
+  define the overall extent). Progress fills cumulatively through the segments' working
+  time (early segments first). Coerced to `Date`s in `normalizeTask`; supported
+  declaratively via `<GanttTask :segments>`. The `GanttSegment` / `ResolvedSegment`
+  types are exported, with `--gantt-split-*` theme tokens.
 - `sortRows` / `filterRows` data utilities — pure, immutable helpers to reorder or
   filter `GanttRow[]` by a comparator/predicate (the chart stays controlled: pass
   the result back as `rows`). Build comparators from row data, e.g. `tasksExtent`

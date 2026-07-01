@@ -38,6 +38,18 @@ export type GanttLabelFormat =
 /** Type of an item plotted on a row. */
 export type GanttItemType = 'task' | 'milestone'
 
+/** A single work span of a split task (dates as accepted from the consumer). */
+export interface GanttSegment {
+  start: Date | string | number
+  end: Date | string | number
+}
+
+/** A work span after its dates are coerced to `Date`. */
+export interface ResolvedSegment {
+  start: Date
+  end: Date
+}
+
 /**
  * How tasks that overlap in time on the same row are displayed:
  * - `lanes` — stack overlapping tasks into sub-lanes (the row grows taller);
@@ -65,6 +77,11 @@ export interface GanttTask {
   /** Ids of tasks that must finish before this one (drawn as arrows). */
   dependencies?: string[]
   type?: GanttItemType
+  /**
+   * Work segments — when set, the bar is drawn as these spans with paused gaps
+   * between them (a "split" task). `start`/`end` still define the overall extent.
+   */
+  segments?: GanttSegment[]
   /** Arbitrary extra data forwarded to slots untouched. */
   meta?: Record<string, unknown>
 }
@@ -114,6 +131,8 @@ export interface ResolvedTask {
   progress: number
   dependencies: string[]
   type: GanttItemType
+  /** Work segments coerced to `Date`s (absent when the task isn't split). */
+  segments?: ResolvedSegment[]
   meta: Record<string, unknown>
   /** Id of the row this task belongs to. */
   rowId: string

@@ -32,6 +32,34 @@ describe('normalizeTask', () => {
     const d = new Date(2026, 0, 1)
     expect(toDate(d)).toBe(d)
   })
+
+  it('resolves segments from date strings into Date pairs', () => {
+    const task = normalizeTask(
+      {
+        id: 'a',
+        start: '2026-01-01',
+        end: '2026-01-07',
+        segments: [
+          { start: '2026-01-01', end: '2026-01-03' },
+          { start: '2026-01-05', end: '2026-01-07' },
+        ],
+      },
+      'r1',
+      0,
+    )
+    expect(task.segments).toHaveLength(2)
+    expect(task.segments![0]!.start).toBeInstanceOf(Date)
+    expect(task.segments![0]!.end).toBeInstanceOf(Date)
+    expect(task.segments![0]!.start.getTime()).toBe(new Date(2026, 0, 1).getTime())
+    expect(task.segments![0]!.end.getTime()).toBe(new Date(2026, 0, 3).getTime())
+    expect(task.segments![1]!.start.getTime()).toBe(new Date(2026, 0, 5).getTime())
+    expect(task.segments![1]!.end.getTime()).toBe(new Date(2026, 0, 7).getTime())
+  })
+
+  it('leaves segments undefined when absent', () => {
+    const task = normalizeTask({ id: 'a', start: '2026-01-01', end: '2026-01-05' }, 'r1', 0)
+    expect(task.segments).toBeUndefined()
+  })
 })
 
 describe('normalizeRow', () => {
