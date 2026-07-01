@@ -14,6 +14,7 @@ import {
   removeDependency,
   removeTask,
   rollupProgress,
+  slack,
   sortRows,
   tasksExtent,
   topologicalOrder,
@@ -178,6 +179,57 @@ describe('dependencies', () => {
       },
     ]
     expect(criticalPath(rows)).toEqual(['a', 'b'])
+  })
+})
+
+describe('slack (free float)', () => {
+  it('measures the gap (days) from a task end to its nearest successor start', () => {
+    const rows: GanttRow[] = [
+      { id: 'r1', tasks: [{ id: 'a', start: '2026-01-01', end: '2026-01-03' }] },
+      {
+        id: 'r2',
+        tasks: [{ id: 'b', start: '2026-01-06', end: '2026-01-10', dependencies: ['a'] }],
+      },
+    ]
+    const map = slack(rows)
+    // a ends Jan-03, b starts Jan-06 → 3-day gap.
+    expect(map.get('a')).toBeCloseTo(3)
+    // b has no successors → absent.
+    expect(map.has('b')).toBe(false)
+  })
+
+  it('omits back-to-back tasks (zero gap)', () => {
+    const rows: GanttRow[] = [
+      { id: 'r1', tasks: [{ id: 'a', start: '2026-01-01', end: '2026-01-06' }] },
+      {
+        id: 'r2',
+        tasks: [{ id: 'b', start: '2026-01-06', end: '2026-01-10', dependencies: ['a'] }],
+      },
+    ]
+    expect(slack(rows).has('a')).toBe(false)
+  })
+
+  it('takes the minimum gap across multiple successors', () => {
+    const rows: GanttRow[] = [
+      { id: 'r1', tasks: [{ id: 'a', start: '2026-01-01', end: '2026-01-03' }] },
+      {
+        id: 'r2',
+        tasks: [
+          { id: 'b', start: '2026-01-06', end: '2026-01-08', dependencies: ['a'] }, // gap 3
+          { id: 'c', start: '2026-01-04', end: '2026-01-05', dependencies: ['a'] }, // gap 1 (nearest)
+        ],
+      },
+    ]
+    // nearest successor starts Jan-04 → 1-day gap.
+    expect(slack(rows).get('a')).toBeCloseTo(1)
+  })
+
+  it('returns an empty map when nothing depends on anything', () => {
+    const rows: GanttRow[] = [
+      { id: 'r1', tasks: [{ id: 'a', start: '2026-01-01', end: '2026-01-05' }] },
+      { id: 'r2', tasks: [{ id: 'b', start: '2026-01-06', end: '2026-01-10' }] },
+    ]
+    expect(slack(rows).size).toBe(0)
   })
 })
 

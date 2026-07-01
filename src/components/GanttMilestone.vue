@@ -50,6 +50,8 @@ const overlapMode = computed(() => ctx.config.value.overlap)
 const markerStyle = computed(() => ({ left: `${left.value}px` }))
 // Highlight while a dependency drag hovers this milestone as a drop target.
 const linkTarget = computed(() => ctx.linkDraft.value?.over === resolved.value.id)
+// Whether this milestone is on the critical path (only when `criticalPath` is on).
+const critical = computed(() => ctx.criticalTasks.value.has(resolved.value.id))
 
 const ghostStyle = computed(() =>
   ghost.value
@@ -80,6 +82,7 @@ const { hovered, show: showHoverTip, tipStyle: hoverTipStyle } = useHoverTooltip
       class="gantt-milestone__marker"
       :data-draggable="draggable || undefined"
       :data-link-target="linkTarget || undefined"
+      :data-critical="critical || undefined"
       :style="markerStyle"
       @pointerdown="onPointerDown"
       @pointerenter="hovered = true"
@@ -169,6 +172,12 @@ const { hovered, show: showHoverTip, tipStyle: hoverTipStyle } = useHoverTooltip
 /* Drop-target affordance while a dependency is being dragged onto this marker. */
 .gantt-milestone__marker[data-link-target] .gantt-milestone__diamond {
   outline: var(--gantt-link-target-outline, 2px solid var(--gantt-progress-bg, #6366f1));
+  outline-offset: 2px;
+}
+
+/* Critical-path highlight. */
+.gantt-milestone__marker[data-critical] .gantt-milestone__diamond {
+  outline: var(--gantt-critical-outline, 2px solid var(--gantt-critical-color, #dc2626));
   outline-offset: 2px;
 }
 

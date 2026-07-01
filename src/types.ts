@@ -239,6 +239,10 @@ export interface GanttRootProps {
   progressDraggable?: boolean
   /** Show a hover tooltip on bars/milestones (override its content via the `tooltip` slot). */
   tooltip?: boolean
+  /** Highlight the tasks on the critical path (`data-critical` on their bars). */
+  criticalPath?: boolean
+  /** Show each task's free-float slack as a translucent bar after its end. */
+  slack?: boolean
   /** Allow creating/editing dependencies by dragging between tasks. */
   linkable?: boolean
   /**
@@ -307,6 +311,10 @@ export interface GanttConfig {
   progressDraggable: boolean
   /** Whether a hover tooltip is shown on bars/milestones. */
   tooltip: boolean
+  /** Whether critical-path tasks are highlighted. */
+  criticalPath: boolean
+  /** Whether free-float slack bars are shown. */
+  slack: boolean
   /** Whether dependencies can be created/edited by dragging. */
   linkable: boolean
   /** Connector path builder `(tail, head) => string` (resolved, never undefined). */
@@ -571,6 +579,10 @@ export interface GanttContext {
   taskBand: (task: ResolvedTask) => GanttBand
   /** Overlap spans per row (non-empty only in `conflict` mode). */
   conflicts: ComputedRef<GanttConflict[]>
+  /** Ids of the critical-path tasks (empty unless `criticalPath` is on). */
+  criticalTasks: ComputedRef<Set<string>>
+  /** Free-float slack (days) by task id (empty unless `slack` is on). */
+  slack: ComputedRef<Map<string, number>>
   /** Register a declaratively-declared row (used by `GanttRow`). */
   registerRow: (row: GanttRow) => void
   /** Remove a previously registered row. */

@@ -284,6 +284,40 @@ export function criticalPath(rows: GanttRow[]): string[] {
   return path
 }
 
+const MS_PER_DAY = 86_400_000
+
+/**
+ * Free float per task, in **days**: how far a task's finish can slip before it
+ * collides with its nearest finish-to-start successor's start — i.e. the gap
+ * `min(successor.start − task.end)`, clamped to ≥ 0. Tasks with no successors,
+ * or with no positive gap (back-to-back / on the critical path), are absent from
+ * the map. Date-based, so it lines up with where bars actually sit.
+ */
+export function slack(rows: GanttRow[]): Map<string, number> {
+  const tasks = flattenTasks(rows)
+  // Reverse links: predecessor id → its successors' start times.
+  const successorStarts = new Map<string, number[]>()
+  for (const t of tasks) {
+    if (!t.dependencies?.length) continue
+    const start = toDate(t.start).getTime()
+    for (const dep of t.dependencies) {
+      const list = successorStarts.get(dep)
+      if (list) list.push(start)
+      else successorStarts.set(dep, [start])
+    }
+  }
+
+  const result = new Map<string, number>()
+  for (const t of tasks) {
+    const starts = successorStarts.get(t.id)
+    if (!starts) continue
+    const end = toDate(t.end ?? t.start).getTime()
+    const gap = Math.min(...starts) - end
+    if (gap > 0) result.set(t.id, gap / MS_PER_DAY)
+  }
+  return result
+}
+
 /**
  * Push finish-to-start successors forward so none starts before a predecessor
  * ends, preserving each task's duration. Pass `changedId` to cascade only that
