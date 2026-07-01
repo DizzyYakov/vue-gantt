@@ -4,6 +4,38 @@ All notable changes to this project are documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [1.4.0](https://github.com/LavaYasha/vue-gantt/compare/vue-gantt-v1.3.0...vue-gantt-v1.4.0) (2026-07-01)
+
+
+### Features
+
+* add sortRows and filterRows data utilities ([7e3c4ae](https://github.com/LavaYasha/vue-gantt/commit/7e3c4aeef7e19f52acc6021af067f0c0904ffecd))
+* add sortRows and filterRows data utilities ([598f681](https://github.com/LavaYasha/vue-gantt/commit/598f6811b9756a783cd4716da3e3f02f741df8ec))
+* critical path & slack visualization ([a71f9d0](https://github.com/LavaYasha/vue-gantt/commit/a71f9d02cf04cef87dd5cc101f63c3f4ceebe133))
+* critical path & slack visualization ([f015bb2](https://github.com/LavaYasha/vue-gantt/commit/f015bb21e0f044a4c8c6c08a6f27aec011cd74b4))
+* opt-in hover tooltip for bars and milestones ([6b8d717](https://github.com/LavaYasha/vue-gantt/commit/6b8d71712fd41b39eaef91ab66118bba78fd3641))
+* opt-in hover tooltip for bars and milestones ([2d381d9](https://github.com/LavaYasha/vue-gantt/commit/2d381d919640228b748f60abe5c4458b4d11466f))
+* opt-in interactive auto-scheduling ([9eba3de](https://github.com/LavaYasha/vue-gantt/commit/9eba3deff414c9d06b93dcd42e7c010a626d9cad))
+* opt-in interactive auto-scheduling ([6bc44e9](https://github.com/LavaYasha/vue-gantt/commit/6bc44e9c4e244070c174a9683241e23fbcd4c466))
+* per-tier and function timeline label formatting ([3ce5587](https://github.com/LavaYasha/vue-gantt/commit/3ce558738060bee81bd33771baeb5dcc310d9228))
+* split tasks (work segments with paused gaps) ([e2c0668](https://github.com/LavaYasha/vue-gantt/commit/e2c06682b6455f4eaa1b81d7ed0ae138c2ad03cd))
+* split tasks (work segments with paused gaps) ([a71d1ca](https://github.com/LavaYasha/vue-gantt/commit/a71d1caf0d3148178790e72afa9190a5cbc190f0))
+* task baselines (planned vs actual) ([653cd68](https://github.com/LavaYasha/vue-gantt/commit/653cd68bf1dbc42233a7872b623463e8a4e807e9))
+* task baselines (planned vs actual) ([acbea34](https://github.com/LavaYasha/vue-gantt/commit/acbea34372f7b13721dc9ea35bf3094cf4fa40d7))
+* task constraints & deadlines ([84b91ca](https://github.com/LavaYasha/vue-gantt/commit/84b91cac586efd1b51b45b53800c148eabff4832))
+* task constraints & deadlines ([badeadd](https://github.com/LavaYasha/vue-gantt/commit/badeaddb4e0a9b80dd6976640729e3e3ce5dc6df))
+* undo/redo via useGanttHistory composable ([bb2ecd0](https://github.com/LavaYasha/vue-gantt/commit/bb2ecd0b99a210cfc08bb9c08cf2d892fb18fe6b))
+* undo/redo via useGanttHistory composable ([4bd35c1](https://github.com/LavaYasha/vue-gantt/commit/4bd35c15576f688ff7fbb586e14f495520e5f217))
+* zoom / view-mode switching with a GanttZoom control ([7f343f6](https://github.com/LavaYasha/vue-gantt/commit/7f343f699bb8980840bbc30c3e2db7128f034229))
+* zoom / view-mode switching with a GanttZoom control ([25ce552](https://github.com/LavaYasha/vue-gantt/commit/25ce552dced73fc52b77410ce60a3b396443f58f))
+
+
+### Bug Fixes
+
+* gitignore ([804d8df](https://github.com/LavaYasha/vue-gantt/commit/804d8dff09edcbe5ae86d5ec9427650b337e55b7))
+* keep milestone marker interactive under dependency arrows and clamp hover tooltip to content ([a61cb67](https://github.com/LavaYasha/vue-gantt/commit/a61cb67688b7d35f73978d34ddb3e51b4359135a))
+* prettier ([e4cd6ba](https://github.com/LavaYasha/vue-gantt/commit/e4cd6ba5077372aaa70e4ab44f21e502b35db348))
+
 ## [1.3.0](https://github.com/LavaYasha/vue-gantt/compare/vue-gantt-v1.2.0...vue-gantt-v1.3.0) (2026-06-27)
 
 
