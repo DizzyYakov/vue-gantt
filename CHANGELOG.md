@@ -30,6 +30,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Added
 
+- **Baselines (planned vs actual).** New `GanttTask` fields `baselineStart` /
+  `baselineEnd` (the planned interval) are drawn as a thin "shadow" bar at the bottom
+  of the task's row band, under the actual bar, by the new headless `GanttBaselines`
+  overlay (default slot `{ task }`, `baselines` section slot, `--gantt-baseline-*`
+  tokens). Coerced to `Date` in `normalizeTask` (never milestone-collapsed); rendered
+  only for tasks that set both fields; supported declaratively via
+  `<GanttTask baseline-start baseline-end>`.
 - `sortRows` / `filterRows` data utilities — pure, immutable helpers to reorder or
   filter `GanttRow[]` by a comparator/predicate (the chart stays controlled: pass
   the result back as `rows`). Build comparators from row data, e.g. `tasksExtent`

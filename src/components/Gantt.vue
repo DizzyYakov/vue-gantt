@@ -59,6 +59,7 @@ defineSlots<{
   group?: (props: { group: unknown; collapsed: boolean; toggle: () => void }) => unknown
   groupBar?: (props: { group: unknown }) => unknown
   'group-bars'?: (props: { groups: unknown }) => unknown
+  baselines?: (props: { tasks: unknown }) => unknown
   corner?: (props: { config: unknown }) => unknown
   timeline?: (props: { config: unknown; visibleColumnsFor: unknown }) => unknown
   column?: (props: { column: unknown; tier: unknown }) => unknown
@@ -139,6 +140,9 @@ defineExpose({
       /></template>
       <template v-if="$slots['group-bars']" #group-bars="slotProps">
         <slot name="group-bars" v-bind="slotProps" />
+      </template>
+      <template v-if="$slots.baselines" #baselines="slotProps">
+        <slot name="baselines" v-bind="slotProps" />
       </template>
       <template v-if="$slots.conflicts" #conflicts="slotProps">
         <slot name="conflicts" v-bind="slotProps" />

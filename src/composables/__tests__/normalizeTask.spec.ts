@@ -32,6 +32,45 @@ describe('normalizeTask', () => {
     const d = new Date(2026, 0, 1)
     expect(toDate(d)).toBe(d)
   })
+
+  it('coerces baseline strings into Dates', () => {
+    const task = normalizeTask(
+      { id: 'a', start: '2026-01-01', end: '2026-01-20', baselineStart: '2026-01-05', baselineEnd: '2026-01-12' },
+      'r',
+      0,
+    )
+    expect(task.baselineStart).toBeInstanceOf(Date)
+    expect(task.baselineEnd).toBeInstanceOf(Date)
+    expect(task.baselineStart!.getTime()).toBe(new Date(2026, 0, 5).getTime())
+    expect(task.baselineEnd!.getTime()).toBe(new Date(2026, 0, 12).getTime())
+  })
+
+  it('leaves baseline fields undefined when absent', () => {
+    const task = normalizeTask({ id: 'a', start: '2026-01-01', end: '2026-01-05' }, 'r', 0)
+    expect(task.baselineStart).toBeUndefined()
+    expect(task.baselineEnd).toBeUndefined()
+  })
+
+  it('does not collapse a milestone baseline end onto its start', () => {
+    const m = normalizeTask(
+      {
+        id: 'm',
+        type: 'milestone',
+        start: '2026-02-01',
+        end: '2026-02-10',
+        baselineStart: '2026-01-05',
+        baselineEnd: '2026-01-12',
+      },
+      'r',
+      0,
+    )
+    // The actual end collapses onto start for a milestone...
+    expect(m.end.getTime()).toBe(m.start.getTime())
+    // ...but the baseline stays an interval, preserved exactly as given.
+    expect(m.baselineStart!.getTime()).toBe(new Date(2026, 0, 5).getTime())
+    expect(m.baselineEnd!.getTime()).toBe(new Date(2026, 0, 12).getTime())
+    expect(m.baselineEnd!.getTime()).not.toBe(m.baselineStart!.getTime())
+  })
 })
 
 describe('normalizeRow', () => {

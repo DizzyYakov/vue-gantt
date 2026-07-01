@@ -68,6 +68,9 @@ export function normalizeTask(task: GanttTask, rowId: string, order: number): Re
     progress: clampProgress(task.progress),
     dependencies: task.dependencies ?? [],
     type,
+    // A baseline is always an interval — never collapsed like a milestone's end.
+    baselineStart: task.baselineStart != null ? toDate(task.baselineStart) : undefined,
+    baselineEnd: task.baselineEnd != null ? toDate(task.baselineEnd) : undefined,
     meta: task.meta ?? {},
     rowId,
     order,

@@ -18,7 +18,7 @@ design system. One runtime dependency (`date-fns`), fully typed.
 - ⏱️ **Multi-tier time axis** (year · quarter · month · week · day · hour ·
   minute) — show any subset via `tiers`.
 - 📊 Task **bars with progress**, **milestones**, finish-to-start **dependency
-  arrows**, and a live **"today"** line.
+  arrows**, **baselines** (planned vs actual), and a live **"today"** line.
 - 🧩 **Two APIs** — a prop-driven `<Gantt :rows>` or composable primitives.
 - 🗂️ Collapsible **row groups** with rolled-up summary bars.
 - ✋ **Drag interactions** (all opt-in, controlled): move, resize an edge, set
@@ -144,6 +144,7 @@ slots for overriding any part. Every slot is scoped — its props give you the s
 | `bars`         | `{ tasks }`                       | the task bar / milestone layer      |
 | `group-bars`   | `{ groups }`                      | `<GanttGroupBar>` (group rollups)   |
 | `conflicts`    | `{ conflicts }`                   | `<GanttConflicts>`                  |
+| `baselines`    | `{ tasks }`                       | `<GanttBaselines>` (planned bars)   |
 | `dependencies` | `{ tasks }`                       | `<GanttDependencies>`               |
 | `today`        | `{ today, dateToX }`              | `<GanttToday>`                      |
 | `body-extra`   | `{ contentWidth, contentHeight }` | (extra layer over the body)         |
@@ -152,7 +153,8 @@ slots for overriding any part. Every slot is scoped — its props give you the s
 is `(date: Date \| string \| number) => number`, `rows`/`groups` are the visible
 `ResolvedRow[]` / `ResolvedGroup[]`, `columns` are the visible base-unit
 `GanttColumn[]`, `tasks` are `ResolvedTask[]` (all of them for `dependencies`,
-the plotted/visible ones for `bars`), `today` is the configured reference `Date`,
+the plotted/visible ones for `bars` and `baselines`), `today` is the configured
+reference `Date`,
 and `conflicts` is `GanttConflict[]` (empty unless `overlap: 'conflict'`).
 
 **Leaf slots** customize a single repeated item: `row` (`{ row, index }`),
@@ -219,6 +221,7 @@ every [chart event](#events); the rest are the building blocks.
 | `<GanttGrid>`         | `tier?: GanttUnit`                               | `cell-click` · `cell-dblclick`                   |
 | `<GanttDependencies>` | —                                                | `dependency-click`                               |
 | `<GanttConflicts>`    | —                                                | —                                                |
+| `<GanttBaselines>`    | —                                                | —                                                |
 | `<GanttToday>`        | `interval?: number` (ms, default `1000`)         | —                                                |
 | `<GanttZoom>`         | — (reads context; default slot for custom UI)    | — (calls `setZoom`/`zoomIn`/`zoomOut` on root)   |
 
@@ -277,6 +280,8 @@ Declarative fields — the item registers into the enclosing `<GanttRow>`:
 | `end`          | `Date \| string \| number` | End date (ignored for milestones).             |
 | `progress`     | `number`                   | Completion 0–100.                              |
 | `dependencies` | `string[]`                 | Ids of predecessors (finish-to-start).         |
+| `baselineStart`| `Date \| string \| number` | Planned start (baseline). Needs `baselineEnd`. |
+| `baselineEnd`  | `Date \| string \| number` | Planned end (baseline). Needs `baselineStart`. |
 | `meta`         | `Record<string, unknown>`  | Arbitrary data forwarded to slots.             |
 | `rowId`        | `string`                   | Explicit row id (overrides the enclosing row). |
 
@@ -445,6 +450,45 @@ declarative `<GanttGroup>`).
 
 ![Row grouping](https://raw.githubusercontent.com/LavaYasha/vue-gantt/main/docs/grouping.png)
 
+## Baselines (planned vs actual)
+
+Give a task both `baselineStart` and `baselineEnd` to draw its **baseline** — the
+planned interval — as a thin "shadow" bar at the bottom of the task's row band,
+under the actual (`start`/`end`) bar. It makes slippage visible at a glance: a
+task running late has its actual bar sitting to the right of / longer than its
+baseline. Both fields are required for the shadow to draw; a baseline is always an
+interval (never collapsed like a milestone's end).
+
+```vue
+<Gantt :rows="rows" />
+```
+
+```ts
+const rows = [
+  {
+    id: 'dev',
+    name: 'Development',
+    tasks: [
+      {
+        id: 'build',
+        name: 'Implementation',
+        start: '2026-06-18',
+        end: '2026-06-30', // actual — running late
+        baselineStart: '2026-06-16',
+        baselineEnd: '2026-06-26', // planned
+        progress: 40,
+      },
+    ],
+  },
+]
+```
+
+Declaratively it's `<GanttTask baseline-start="…" baseline-end="…" />`. The layer
+is rendered by `<GanttBaselines>` (auto-mounted by `<GanttView>` / `<Gantt>`;
+override it via the `baselines` section slot). `<GanttBaselines>` exposes a
+default slot `{ task }` to render each baseline segment yourself. Style the shadow
+bars with the `--gantt-baseline-*` [variables](#css-variables).
+
 ## Zoom / view-mode
 
 A zoom level is a **view-mode preset** — a named bundle of `tiers` + `columnWidth`.
@@ -533,6 +577,15 @@ live on `:root`, so the nearest override wins):
 | `--gantt-bar-font-size`   | `0.8em`   | Bar label font size.                            |
 | `--gantt-bar-text-shadow` | `none`    | Optional halo so the label reads over the fill. |
 | `--gantt-progress-bg`     | `#6366f1` | Progress fill colour.                           |
+
+**Baselines** (planned vs actual)
+
+| Variable                   | Default   | Purpose                                        |
+| -------------------------- | --------- | ---------------------------------------------- |
+| `--gantt-baseline-bg`      | `#cbd5e1` | Baseline (planned) shadow bar background.      |
+| `--gantt-baseline-height`  | `22%`     | Baseline bar height within the row band.       |
+| `--gantt-baseline-opacity` | `0.8`     | Baseline bar opacity.                          |
+| `--gantt-baseline-radius`  | `2px`     | Baseline bar corner radius.                    |
 
 **Milestones**
 

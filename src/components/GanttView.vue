@@ -2,6 +2,7 @@
 import { computed, onMounted, onUnmounted, useTemplateRef, watch } from 'vue'
 import { useGanttContext } from '../composables/useGanttContext'
 import { useGanttViewport } from '../composables/useGanttViewport'
+import GanttBaselines from './GanttBaselines.vue'
 import GanttConflicts from './GanttConflicts.vue'
 import GanttDependencies from './GanttDependencies.vue'
 import GanttGrid from './GanttGrid.vue'
@@ -102,6 +103,10 @@ const scrollStyle = computed(() => {
               <slot name="groupBar" v-bind="groupBarProps" />
             </template>
           </GanttGroupBar>
+        </slot>
+
+        <slot name="baselines" :tasks="visibleTasks">
+          <GanttBaselines />
         </slot>
 
         <slot name="bars" :tasks="visibleTasks">

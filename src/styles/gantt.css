@@ -48,6 +48,12 @@
   --gantt-bar-color: #1e1b4b;
   --gantt-bar-font-size: 0.8em;
 
+  /* Baselines (planned vs actual) */
+  --gantt-baseline-bg: #cbd5e1;
+  --gantt-baseline-height: 22%;
+  --gantt-baseline-opacity: 0.8;
+  --gantt-baseline-radius: 2px;
+
   /* Progress */
   --gantt-progress-bg: #6366f1;
 
