@@ -4,6 +4,16 @@ All notable changes to this project are documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [1.5.0](https://github.com/LavaYasha/vue-gantt/compare/vue-gantt-v1.4.0...vue-gantt-v1.5.0) (2026-07-02)
+
+
+### Features
+
+* opt-in inline editing of row/task names ([94fcf1d](https://github.com/LavaYasha/vue-gantt/commit/94fcf1dfba75dc8160ccfbe639180967ae639d30))
+* opt-in inline editing of row/task names ([bb4ddb9](https://github.com/LavaYasha/vue-gantt/commit/bb4ddb9244ae107ee7f1e5cdd3ba74b001971b71))
+* touch/mobile UX polish ([1e80010](https://github.com/LavaYasha/vue-gantt/commit/1e80010fc9437045360d96025e32d2e824a6a1d3))
+* touch/mobile UX polish ([641ea82](https://github.com/LavaYasha/vue-gantt/commit/641ea82d0bf37a3b2842df643d1a12a918789293))
+
 ## [1.4.0](https://github.com/LavaYasha/vue-gantt/compare/vue-gantt-v1.3.0...vue-gantt-v1.4.0) (2026-07-01)
 
 
