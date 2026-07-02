@@ -11,13 +11,13 @@ import { makeStressRows } from './_shared'
  * generation is windowed and analytic (`contentWidth` is O(1)); a `MAX_CELLS`
  * guard bounds a single generation pass.
  *
+ * Dependency arrows are viewport-culled too: only links whose endpoint rows
+ * intersect the visible window get an SVG path (window-straddling links are kept),
+ * so dense dependency graphs don't emit a path per edge. Group rollups
+ * (start/end/progress) are computed in a single O(rows) bucketed pass.
+ *
  * Run `bun run bench` (`vitest bench`) for the pure-function numbers (layout,
  * critical-path, slack, per-scroll filter) at 1k/10k in `src/__tests__/perf.bench.ts`.
- *
- * **Known limitation:** dependency arrows are not viewport-culled yet — every edge
- * renders an SVG path regardless of scroll, so charts with dense dependencies on
- * tens of thousands of tasks pay an O(edges) DOM cost. Keep `linkable`/many
- * `dependencies` off for the largest datasets until that lands.
  */
 const meta: Meta<typeof Gantt> = {
   title: 'Guides/Performance',

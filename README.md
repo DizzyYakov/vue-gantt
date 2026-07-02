@@ -1132,16 +1132,17 @@ The chart is built for large plans (tested at **10 000 tasks** — see the
   window are rendered, so the DOM stays small regardless of dataset size. Column
   generation is windowed; `contentWidth` is computed analytically (O(1), no scan),
   and a `MAX_CELLS` guard bounds a single generation pass.
+- **Dependency arrows are viewport-culled too.** Only links whose endpoint rows
+  intersect the visible window get an SVG path (window-straddling links are kept),
+  so dense dependency graphs don't emit a path per edge. The `dependencies` slot
+  receives the same culled `links`, consistent with the other virtualized slots.
+- **Group rollups are O(rows).** A collapsible group's summary (start/end/progress)
+  is computed in a single bucketed pass, so many groups don't cost O(groups × rows)
+  on each edit/collapse.
 - **Benchmarks.** `bun run bench` (`vitest bench`) runs
   `src/__tests__/perf.bench.ts` — pure-function numbers (layout, critical-path,
   slack, and the per-scroll visible-task filter) at 1k/10k. Benchmarks are not part
   of `vitest run`/CI.
-
-**Known limitation:** dependency arrows are **not** viewport-culled yet — every
-edge renders an SVG path regardless of scroll, so a chart with dense dependencies
-across tens of thousands of tasks pays an O(edges) DOM cost. For the very largest
-datasets, prefer fewer/no `dependencies` (or keep `linkable` off) until per-viewport
-culling lands.
 
 ## Development
 

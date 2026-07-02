@@ -39,7 +39,7 @@ describe('normalize + layout', () => {
   bench('normalizeRow ×1k', () => void rows1k.map((r, i) => normalizeRow(r, i)))
   bench('normalizeRow ×10k', () => void rows10k.map((r, i) => normalizeRow(r, i)))
   bench('layoutGroups 10k, no groups', () => void layoutGroups(norm10k, { ...baseOpts, groupMeta: noGroupMeta }))
-  bench('layoutGroups 10k, 400 groups (O(G·R) rollup)', () =>
+  bench('layoutGroups 10k, 400 groups (bucketed rollup)', () =>
     void layoutGroups(norm10kGroups, { ...baseOpts, groupMeta }))
 })
 
