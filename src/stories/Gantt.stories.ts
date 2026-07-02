@@ -1,4 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/vue3-vite'
+import { de } from 'date-fns/locale'
 import { ref } from 'vue'
 import Gantt from '../components/Gantt.vue'
 import GanttZoom from '../components/GanttZoom.vue'
@@ -92,6 +93,12 @@ const meta: Meta<typeof Gantt> = {
     },
     today: { control: 'text' },
     labelFormat: { control: 'text' },
+    locale: {
+      control: false,
+      description:
+        'date-fns `Locale` for all date labels. Import it yourself ' +
+        "(e.g. `import { ru } from 'date-fns/locale'`) and pass the object.",
+    },
     'onZoom-change': { action: 'zoom-change', table: { category: 'events' } },
     onMove: { action: 'move', table: { category: 'events' } },
     onResize: { action: 'resize', table: { category: 'events' } },
@@ -373,6 +380,22 @@ export const Sprints: Story = {
   args: {
     periods: sprintPeriods({ from: '2026-06-01', every: 2, unit: 'week', count: 4 }),
     tiers: ['month', 'week', 'day'],
+    height: 300,
+  },
+}
+
+/**
+ * Localize every date label — column headers, drag labels and tooltips — by passing
+ * a date-fns `Locale`. Import the locale yourself (locales are not bundled), e.g.
+ * `import { de } from 'date-fns/locale'`, then `<Gantt :locale="de" …>`. Here the
+ * month/week headers render in German. Pair it with `labelFormat` for locale-aware
+ * custom formats. (RTL layout is not part of this — a separate concern.)
+ */
+export const Localized: Story = {
+  args: {
+    locale: de,
+    tiers: ['month', 'week', 'day'],
+    tooltip: true,
     height: 300,
   },
 }

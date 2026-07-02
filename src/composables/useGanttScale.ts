@@ -15,6 +15,7 @@ import {
   startOfWeek,
   startOfYear,
 } from 'date-fns'
+import type { Locale } from 'date-fns'
 import { computed, toValue, type MaybeRefOrGetter } from 'vue'
 import { toDate } from '../context'
 import type { GanttColumn, GanttLabelFormat, GanttUnit } from '../types'
@@ -86,6 +87,8 @@ export interface ScaleOptions {
    * is treated by `toValue` as a getter and called with no arguments.
    */
   labelFormat?: MaybeRefOrGetter<GanttLabelFormat | undefined>
+  /** date-fns `Locale` for the (non-function) label formats. */
+  locale?: MaybeRefOrGetter<Locale | undefined>
 }
 
 /**
@@ -155,6 +158,7 @@ export function useGanttScale(options: ScaleOptions) {
     // overrides the base unit only (back-compat); anything unset falls back to
     // the tier's default format.
     const lf = toValue(options.labelFormat)
+    const loc = toValue(options.locale)
     let labelFor: (date: Date) => string
     if (typeof lf === 'function') {
       labelFor = (date) => lf(date, tier)
@@ -165,7 +169,7 @@ export function useGanttScale(options: ScaleOptions) {
           : typeof lf === 'string' && tier === toValue(options.unit)
             ? lf
             : DEFAULT_LABEL_FORMAT[tier]
-      labelFor = (date) => format(date, fmt)
+      labelFor = (date) => format(date, fmt, { locale: loc })
     }
 
     // First cell boundary at/just left of the window, never before the range.

@@ -1,3 +1,4 @@
+import type { Locale } from 'date-fns'
 import type { ComputedRef } from 'vue'
 import type { ArrowHeadBuilder } from './arrowHeads'
 import type { DependencyPathBuilder } from './dependencyPaths'
@@ -380,6 +381,12 @@ export interface GanttRootProps {
    */
   labelFormat?: GanttLabelFormat
   /**
+   * date-fns `Locale` for date labels (column headers, drag labels, tooltips).
+   * Import the locale yourself, e.g. `import { ru } from 'date-fns/locale'`, and
+   * pass it here — locales are not bundled by the library.
+   */
+  locale?: Locale
+  /**
    * Named zoom levels (view-mode presets) the `zoom` prop / `GanttZoom` control
    * switch between; each bundles `tiers` + `columnWidth`. Defaults to
    * `DEFAULT_ZOOM_LEVELS` (year → hour).
@@ -444,6 +451,8 @@ export interface GanttConfig {
   autoSchedule: boolean
   /** date-fns format for the live drag date label. */
   dragLabelFormat: string
+  /** date-fns `Locale` applied to all date labels (undefined = English default). */
+  locale?: Locale
   /** Optional override for the drag tooltip text (move / resize / progress). */
   dragLabel?: (info: GanttDragLabelInfo) => string
   start: Date

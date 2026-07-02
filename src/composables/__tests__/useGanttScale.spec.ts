@@ -1,4 +1,5 @@
-import { format } from 'date-fns'
+import { format, type Locale } from 'date-fns'
+import { de } from 'date-fns/locale'
 import { describe, expect, it } from 'vitest'
 import { ref } from 'vue'
 import type { GanttLabelFormat } from '../../types'
@@ -233,6 +234,38 @@ describe('useGanttScale', () => {
         const col = scale.columnsFor(tier as 'day')[0]!
         expect(col.label).toBe(format(col.date, fmt))
       }
+    })
+  })
+
+  describe('locale', () => {
+    const makeScale = (locale?: Locale, labelFormat?: GanttLabelFormat) =>
+      useGanttScale({
+        unit: ref<'day'>('day'),
+        columnWidth: ref(40),
+        start: ref(day(2026, 1, 1)),
+        end: ref(day(2026, 12, 31)),
+        labelFormat: ref(labelFormat),
+        locale: ref(locale),
+      })
+
+    it('passes the locale to the default tier format', () => {
+      const month0 = makeScale(de).columnsFor('month')[0]!
+      expect(month0.label).toBe(format(month0.date, 'MMM', { locale: de }))
+    })
+
+    it('localizes a full month name via labelFormat', () => {
+      const month0 = makeScale(de, { month: 'LLLL' }).columnsFor('month')[0]!
+      expect(month0.label).toBe('Januar') // German for January
+    })
+
+    it('omitting locale keeps English labels (regression guard)', () => {
+      const month0 = makeScale(undefined, { month: 'LLLL' }).columnsFor('month')[0]!
+      expect(month0.label).toBe('January')
+    })
+
+    it('does not touch the function form (consumer owns formatting)', () => {
+      const month0 = makeScale(de, (d, tier) => `${tier}:${d.getMonth()}`).columnsFor('month')[0]!
+      expect(month0.label).toBe('month:0')
     })
   })
 

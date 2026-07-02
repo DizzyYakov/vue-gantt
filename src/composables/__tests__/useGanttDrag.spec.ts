@@ -1,4 +1,5 @@
 import { mount } from '@vue/test-utils'
+import { de } from 'date-fns/locale'
 import { describe, expect, it, vi } from 'vitest'
 import { computed, defineComponent, h, nextTick } from 'vue'
 import GanttRoot from '../../components/GanttRoot.vue'
@@ -161,6 +162,21 @@ describe('useGanttDrag', () => {
     fire(window, 'pointermove', { clientX: 40, clientY: 0 })
     await nextTick()
     expect(api().previewLabel.value).not.toContain('→')
+    fire(window, 'pointerup')
+  })
+
+  it('localizes the drag label via the `locale` config', async () => {
+    // Default dragLabelFormat is `d MMM HH:mm`; in German, Jan → "Jan." (trailing dot).
+    const { wrapper, api } = setup({ draggable: true, locale: de })
+    fire(wrapper.find('.bar').element, 'pointerdown', {
+      button: 0,
+      clientX: 0,
+      clientY: 0,
+      pointerId: 1,
+    })
+    fire(window, 'pointermove', { clientX: 80, clientY: 0 }) // +2 days, still January
+    await nextTick()
+    expect(api().previewLabel.value).toContain('Jan.')
     fire(window, 'pointerup')
   })
 
