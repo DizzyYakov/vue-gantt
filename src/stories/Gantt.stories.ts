@@ -56,7 +56,12 @@ const meta: Meta<typeof Gantt> = {
     },
     tooltip: {
       control: 'boolean',
-      description: 'Show a hover tooltip on bars/milestones.',
+      description: 'Show a hover tooltip on bars/milestones (tap toggles it on touch).',
+    },
+    touchTargets: {
+      control: 'boolean',
+      description:
+        'Enlarge interactive hit areas for touch (also automatic on coarse pointers).',
     },
     criticalPath: {
       control: 'boolean',

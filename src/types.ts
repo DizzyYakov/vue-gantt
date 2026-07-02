@@ -291,6 +291,15 @@ export interface GanttRootProps {
   rowMovable?: boolean
   /** Allow resizing bars by dragging their left/right edge. */
   resizable?: boolean
+  /** Allow inline-editing the row name (sidebar) and task name (bar) on double-click. */
+  editable?: boolean
+  /**
+   * Enlarge interactive hit areas (resize/progress/connector handles, milestone,
+   * dependency handles) for touch. Coarse pointers get the larger targets
+   * automatically via `@media (pointer: coarse)`; this prop forces them on regardless
+   * (sets `data-touch` on the root). Sizes stay overridable via the `--gantt-*` tokens.
+   */
+  touchTargets?: boolean
   /** Allow editing a task's progress by dragging a handle on the bar. */
   progressDraggable?: boolean
   /** Show a hover tooltip on bars/milestones (override its content via the `tooltip` slot). */
@@ -370,6 +379,10 @@ export interface GanttConfig {
   rowMovable: boolean
   /** Whether bars can be resized by dragging an edge. */
   resizable: boolean
+  /** Whether row/task names can be inline-edited on double-click. */
+  editable: boolean
+  /** Whether interactive hit areas are enlarged for touch (also auto on coarse pointers). */
+  touchTargets: boolean
   /** Whether progress can be edited by dragging a handle. */
   progressDraggable: boolean
   /** Whether a hover tooltip is shown on bars/milestones. */
@@ -433,6 +446,26 @@ export interface GanttProgressEvent {
   progress: number
   /** The task as it was before the change. */
   task: ResolvedTask
+}
+
+/** Payload for an inline task-field edit (e.g. renaming a bar). */
+export interface GanttTaskEditEvent {
+  /** Id of the edited task. */
+  id: string
+  /** The changed fields to merge into the task. */
+  patch: Partial<GanttTask>
+  /** The task as it was before the change. */
+  task: ResolvedTask
+}
+
+/** Payload for an inline row-field edit (e.g. renaming a sidebar row). */
+export interface GanttRowEditEvent {
+  /** Id of the edited row. */
+  id: string
+  /** The changed fields to merge into the row. */
+  patch: Partial<GanttRow>
+  /** The row as it was before the change. */
+  row: ResolvedRow
 }
 
 /** Info passed to a `dragLabel` formatter to override the live drag tooltip. */
@@ -668,6 +701,10 @@ export interface GanttContext {
   resizeTask: (event: GanttResizeEvent) => void
   /** Emit a completed progress drag (called by `GanttTask`). */
   progressTask: (event: GanttProgressEvent) => void
+  /** Commit an inline task-field edit (called by `GanttTask`). */
+  editTask: (event: GanttTaskEditEvent) => void
+  /** Commit an inline row-field edit (called by `GanttTaskList`). */
+  editRow: (event: GanttRowEditEvent) => void
   /**
    * Drive edge auto-scroll during a drag: pass the live pointer (client coords)
    * to scroll the viewport toward whichever edge it approaches; pass `null` to

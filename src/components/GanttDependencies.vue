@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, useId, useTemplateRef } from 'vue'
+import { computed, nextTick, onMounted, onUnmounted, ref, useId, useTemplateRef, watch } from 'vue'
 import { useGanttContext } from '../composables/useGanttContext'
 import type { DependencyPoint } from '../dependencyPaths'
 import type { GanttDependencyEvent, ResolvedTask } from '../types'
@@ -40,6 +40,28 @@ function onLinkClick(fromId: string, toId: string, event: MouseEvent): void {
   dispatch('dependency-click', { from, to, event })
   if (linkable.value) dispatch('dependency-remove', { from: fromId, to: toId })
 }
+
+// Reroute-handle radius read from the `--gantt-dependency-handle-radius` token, so
+// coarse-pointer / `touchTargets` enlargement and consumer overrides all apply —
+// an SVG `r` attribute can't read a CSS variable reliably across browsers.
+const handleRadius = ref(4)
+function readHandleRadius(): void {
+  const el = svg.value
+  if (!el) return
+  const raw = parseFloat(getComputedStyle(el).getPropertyValue('--gantt-dependency-handle-radius'))
+  if (!Number.isNaN(raw)) handleRadius.value = raw
+}
+let coarseMq: MediaQueryList | null = null
+onMounted(() => {
+  readHandleRadius()
+  coarseMq = window.matchMedia?.('(pointer: coarse)') ?? null
+  coarseMq?.addEventListener?.('change', readHandleRadius)
+})
+onUnmounted(() => coarseMq?.removeEventListener?.('change', readHandleRadius))
+watch(
+  () => config.value.touchTargets,
+  () => nextTick(readHandleRadius),
+)
 
 function onEndpointDown(link: DependencyLink, event: PointerEvent): void {
   // Re-route the arrowhead: keep the predecessor (anchor = its finish),
@@ -140,16 +162,23 @@ const draftPath = computed<string | null>(() => {
       </marker>
     </defs>
     <slot :links="links">
-      <path
-        v-for="link in links"
-        :key="link.key"
-        class="gantt-dependency"
-        :d="link.d"
-        :data-from="link.from"
-        :data-to="link.to"
-        :marker-end="markerEnd"
-        @click="onLinkClick(link.from, link.to, $event)"
-      />
+      <template v-for="link in links" :key="link.key">
+        <path
+          class="gantt-dependency"
+          :d="link.d"
+          :data-from="link.from"
+          :data-to="link.to"
+          :marker-end="markerEnd"
+          @click="onLinkClick(link.from, link.to, $event)"
+        />
+        <!-- Wide, transparent overlay that makes the thin line tappable on touch. -->
+        <path
+          class="gantt-dependency-hit"
+          :d="link.d"
+          :data-hit="`${link.from}->${link.to}`"
+          @click="onLinkClick(link.from, link.to, $event)"
+        />
+      </template>
     </slot>
 
     <!-- Draggable arrowhead for re-routing a link onto another task. The tail
@@ -161,7 +190,7 @@ const draftPath = computed<string | null>(() => {
         class="gantt-dependency-handle"
         :cx="link.head.x"
         :cy="link.head.y"
-        :r="4"
+        :r="handleRadius"
         @pointerdown.stop.prevent="onEndpointDown(link, $event)"
       />
     </template>
@@ -184,8 +213,18 @@ const draftPath = computed<string | null>(() => {
   fill: none;
   stroke: var(--gantt-dependency-color, #94a3b8);
   stroke-width: var(--gantt-dependency-width, 1.5);
-  /* The SVG layer is click-through; let the arrow stroke itself catch clicks. */
+  /* Clicks are caught by the wider `.gantt-dependency-hit` overlay instead, so the
+     thin drawn line stays tappable on touch. */
+  pointer-events: none;
+}
+
+/* Invisible, wider click/tap target laid over each drawn line. */
+.gantt-dependency-hit {
+  fill: none;
+  stroke: transparent;
+  stroke-width: var(--gantt-dependency-hit-width, 8px);
   pointer-events: stroke;
+  cursor: pointer;
 }
 
 .gantt-dependencies__marker path {

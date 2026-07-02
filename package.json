@@ -47,6 +47,7 @@
     "prepack": "bun run build",
     "preview": "vite preview",
     "test:unit": "vitest",
+    "bench": "vitest bench --run",
     "test:e2e": "playwright test",
     "build-only": "vite build",
     "build:types": "vue-tsc -p tsconfig.build.json",

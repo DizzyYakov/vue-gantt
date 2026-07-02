@@ -34,6 +34,7 @@ import {
   criticalPath,
   removeDependency,
   slack,
+  updateRow,
   updateTask,
 } from '../utils'
 import { DEFAULT_ZOOM_LEVELS } from '../zoom'
@@ -54,6 +55,8 @@ import type {
   GanttMoveEvent,
   GanttProgressEvent,
   GanttResizeEvent,
+  GanttRowEditEvent,
+  GanttTaskEditEvent,
   GanttRootProps,
   GanttRow,
   GanttRowEvent,
@@ -81,6 +84,8 @@ const props = withDefaults(defineProps<GanttRootProps>(), {
   draggable: GANTT_DEFAULTS.draggable,
   rowMovable: GANTT_DEFAULTS.rowMovable,
   resizable: GANTT_DEFAULTS.resizable,
+  editable: GANTT_DEFAULTS.editable,
+  touchTargets: GANTT_DEFAULTS.touchTargets,
   progressDraggable: GANTT_DEFAULTS.progressDraggable,
   tooltip: GANTT_DEFAULTS.tooltip,
   criticalPath: GANTT_DEFAULTS.criticalPath,
@@ -104,6 +109,8 @@ const emit = defineEmits<{
   move: [event: GanttMoveEvent]
   resize: [event: GanttResizeEvent]
   progress: [event: GanttProgressEvent]
+  'task-edit': [event: GanttTaskEditEvent]
+  'row-edit': [event: GanttRowEditEvent]
   /** `v-model:rows` — emitted with the rows after applying a task change. */
   'update:rows': [rows: GanttRow[]]
   /** `v-model:zoom` — emitted with the active zoom level id when it changes. */
@@ -368,6 +375,8 @@ const config = computed<GanttConfig>(() => ({
   draggable: props.draggable || props.rowMovable,
   rowMovable: props.rowMovable,
   resizable: props.resizable,
+  editable: props.editable,
+  touchTargets: props.touchTargets,
   progressDraggable: props.progressDraggable,
   tooltip: props.tooltip,
   criticalPath: props.criticalPath,
@@ -636,6 +645,14 @@ const context: GanttContext = {
     emit('progress', event)
     emitModelUpdate(rows => updateTask(rows, event.id, { progress: event.progress }))
   },
+  editTask: event => {
+    emit('task-edit', event)
+    emitModelUpdate(rows => updateTask(rows, event.id, event.patch))
+  },
+  editRow: event => {
+    emit('row-edit', event)
+    emitModelUpdate(rows => updateRow(rows, event.id, event.patch))
+  },
   autoScroll: autoscroll.update,
   linkDraft,
   beginLink,
@@ -723,7 +740,12 @@ defineExpose({
 </script>
 
 <template>
-  <div class="gantt-root" :data-unit="config.unit" :style="rootStyle">
+  <div
+    class="gantt-root"
+    :data-unit="config.unit"
+    :data-touch="config.touchTargets || undefined"
+    :style="rootStyle"
+  >
     <slot :rows="rows" :tasks="tasks" :columns="scale.columns.value" :config="config" />
   </div>
 </template>

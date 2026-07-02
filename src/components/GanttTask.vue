@@ -3,6 +3,8 @@ import { computed } from 'vue'
 import { format } from 'date-fns'
 import { useGanttItem, type GanttItemProps } from '../composables/useGanttItem'
 import { useHoverTooltip } from '../composables/useHoverTooltip'
+import { useInlineEdit, vFocus } from '../composables/useInlineEdit'
+import { useLongPress } from '../composables/useLongPress'
 import { isOverdue, violatesConstraint } from '../utils'
 import type { GanttTaskEvent } from '../types'
 
@@ -37,6 +39,19 @@ const {
 const resizable = computed(() => ctx.config.value.resizable)
 const progressDraggable = computed(() => ctx.config.value.progressDraggable)
 const linkable = computed(() => ctx.config.value.linkable)
+const editable = computed(() => ctx.config.value.editable)
+// Inline rename of the bar label (opt-in via `editable`, on double-click).
+const {
+  editing: editingName,
+  draft: nameDraft,
+  start: startNameEdit,
+  save: saveName,
+  commit: commitName,
+  cancel: cancelName,
+} = useInlineEdit(
+  () => resolved.value.name,
+  name => ctx.editTask({ id: resolved.value.id, patch: { name }, task: resolved.value }),
+)
 // Flags: bar finishes past its deadline, or breaches an upper-bound constraint.
 const overdue = computed(() => isOverdue(resolved.value))
 const constraintViolation = computed(() => violatesConstraint(resolved.value))
@@ -66,6 +81,7 @@ function onDblclick(event: MouseEvent): void {
   const payload: GanttTaskEvent = { task: resolved.value, event }
   emit('dblclick', payload)
   ctx.dispatch('task-dblclick', payload)
+  if (editable.value) startNameEdit()
 }
 function onContextmenu(event: MouseEvent): void {
   const payload: GanttTaskEvent = { task: resolved.value, event }
@@ -98,7 +114,29 @@ const tooltipStyle = computed(() =>
 
 // Opt-in hover tooltip (enabled by the `tooltip` flag or a `tooltip` slot);
 // `tipStyle` clamps the left-anchored tooltip within the content (no edge clipping).
-const { hovered, show: showHoverTip, tipStyle: hoverTipStyle } = useHoverTooltip(dragging, left, false)
+const {
+  show: showHoverTip,
+  tipStyle: hoverTipStyle,
+  toggleTouch,
+  onPointerEnter,
+  onPointerLeave,
+} = useHoverTooltip(dragging, left, false)
+
+// Touch has no `dblclick`; a long-press opens the same inline name editor.
+const longPress = useLongPress(() => {
+  if (editable.value) startNameEdit()
+})
+
+// Combine the drag start with the long-press timer on a single pointerdown.
+function onBarDown(event: PointerEvent): void {
+  onPointerDown(event)
+  longPress.onPointerdown(event)
+}
+// Touch has no hover, so a tap (non-drag, non-edit) toggles the tooltip.
+function onBarUp(event: PointerEvent): void {
+  longPress.onPointerup()
+  if (event.pointerType === 'touch' && !moved.value && !editingName.value) toggleTouch()
+}
 </script>
 
 <template>
@@ -112,6 +150,7 @@ const { hovered, show: showHoverTip, tipStyle: hoverTipStyle } = useHoverTooltip
     :style="rowStyle"
   >
     <div
+      ref="anchor"
       class="gantt-bar"
       :data-id="resolved.id"
       :data-draggable="draggable || undefined"
@@ -121,9 +160,12 @@ const { hovered, show: showHoverTip, tipStyle: hoverTipStyle } = useHoverTooltip
       :data-constraint-violation="constraintViolation || undefined"
       :data-split="segmentBars.length ? '' : undefined"
       :style="barStyle"
-      @pointerdown="onPointerDown"
-      @pointerenter="hovered = true"
-      @pointerleave="hovered = false"
+      @pointerdown="onBarDown"
+      @pointermove="longPress.onPointermove"
+      @pointerup="onBarUp"
+      @pointercancel="longPress.onPointercancel"
+      @pointerenter="onPointerEnter"
+      @pointerleave="onPointerLeave"
       @click="onClick"
       @dblclick="onDblclick"
       @contextmenu="onContextmenu"
@@ -147,7 +189,28 @@ const { hovered, show: showHoverTip, tipStyle: hoverTipStyle } = useHoverTooltip
           :style="progressStyle"
           :aria-label="`${liveProgress}%`"
         />
-        <span class="gantt-bar__label">{{ resolved.name }}</span>
+        <slot
+          v-if="editable && editingName"
+          name="taskEditor"
+          :task="resolved"
+          :value="nameDraft"
+          :commit="commitName"
+          :cancel="cancelName"
+        >
+          <input
+            v-model="nameDraft"
+            v-focus
+            class="gantt-edit-input gantt-bar__label"
+            @keydown.enter="saveName"
+            @keydown.esc="cancelName"
+            @blur="saveName"
+            @pointerdown.stop
+            @mousedown.stop
+            @click.stop
+            @dblclick.stop
+          />
+        </slot>
+        <span v-else class="gantt-bar__label">{{ resolved.name }}</span>
       </slot>
 
       <!-- Edge handles for resizing (drag a side; sides flip past each other). -->
@@ -397,6 +460,22 @@ const { hovered, show: showHoverTip, tipStyle: hoverTipStyle } = useHoverTooltip
      set a contrasting halo here so the text stays legible over both. */
   text-shadow: var(--gantt-bar-text-shadow, none);
   font-size: var(--gantt-bar-font-size, 0.8em);
+}
+
+/* Inline editor: an input over the bar label (opt-in via `editable`). */
+.gantt-edit-input {
+  position: relative;
+  z-index: 3;
+  flex: 1;
+  min-width: 0;
+  box-sizing: border-box;
+  margin: 0 4px;
+  font: inherit;
+  font-size: var(--gantt-bar-font-size, 0.8em);
+  color: var(--gantt-edit-color, inherit);
+  background: var(--gantt-edit-bg, var(--gantt-surface, #fff));
+  border: var(--gantt-edit-border, 1px solid var(--gantt-progress-bg, #6366f1));
+  border-radius: var(--gantt-edit-radius, 3px);
 }
 
 /* Floating label showing the precise new time during a drag. */

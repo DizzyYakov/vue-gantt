@@ -57,6 +57,12 @@
   /* Progress */
   --gantt-progress-bg: #6366f1;
 
+  /* Inline editing (row/task name inputs) */
+  --gantt-edit-bg: var(--gantt-surface, #fff);
+  --gantt-edit-color: inherit;
+  --gantt-edit-border: 1px solid var(--gantt-progress-bg, #6366f1);
+  --gantt-edit-radius: 3px;
+
   /* Split segments (work spans with paused gaps) */
   --gantt-split-line-color: var(--gantt-progress-bg, #6366f1);
   --gantt-split-line-width: 2px;
@@ -97,9 +103,18 @@
   --gantt-milestone-bg: #f59e0b;
   --gantt-milestone-radius: 2px;
 
+  /* Interactive hit areas (enlarged automatically on coarse pointers / [data-touch]) */
+  --gantt-resize-handle-width: 7px;
+  --gantt-progress-handle-width: 10px;
+  --gantt-connector-size: 8px;
+
   /* Dependencies */
   --gantt-dependency-color: #94a3b8;
   --gantt-dependency-width: 1.5;
+  /* Radius of the reroute endpoint handles. */
+  --gantt-dependency-handle-radius: 4px;
+  /* Invisible click/tap width of a dependency line (wider than the drawn stroke). */
+  --gantt-dependency-hit-width: 8px;
 
   /* Today marker */
   --gantt-today-color: #ef4444;
@@ -113,4 +128,31 @@
   --gantt-overdue-outline: 1.5px solid var(--gantt-deadline-color);
   --gantt-constraint-color: #f59e0b;
   --gantt-constraint-outline: 1.5px dashed var(--gantt-constraint-color);
+}
+
+/**
+ * Touch-friendly hit areas. On a coarse pointer (finger/stylus) the small
+ * mouse-tuned handles are enlarged toward the ~44px touch guideline; the
+ * `touchTargets` prop (`[data-touch]`) forces the same regardless of the pointer.
+ * These set the tokens on `.gantt-root`, so a consumer can still shrink them by
+ * overriding the individual `--gantt-*` values on `.gantt-root` or a token directly.
+ */
+@media (pointer: coarse) {
+  .gantt-root {
+    --gantt-resize-handle-width: 20px;
+    --gantt-progress-handle-width: 22px;
+    --gantt-connector-size: 18px;
+    --gantt-milestone-size: 22px;
+    --gantt-dependency-handle-radius: 9px;
+    --gantt-dependency-hit-width: 24px;
+  }
+}
+
+.gantt-root[data-touch] {
+  --gantt-resize-handle-width: 20px;
+  --gantt-progress-handle-width: 22px;
+  --gantt-connector-size: 18px;
+  --gantt-milestone-size: 22px;
+  --gantt-dependency-handle-radius: 9px;
+  --gantt-dependency-hit-width: 24px;
 }

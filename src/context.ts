@@ -29,6 +29,8 @@ export const GANTT_DEFAULTS = {
   draggable: false,
   rowMovable: false,
   resizable: false,
+  editable: false,
+  touchTargets: false,
   progressDraggable: false,
   tooltip: false,
   criticalPath: false,

@@ -108,6 +108,31 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Added
 
+- **Performance tooling for 10k+ tasks.** A `vitest bench` harness
+  (`src/__tests__/perf.bench.ts`, run via `bun run bench` — not in CI) measuring
+  layout, critical-path, slack and the per-scroll visible-task filter at 1k/10k; a
+  `Guides/Performance` Storybook story (10 000 tasks, plain and grouped) built from a
+  new `makeStressRows` generator; and a virtualization guardrail test asserting the
+  visible window stays a small fraction of the model. No API/behavior changes. Known
+  limitation documented: dependency arrows are not viewport-culled yet.
+- **Mobile / touch polish.** Interactive hit areas (resize / progress / connector
+  handles, milestones, dependency handles + a wider tap target on dependency lines)
+  enlarge automatically on a coarse pointer (`@media (pointer: coarse)`); the new opt-in
+  `touchTargets` prop forces the same on any device (adds `data-touch` to the root), all
+  still overridable via the `--gantt-*` tokens (incl. new `--gantt-resize-handle-width`,
+  `--gantt-progress-handle-width`, `--gantt-connector-size`,
+  `--gantt-dependency-handle-radius`, `--gantt-dependency-hit-width`). Touch also gets
+  affordances hover/`dblclick` can't provide: a tap toggles the `tooltip` (dismissed by a
+  tap outside), a ~500ms long-press opens inline editing (`editable`), and the drag
+  threshold is larger for touch pointers so a bar isn't nudged by finger jitter. New
+  `useLongPress` composable.
+- **Inline field editing.** Opt-in `editable` prop: double-click a row name (sidebar) or
+  a bar label to edit it inline (Enter/blur commits, Esc cancels). Surfaced controlled
+  like the other interactions — `row-edit` (`GanttRowEditEvent`) / `task-edit`
+  (`GanttTaskEditEvent`) events, mirrored into `v-model:rows` via the new `updateRow`
+  utility / `updateTask`. Replace the built-in input via the scoped `rowEditor` /
+  `taskEditor` slots (`{ row|task, value, commit, cancel }`). Themeable via
+  `--gantt-edit-*` tokens; exports `updateRow` and the edit event types.
 - **Undo / redo.** New `useGanttHistory(rowsRef, { limit? })` composable — a snapshot
   history over the `rows` ref you bind to `v-model:rows`. Every edit (move/resize/
   progress/dependency, all funnelled through one `update:rows`) is recorded as one

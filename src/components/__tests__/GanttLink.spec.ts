@@ -25,6 +25,16 @@ describe('dependency removal (click an arrow)', () => {
     await wrapper.find('.gantt-dependency').trigger('click')
     expect(wrapper.emitted('dependency-remove')).toBeUndefined()
   })
+
+  it('emits dependency-remove when tapping the wide hit overlay (touch)', async () => {
+    const wrapper = mount(Gantt, { props: { rows, unit: 'day', columnWidth: 40, linkable: true } })
+    const hit = wrapper.find('.gantt-dependency-hit')
+    expect(hit.attributes('data-hit')).toBe('a->b')
+    await hit.trigger('click')
+    const removed = wrapper.emitted('dependency-remove')![0]![0] as GanttDependencyChange
+    expect(removed).toEqual({ from: 'a', to: 'b' })
+    expect(wrapper.emitted('dependency-click')).toHaveLength(1)
+  })
 })
 
 describe('dependency create / re-route (link drag)', () => {
