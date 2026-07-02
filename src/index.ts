@@ -19,6 +19,7 @@ export { default as GanttConflicts } from './components/GanttConflicts.vue'
 export { default as GanttSlack } from './components/GanttSlack.vue'
 export { default as GanttDeadlines } from './components/GanttDeadlines.vue'
 export { default as GanttBaselines } from './components/GanttBaselines.vue'
+export { default as GanttPeriods } from './components/GanttPeriods.vue'
 export { default as GanttToday } from './components/GanttToday.vue'
 export { default as GanttZoom } from './components/GanttZoom.vue'
 
@@ -88,6 +89,8 @@ export {
   isOverdue,
   violatesConstraint,
   validateRows,
+  sprintPeriods,
+  type SprintPeriodsOptions,
 } from './utils'
 
 // Types
@@ -117,6 +120,7 @@ export type {
   GanttLinkMode,
   GanttMoveEvent,
   GanttOverlapMode,
+  GanttPeriod,
   GanttProgressEvent,
   GanttResizeEvent,
   GanttRowEditEvent,
@@ -133,6 +137,7 @@ export type {
   GanttZoomEvent,
   GanttZoomLevel,
   ResolvedGroup,
+  ResolvedPeriod,
   ResolvedRow,
   ResolvedSegment,
   ResolvedTask,
