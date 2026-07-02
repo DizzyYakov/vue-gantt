@@ -1053,12 +1053,34 @@ mapping `--gantt-*` to its tokens — e.g. shadcn/ui
 Quasar `var(--q-primary)`. The **Guides → Design systems** Storybook page has
 ready examples for shadcn, Ant Design, Material UI, Vuetify and Quasar.
 
+## Performance
+
+The chart is built for large plans (tested at **10 000 tasks** — see the
+`Guides/Performance` story):
+
+- **Row & column virtualization.** With a height-constrained scroll viewport (a
+  `height` cap or a fixed-height parent) only the rows and columns inside the
+  window are rendered, so the DOM stays small regardless of dataset size. Column
+  generation is windowed; `contentWidth` is computed analytically (O(1), no scan),
+  and a `MAX_CELLS` guard bounds a single generation pass.
+- **Benchmarks.** `bun run bench` (`vitest bench`) runs
+  `src/__tests__/perf.bench.ts` — pure-function numbers (layout, critical-path,
+  slack, and the per-scroll visible-task filter) at 1k/10k. Benchmarks are not part
+  of `vitest run`/CI.
+
+**Known limitation:** dependency arrows are **not** viewport-culled yet — every
+edge renders an SVG path regardless of scroll, so a chart with dense dependencies
+across tens of thousands of tasks pays an O(edges) DOM cost. For the very largest
+datasets, prefer fewer/no `dependencies` (or keep `linkable` off) until per-viewport
+culling lands.
+
 ## Development
 
 ```sh
 bun install
 bun dev            # demo playground at src/dev
 bun test:unit      # Vitest (append `run` for a single pass)
+bun run bench      # performance benchmarks (vitest bench, not in CI)
 bun run build      # library build → dist/ (ESM + gantt.css + .d.ts)
 bun lint
 ```

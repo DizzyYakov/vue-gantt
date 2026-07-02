@@ -10,12 +10,14 @@ const modules = import.meta.glob('../*.stories.ts', { eager: true }) as Record<
 type AnyStory = {
   args?: Record<string, unknown>
   render?: (args: unknown, ctx: unknown) => unknown
+  tags?: string[]
 }
 type AnyMeta = {
   component?: unknown
   args?: Record<string, unknown>
   argTypes?: Record<string, unknown>
   render?: (args: unknown, ctx: unknown) => unknown
+  tags?: string[]
 }
 
 /**
@@ -32,6 +34,12 @@ describe('stories render without throwing', () => {
       const story = value as AnyStory
       // Only treat CSF story objects (have args/render) as stories.
       if (typeof story !== 'object' || story === null) continue
+
+      // `no-smoke` opts a story out of the mount check — used for deliberately huge
+      // datasets (e.g. the 10k performance demo) that would render unvirtualized in
+      // jsdom (viewport is 0) and time out. Their data path is covered by perf.spec.ts.
+      const tags = [...(meta.tags ?? []), ...(story.tags ?? [])]
+      if (tags.includes('no-smoke')) continue
 
       it(`${file} › ${name}`, () => {
         const args = { ...meta.args, ...story.args }
