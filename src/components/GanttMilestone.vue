@@ -48,6 +48,8 @@ function onContextmenu(event: MouseEvent): void {
 
 const overlapMode = computed(() => ctx.config.value.overlap)
 const markerStyle = computed(() => ({ left: `${left.value}px` }))
+// Tooltip date formatter, localized via the `locale` config.
+const fmtDate = (d: Date): string => format(d, 'd MMM yyyy', { locale: ctx.config.value.locale })
 // Highlight while a dependency drag hovers this milestone as a drop target.
 const linkTarget = computed(() => ctx.linkDraft.value?.over === resolved.value.id)
 // Whether this milestone is on the critical path (only when `criticalPath` is on).
@@ -113,7 +115,7 @@ function onMarkerUp(event: PointerEvent): void {
     <div v-if="showHoverTip" ref="tip" class="gantt-tooltip" :style="hoverTipStyle" role="tooltip">
       <slot name="tooltip" :task="resolved">
         <span class="gantt-tooltip__name">{{ resolved.name }}</span>
-        <span class="gantt-tooltip__dates">{{ format(resolved.start, 'd MMM yyyy') }}</span>
+        <span class="gantt-tooltip__dates">{{ fmtDate(resolved.start) }}</span>
       </slot>
     </div>
 

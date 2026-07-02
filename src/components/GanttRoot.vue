@@ -102,6 +102,7 @@ const props = withDefaults(defineProps<GanttRootProps>(), {
   endDate: undefined,
   today: undefined,
   labelFormat: undefined,
+  locale: undefined,
   zoomLevels: () => DEFAULT_ZOOM_LEVELS,
   zoom: undefined,
   periods: undefined,
@@ -370,6 +371,7 @@ const scale = useGanttScale({
   end,
   today,
   labelFormat: toRef(props, 'labelFormat'),
+  locale: toRef(props, 'locale'),
 })
 
 const config = computed<GanttConfig>(() => ({
@@ -396,6 +398,7 @@ const config = computed<GanttConfig>(() => ({
   snapToGrid: props.snapToGrid,
   autoSchedule: props.autoSchedule,
   dragLabelFormat: props.dragLabelFormat,
+  locale: props.locale,
   dragLabel: props.dragLabel,
   start: start.value,
   end: end.value,

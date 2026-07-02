@@ -207,8 +207,9 @@ export function useGanttDrag(options: DragOptions) {
     }
     if (kind === 'progress') return `${p.progress}%`
     const fmt = ctx.config.value.dragLabelFormat
-    if (task.type === 'milestone') return format(p.start, fmt)
-    return `${format(p.start, fmt)} → ${format(p.end, fmt)}`
+    const locale = ctx.config.value.locale
+    if (task.type === 'milestone') return format(p.start, fmt, { locale })
+    return `${format(p.start, fmt, { locale })} → ${format(p.end, fmt, { locale })}`
   })
 
   function commit(): void {

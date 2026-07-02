@@ -30,6 +30,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Added
 
+- **Date localization (i18n).** New `locale` prop (a date-fns `Locale`) translates every
+  date label — timeline column headers, drag labels and tooltips. Import the locale
+  yourself (`import { ru } from 'date-fns/locale'`) so only the ones you use are bundled;
+  it composes with `labelFormat`/`dragLabelFormat`. (RTL layout is not part of this.)
 - **Timeline period bands (sprints).** New `periods` prop (`GanttPeriod[]`) draws custom
   horizontal time periods — a faint full-height band over the chart body plus a labelled
   row in the timeline header — for sprints/phases/release windows. Periods also extend the

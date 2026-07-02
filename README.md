@@ -285,6 +285,7 @@ parent collapses to the content height and simply grows to fit (as before).
 | `startDate` / `endDate` | `Date \| string \| number`                        | auto            | Explicit axis bounds (auto-derived from tasks otherwise).                                                                                                                                                                                                     |
 | `today`                 | `Date \| string \| number`                        | now             | The "today" reference.                                                                                                                                                                                                                                        |
 | `labelFormat`           | `GanttLabelFormat`                                | per tier        | Column label formatting. A date-fns `string` (base unit only — other tiers keep defaults), a per-tier map `Partial<Record<GanttUnit, string>>`, or a `(date, tier) => string` function (full control). E.g. `{ month: 'LLLL yyyy', week: "'W'w", day: 'd' }`. |
+| `locale`                | `Locale` (date-fns)                               | English         | date-fns locale for all date labels (headers, drag labels, tooltips). See [Localization](#localization-i18n).                                                                                                                                                  |
 
 ### Item props (`GanttItemProps`, for `<GanttTask>` / `<GanttMilestone>`)
 
@@ -840,6 +841,33 @@ that:
 <!-- Force the larger touch targets everywhere (otherwise auto on coarse pointers). -->
 <Gantt :rows="rows" touch-targets draggable resizable editable tooltip />
 ```
+
+## Localization (i18n)
+
+Date labels — the timeline **column headers**, the live **drag labels** and the
+**tooltips** — are formatted with date-fns. Pass a date-fns `Locale` via the `locale`
+prop to translate month/day names. Import the locale yourself so only the ones you use
+are bundled (date-fns is the library's one runtime dependency; it never imports locale
+data itself):
+
+```vue
+<script setup>
+import { Gantt } from '@dizzy_yakov/vue-gantt'
+import { ru } from 'date-fns/locale'
+</script>
+
+<template>
+  <Gantt :rows="rows" :locale="ru" :tiers="['month', 'week', 'day']" />
+</template>
+```
+
+`locale` composes with [`labelFormat`](#configuration-props-ganttrootprops) (locale-aware
+custom formats) and with `dragLabelFormat`. A `labelFormat` **function** owns its own
+formatting, so it isn't affected by `locale` — call `format(date, fmt, { locale })`
+yourself inside it if needed.
+
+> **RTL** (right-to-left layouts) is not covered yet — `locale` handles date text only,
+> not layout mirroring.
 
 ## Theming
 
