@@ -30,6 +30,7 @@ export const GANTT_DEFAULTS = {
   rowMovable: false,
   resizable: false,
   editable: false,
+  touchTargets: false,
   progressDraggable: false,
   tooltip: false,
   criticalPath: false,

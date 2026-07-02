@@ -1,6 +1,6 @@
 import { mount } from '@vue/test-utils'
-import { describe, expect, it } from 'vitest'
-import { h } from 'vue'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { h, nextTick } from 'vue'
 import Gantt from '../Gantt.vue'
 import type { GanttRow, GanttRowEditEvent, GanttTaskEditEvent } from '../../types'
 
@@ -113,6 +113,45 @@ describe('GanttInlineEdit — task rename (bar)', () => {
     expect(wrapper.emitted('task-edit')).toBeUndefined()
     expect(bar.find('input.gantt-edit-input').exists()).toBe(false)
     expect(bar.find('.gantt-bar__label').text()).toBe('Alpha')
+  })
+})
+
+describe('GanttInlineEdit — touch long-press (no dblclick on touch)', () => {
+  beforeEach(() => vi.useFakeTimers())
+  afterEach(() => vi.useRealTimers())
+
+  it('a long-press opens the row editor', async () => {
+    const wrapper = mount(Gantt, { props: { rows: makeRows(), editable: true } })
+    const row = wrapper.find('.gantt-task-list__row[data-id="r1"]')
+
+    await row.trigger('pointerdown', { pointerType: 'touch' })
+    vi.advanceTimersByTime(500)
+    await nextTick()
+
+    expect(row.find('input.gantt-edit-input').exists()).toBe(true)
+  })
+
+  it('a long-press opens the bar editor', async () => {
+    const wrapper = mount(Gantt, { props: { rows: makeRows(), editable: true } })
+    const bar = wrapper.find('.gantt-bar[data-id="a"]')
+
+    await bar.trigger('pointerdown', { pointerType: 'touch' })
+    vi.advanceTimersByTime(500)
+    await nextTick()
+
+    expect(bar.find('input.gantt-edit-input').exists()).toBe(true)
+  })
+
+  it('a quick tap (released before the delay) does not open the editor', async () => {
+    const wrapper = mount(Gantt, { props: { rows: makeRows(), editable: true } })
+    const row = wrapper.find('.gantt-task-list__row[data-id="r1"]')
+
+    await row.trigger('pointerdown', { pointerType: 'touch' })
+    await row.trigger('pointerup')
+    vi.advanceTimersByTime(500)
+    await nextTick()
+
+    expect(row.find('input.gantt-edit-input').exists()).toBe(false)
   })
 })
 

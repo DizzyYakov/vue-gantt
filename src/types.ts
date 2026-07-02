@@ -293,6 +293,13 @@ export interface GanttRootProps {
   resizable?: boolean
   /** Allow inline-editing the row name (sidebar) and task name (bar) on double-click. */
   editable?: boolean
+  /**
+   * Enlarge interactive hit areas (resize/progress/connector handles, milestone,
+   * dependency handles) for touch. Coarse pointers get the larger targets
+   * automatically via `@media (pointer: coarse)`; this prop forces them on regardless
+   * (sets `data-touch` on the root). Sizes stay overridable via the `--gantt-*` tokens.
+   */
+  touchTargets?: boolean
   /** Allow editing a task's progress by dragging a handle on the bar. */
   progressDraggable?: boolean
   /** Show a hover tooltip on bars/milestones (override its content via the `tooltip` slot). */
@@ -374,6 +381,8 @@ export interface GanttConfig {
   resizable: boolean
   /** Whether row/task names can be inline-edited on double-click. */
   editable: boolean
+  /** Whether interactive hit areas are enlarged for touch (also auto on coarse pointers). */
+  touchTargets: boolean
   /** Whether progress can be edited by dragging a handle. */
   progressDraggable: boolean
   /** Whether a hover tooltip is shown on bars/milestones. */

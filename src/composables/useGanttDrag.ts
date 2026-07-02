@@ -41,7 +41,10 @@ export function useGanttDrag(options: DragOptions) {
   const dx = ref(0)
   const dy = ref(0)
 
-  const MOVE_THRESHOLD = 3 // px before a press counts as a drag, not a click
+  const MOVE_THRESHOLD = 3 // px before a mouse press counts as a drag, not a click
+  const TOUCH_MOVE_THRESHOLD = 8 // finger presses jitter more — need a larger slop
+  // Set on pointerdown; picks the slop that suits the input device.
+  let moveThreshold = MOVE_THRESHOLD
 
   /** Move drag is available if either axis is unlocked. */
   const enabled = computed(() => ctx.config.value.draggable || ctx.config.value.rowMovable)
@@ -70,6 +73,7 @@ export function useGanttDrag(options: DragOptions) {
           : cfg.resizable
     if (event.button !== 0 || !allowed) return
     mode.value = dragMode
+    moveThreshold = event.pointerType === 'touch' ? TOUCH_MOVE_THRESHOLD : MOVE_THRESHOLD
     dragging.value = true
     moved.value = false
     originX = event.clientX
@@ -102,7 +106,7 @@ export function useGanttDrag(options: DragOptions) {
       dx.value = event.clientX - originX
       dy.value = 0
     }
-    if (Math.abs(dx.value) > MOVE_THRESHOLD || Math.abs(dy.value) > MOVE_THRESHOLD) {
+    if (Math.abs(dx.value) > moveThreshold || Math.abs(dy.value) > moveThreshold) {
       moved.value = true
     }
     // Auto-scroll toward the viewport edge for move/resize (not progress).

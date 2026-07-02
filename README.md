@@ -269,8 +269,9 @@ parent collapses to the content height and simply grows to fit (as before).
 | `rowMovable`            | `boolean`                                         | `false`         | Drag a task into another row (implies `draggable`).                                                                                                                                                                                                           |
 | `resizable`             | `boolean`                                         | `false`         | Resize bars by dragging an edge (sides flip past each other).                                                                                                                                                                                                 |
 | `progressDraggable`     | `boolean`                                         | `false`         | Edit progress by dragging a handle on the bar.                                                                                                                                                                                                                |
-| `editable`              | `boolean`                                         | `false`         | Inline-edit the row name (sidebar) and task name (bar label) on double-click. Enter/blur commits, Esc cancels; empty/unchanged is ignored. Surfaces `row-edit`/`task-edit` (and syncs `v-model:rows`).                                                         |
-| `tooltip`               | `boolean`                                         | `false`         | Show a hover tooltip on bars/milestones (override its content via the `tooltip` slot).                                                                                                                                                                        |
+| `editable`              | `boolean`                                         | `false`         | Inline-edit the row name (sidebar) and task name (bar label) on double-click (or a long-press on touch). Enter/blur commits, Esc cancels; empty/unchanged is ignored. Surfaces `row-edit`/`task-edit` (and syncs `v-model:rows`).                              |
+| `tooltip`               | `boolean`                                         | `false`         | Show a hover tooltip on bars/milestones — a tap toggles it on touch (override its content via the `tooltip` slot).                                                                                                                                            |
+| `touchTargets`          | `boolean`                                         | `false`         | Enlarge interactive hit areas (resize/progress/connector handles, milestones, dependency handles) for touch. Coarse pointers get the larger targets automatically via `@media (pointer: coarse)`; this forces them on regardless (adds `data-touch` to the root). Sizes stay overridable via the `--gantt-*` tokens. |
 | `criticalPath`          | `boolean`                                         | `false`         | Highlight the tasks on the critical path (`data-critical` on their bars/markers; styled via `--gantt-critical-*`).                                                                                                                                            |
 | `slack`                 | `boolean`                                         | `false`         | Draw each task's free-float slack as a translucent bar after its end (the `<GanttSlack>` overlay; styled via `--gantt-slack-*`).                                                                                                                               |
 | `linkable`              | `boolean`                                         | `false`         | Create/edit dependencies by dragging between tasks.                                                                                                                                                                                                           |
@@ -786,6 +787,30 @@ Two opt-in schedule overlays, both off by default:
 The same numbers are available headless via the
 [`criticalPath` / `slack` utilities](#utilities) (no chart needed).
 
+## Mobile & touch
+
+The chart is pointer-event based end to end, so dragging, resizing, editing progress
+and creating/rerouting dependencies all work with a finger out of the box. On top of
+that:
+
+- **Bigger hit areas.** On a coarse pointer the small mouse-tuned handles (resize,
+  progress, connector, milestones, dependency handles + a wider tap target over each
+  dependency line) enlarge automatically via `@media (pointer: coarse)` — no config. Set
+  `touchTargets` (adds `data-touch` to the root) to force the same on any device. Every
+  size stays overridable through the `--gantt-*` tokens.
+- **Tap for the tooltip.** Touch has no hover, so a tap on a bar/milestone toggles its
+  `tooltip`; a tap elsewhere dismisses it.
+- **Long-press to edit.** `dblclick` is unreliable on touch, so with `editable` a
+  ~500ms long-press on a row name (sidebar) or task label opens the inline editor.
+  `dblclick` still works with a mouse.
+- **Steadier drags.** The drag threshold is larger for touch pointers, so a bar isn't
+  nudged by finger jitter.
+
+```vue
+<!-- Force the larger touch targets everywhere (otherwise auto on coarse pointers). -->
+<Gantt :rows="rows" touch-targets draggable resizable editable tooltip />
+```
+
 ## Theming
 
 ![Custom theme via CSS variables](https://raw.githubusercontent.com/LavaYasha/vue-gantt/main/docs/theming.png)
@@ -871,7 +896,7 @@ live on `:root`, so the nearest override wins):
 
 | Variable                   | Default   | Purpose                |
 | -------------------------- | --------- | ---------------------- |
-| `--gantt-milestone-size`   | `14px`    | Diamond size.          |
+| `--gantt-milestone-size`   | `14px`    | Diamond size (grows on touch). |
 | `--gantt-milestone-bg`     | `#f59e0b` | Diamond colour.        |
 | `--gantt-milestone-radius` | `2px`     | Diamond corner radius. |
 
@@ -879,10 +904,12 @@ live on `:root`, so the nearest override wins):
 
 | Variable                          | Default     | Purpose                                 |
 | --------------------------------- | ----------- | --------------------------------------- |
-| `--gantt-dependency-color`        | `#94a3b8`   | Arrow stroke colour.                    |
-| `--gantt-dependency-width`        | `1.5`       | Arrow stroke width.                     |
-| `--gantt-dependency-draft-color`  | progress bg | Colour of the in-progress link line.    |
-| `--gantt-dependency-handle-color` | progress bg | Colour of the draggable arrow endpoint. |
+| `--gantt-dependency-color`          | `#94a3b8`   | Arrow stroke colour.                                   |
+| `--gantt-dependency-width`          | `1.5`       | Arrow stroke width.                                    |
+| `--gantt-dependency-draft-color`    | progress bg | Colour of the in-progress link line.                  |
+| `--gantt-dependency-handle-color`   | progress bg | Colour of the draggable arrow endpoint.               |
+| `--gantt-dependency-handle-radius`  | `4px`       | Radius of the reroute endpoint handle (grows on touch).|
+| `--gantt-dependency-hit-width`      | `8px`       | Invisible tap width over each line (grows on touch).  |
 
 The connector is configured on `GanttRoot`/`Gantt` with two builder functions:
 `dependencyShape` (a path builder `(tail, head) => string`) and `arrowHead` (an
@@ -962,9 +989,11 @@ hatched look.
 | `--gantt-drag-label-color`      | `#fff`             | Drag tooltip text colour.              |
 | `--gantt-drag-label-radius`     | `4px`              | Drag tooltip corner radius.            |
 | `--gantt-drag-label-font-size`  | `0.72em`           | Drag tooltip font size.                |
-| `--gantt-resize-handle-width`   | `7px`              | Edge resize hit area.                  |
+| `--gantt-resize-handle-width`   | `7px`              | Edge resize hit area (grows on touch). |
 | `--gantt-resize-handle-bg`      | `rgb(0 0 0 / 12%)` | Edge resize hover tint.                |
+| `--gantt-progress-handle-width` | `10px`             | Progress handle hit area (grows on touch). |
 | `--gantt-progress-handle-color` | `#fff`             | Progress handle grip colour.           |
+| `--gantt-connector-size`        | `8px`              | Dependency connector dot size (grows on touch). |
 | `--gantt-connector-bg`          | `#fff`             | Dependency connector dot fill.         |
 | `--gantt-connector-color`       | progress bg        | Dependency connector dot border.       |
 | `--gantt-link-target-outline`   | `2px solid …`      | Outline on a hovered link drop target. |

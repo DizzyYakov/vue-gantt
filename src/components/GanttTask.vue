@@ -4,6 +4,7 @@ import { format } from 'date-fns'
 import { useGanttItem, type GanttItemProps } from '../composables/useGanttItem'
 import { useHoverTooltip } from '../composables/useHoverTooltip'
 import { useInlineEdit, vFocus } from '../composables/useInlineEdit'
+import { useLongPress } from '../composables/useLongPress'
 import { isOverdue, violatesConstraint } from '../utils'
 import type { GanttTaskEvent } from '../types'
 
@@ -113,7 +114,29 @@ const tooltipStyle = computed(() =>
 
 // Opt-in hover tooltip (enabled by the `tooltip` flag or a `tooltip` slot);
 // `tipStyle` clamps the left-anchored tooltip within the content (no edge clipping).
-const { hovered, show: showHoverTip, tipStyle: hoverTipStyle } = useHoverTooltip(dragging, left, false)
+const {
+  show: showHoverTip,
+  tipStyle: hoverTipStyle,
+  toggleTouch,
+  onPointerEnter,
+  onPointerLeave,
+} = useHoverTooltip(dragging, left, false)
+
+// Touch has no `dblclick`; a long-press opens the same inline name editor.
+const longPress = useLongPress(() => {
+  if (editable.value) startNameEdit()
+})
+
+// Combine the drag start with the long-press timer on a single pointerdown.
+function onBarDown(event: PointerEvent): void {
+  onPointerDown(event)
+  longPress.onPointerdown(event)
+}
+// Touch has no hover, so a tap (non-drag, non-edit) toggles the tooltip.
+function onBarUp(event: PointerEvent): void {
+  longPress.onPointerup()
+  if (event.pointerType === 'touch' && !moved.value && !editingName.value) toggleTouch()
+}
 </script>
 
 <template>
@@ -127,6 +150,7 @@ const { hovered, show: showHoverTip, tipStyle: hoverTipStyle } = useHoverTooltip
     :style="rowStyle"
   >
     <div
+      ref="anchor"
       class="gantt-bar"
       :data-id="resolved.id"
       :data-draggable="draggable || undefined"
@@ -136,9 +160,12 @@ const { hovered, show: showHoverTip, tipStyle: hoverTipStyle } = useHoverTooltip
       :data-constraint-violation="constraintViolation || undefined"
       :data-split="segmentBars.length ? '' : undefined"
       :style="barStyle"
-      @pointerdown="onPointerDown"
-      @pointerenter="hovered = true"
-      @pointerleave="hovered = false"
+      @pointerdown="onBarDown"
+      @pointermove="longPress.onPointermove"
+      @pointerup="onBarUp"
+      @pointercancel="longPress.onPointercancel"
+      @pointerenter="onPointerEnter"
+      @pointerleave="onPointerLeave"
       @click="onClick"
       @dblclick="onDblclick"
       @contextmenu="onContextmenu"

@@ -97,6 +97,39 @@ describe('useGanttDrag', () => {
     fire(window, 'pointerup')
   })
 
+  it('uses a larger move threshold for touch than for mouse', async () => {
+    // Mouse: a 5px move already counts as a drag (threshold 3).
+    const m = setup({ draggable: true })
+    fire(m.wrapper.find('.bar').element, 'pointerdown', {
+      button: 0,
+      clientX: 0,
+      clientY: 0,
+      pointerId: 1,
+      pointerType: 'mouse',
+    })
+    fire(window, 'pointermove', { clientX: 5, clientY: 0 })
+    await nextTick()
+    expect(m.api().moved.value).toBe(true)
+    fire(window, 'pointerup')
+
+    // Touch: 5px is still within the finger slop (threshold 8), 12px crosses it.
+    const t = setup({ draggable: true })
+    fire(t.wrapper.find('.bar').element, 'pointerdown', {
+      button: 0,
+      clientX: 0,
+      clientY: 0,
+      pointerId: 1,
+      pointerType: 'touch',
+    })
+    fire(window, 'pointermove', { clientX: 5, clientY: 0 })
+    await nextTick()
+    expect(t.api().moved.value).toBe(false)
+    fire(window, 'pointermove', { clientX: 12, clientY: 0 })
+    await nextTick()
+    expect(t.api().moved.value).toBe(true)
+    fire(window, 'pointerup')
+  })
+
   it('cancels cleanly without emitting a move', async () => {
     const { wrapper, api } = setup({ draggable: true })
     fire(wrapper.find('.bar').element, 'pointerdown', {

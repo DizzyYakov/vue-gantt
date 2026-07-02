@@ -1,4 +1,4 @@
-import { mount } from '@vue/test-utils'
+import { flushPromises, mount } from '@vue/test-utils'
 import { describe, expect, it } from 'vitest'
 import { h, nextTick } from 'vue'
 import Gantt from '../Gantt.vue'
@@ -56,6 +56,29 @@ describe('hover tooltip (opt-in)', () => {
     const tip = wrapper.find('.gantt-milestone .gantt-tooltip')
     expect(tip.exists()).toBe(true)
     expect(tip.text()).toContain('Mark')
+  })
+
+  it('touch has no hover: a tap toggles the bar tooltip, a tap outside closes it', async () => {
+    // attachTo so the anchor element is connected (outside-tap uses `contains`).
+    const wrapper = mount(Gantt, { props: { rows, tooltip: true }, attachTo: document.body })
+    const bar = wrapper.find('.gantt-bar')
+
+    // A touch pointerenter must NOT show it (hover is mouse-only).
+    await bar.trigger('pointerenter', { pointerType: 'touch' })
+    await nextTick()
+    expect(wrapper.find('.gantt-tooltip').exists()).toBe(false)
+
+    // A tap (touch pointerup, no drag) toggles it on.
+    await bar.trigger('pointerup', { pointerType: 'touch' })
+    await flushPromises()
+    expect(wrapper.find('.gantt-task .gantt-tooltip').exists()).toBe(true)
+
+    // A tap elsewhere dismisses it.
+    document.dispatchEvent(new Event('pointerdown', { bubbles: true }))
+    await nextTick()
+    expect(wrapper.find('.gantt-tooltip').exists()).toBe(false)
+
+    wrapper.unmount()
   })
 
   it('the `tooltip` slot overrides content AND enables the tooltip without the prop', async () => {
