@@ -30,6 +30,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Added
 
+- **Performance tooling for 10k+ tasks.** A `vitest bench` harness
+  (`src/__tests__/perf.bench.ts`, run via `bun run bench` — not in CI) measuring
+  layout, critical-path, slack and the per-scroll visible-task filter at 1k/10k; a
+  `Guides/Performance` Storybook story (10 000 tasks, plain and grouped) built from a
+  new `makeStressRows` generator; and a virtualization guardrail test asserting the
+  visible window stays a small fraction of the model. No API/behavior changes. Known
+  limitation documented: dependency arrows are not viewport-culled yet.
 - **Mobile / touch polish.** Interactive hit areas (resize / progress / connector
   handles, milestones, dependency handles + a wider tap target on dependency lines)
   enlarge automatically on a coarse pointer (`@media (pointer: coarse)`); the new opt-in

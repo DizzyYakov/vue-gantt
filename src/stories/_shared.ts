@@ -57,6 +57,49 @@ export const sampleRows: GanttRowData[] = [
   },
 ]
 
+const STRESS_DAY = 86_400_000
+const STRESS_BASE = new Date(2026, 0, 1).getTime()
+
+/**
+ * Deterministic large dataset for the performance story and benchmarks. `groups`
+ * (>0) splits the rows into that many contiguous groups; `deps` chains each task
+ * to the previous one in its row (a DAG — safe for critical-path/auto-schedule).
+ */
+export function makeStressRows(
+  rowCount: number,
+  opts: { tasksPerRow?: number; groups?: number; deps?: boolean } = {},
+): GanttRowData[] {
+  const tasksPerRow = opts.tasksPerRow ?? 5
+  const groups = opts.groups ?? 0
+  const withDeps = opts.deps ?? false
+  const rows: GanttRowData[] = []
+
+  for (let r = 0; r < rowCount; r++) {
+    const tasks = []
+    for (let k = 0; k < tasksPerRow; k++) {
+      const idx = r * tasksPerRow + k
+      // Spread deterministically across ~10 years so the axis is realistically wide.
+      const start = STRESS_BASE + (idx % 3650) * STRESS_DAY
+      const end = start + (1 + (idx % 6)) * STRESS_DAY
+      tasks.push({
+        id: `t-${r}-${k}`,
+        name: `Task ${r + 1}.${k + 1}`,
+        start,
+        end,
+        progress: (idx * 37) % 101,
+        ...(withDeps && k > 0 ? { dependencies: [`t-${r}-${k - 1}`] } : {}),
+      })
+    }
+    rows.push({
+      id: `row-${r}`,
+      name: `Row ${r + 1}`,
+      ...(groups ? { groupId: `g-${Math.floor((r * groups) / rowCount)}` } : {}),
+      tasks,
+    })
+  }
+  return rows
+}
+
 /** Components available to the inline-template renders below. */
 export const ganttComponents = {
   GanttRoot,
