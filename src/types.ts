@@ -151,6 +151,41 @@ export interface GanttGroup {
   meta?: Record<string, unknown>
 }
 
+/**
+ * A custom timeline period (e.g. a sprint): a horizontal time span drawn as a
+ * band over the chart body + a labelled row in the timeline header. Unlike row
+ * groups (`GanttGroup`), periods group the *time axis*, not the rows. Build a
+ * regular cadence with the `sprintPeriods` helper, or pass your own list.
+ */
+export interface GanttPeriod {
+  /** Stable unique identifier. */
+  id: string
+  /** Span start (inclusive). */
+  start: Date | string | number
+  /** Span end (exclusive). */
+  end: Date | string | number
+  /** Header label. Falls back to `id`. */
+  label?: string
+  /** Arbitrary extra data forwarded to slots untouched. */
+  meta?: Record<string, unknown>
+}
+
+/** A period after its dates are coerced and positioned in pixels. */
+export interface ResolvedPeriod {
+  id: string
+  label: string
+  start: Date
+  end: Date
+  /** Left offset in pixels. */
+  x: number
+  /** Width in pixels. */
+  width: number
+  /** Zero-based index in order (drives the alternating band fill). */
+  index: number
+  /** Arbitrary extra data forwarded to slots untouched. */
+  meta: Record<string, unknown>
+}
+
 /** A task after defaults are applied and dates are coerced to `Date`. */
 export interface ResolvedTask {
   id: string
@@ -350,6 +385,12 @@ export interface GanttRootProps {
    * `DEFAULT_ZOOM_LEVELS` (year → hour).
    */
   zoomLevels?: GanttZoomLevel[]
+  /**
+   * Custom timeline periods (e.g. sprints): each renders a background band over the
+   * chart body + a labelled row in the timeline header. Build a regular cadence with
+   * the `sprintPeriods` helper, or pass your own list.
+   */
+  periods?: GanttPeriod[]
   /**
    * Active zoom level id; supports `v-model:zoom`. When set, the matching level's
    * `tiers`/`columnWidth` override those props. Omit for the classic
@@ -677,6 +718,8 @@ export interface GanttContext {
   taskBand: (task: ResolvedTask) => GanttBand
   /** Overlap spans per row (non-empty only in `conflict` mode). */
   conflicts: ComputedRef<GanttConflict[]>
+  /** Positioned custom timeline periods (empty unless `periods` is set). */
+  periods: ComputedRef<ResolvedPeriod[]>
   /** Ids of the critical-path tasks (empty unless `criticalPath` is on). */
   criticalTasks: ComputedRef<Set<string>>
   /** Free-float slack (days) by task id (empty unless `slack` is on). */

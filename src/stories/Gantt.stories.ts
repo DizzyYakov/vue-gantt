@@ -3,6 +3,7 @@ import { ref } from 'vue'
 import Gantt from '../components/Gantt.vue'
 import GanttZoom from '../components/GanttZoom.vue'
 import type { GanttMoveEvent, GanttRow } from '../types'
+import { sprintPeriods } from '../utils'
 import { sampleRows } from './_shared'
 
 /**
@@ -21,6 +22,14 @@ const meta: Meta<typeof Gantt> = {
       control: 'check',
       options: ['year', 'quarter', 'month', 'week', 'day', 'hour', 'minute'],
       description: 'Time-group rows shown on the header (coarse → fine).',
+    },
+    periods: {
+      control: 'object',
+      description:
+        'Custom timeline periods (sprints): a background band + a labelled header row. ' +
+        'Build a cadence with `sprintPeriods` or pass your own list. Override via the ' +
+        '`period-bands` / `period` slots; theme with `--gantt-period-*`. See ' +
+        'Components/GanttPeriods.',
     },
     unit: {
       control: 'select',
@@ -347,6 +356,22 @@ export const Grouping: Story = {
         tasks: [{ id: 'g-ux', name: 'Flows', start: '2026-06-12', end: '2026-06-18' }],
       },
     ],
+    tiers: ['month', 'week', 'day'],
+    height: 300,
+  },
+}
+
+/**
+ * Custom timeline **periods** (e.g. sprints): each renders a faint background band
+ * over the chart body + a labelled row in the header. Group the *time axis*, not
+ * the rows. Pass your own `periods` list (uneven spans, custom labels) or build a
+ * regular cadence with the exported `sprintPeriods` helper. Customize via the
+ * `period-bands` / `period` slots and the `--gantt-period-*` tokens — see
+ * `Components/GanttPeriods` for the full API.
+ */
+export const Sprints: Story = {
+  args: {
+    periods: sprintPeriods({ from: '2026-06-01', every: 2, unit: 'week', count: 4 }),
     tiers: ['month', 'week', 'day'],
     height: 300,
   },

@@ -66,6 +66,7 @@ import type {
   GanttZoomEvent,
   GanttZoomLevel,
   ResolvedGroup,
+  ResolvedPeriod,
   ResolvedRow,
   ResolvedTask,
 } from '../types'
@@ -103,6 +104,7 @@ const props = withDefaults(defineProps<GanttRootProps>(), {
   labelFormat: undefined,
   zoomLevels: () => DEFAULT_ZOOM_LEVELS,
   zoom: undefined,
+  periods: undefined,
 })
 
 const emit = defineEmits<{
@@ -342,14 +344,21 @@ const taskOrder = computed(() => {
 
 const start = computed<Date>(() => {
   if (props.startDate != null) return toDate(props.startDate)
-  const starts = tasks.value.map(t => t.start)
+  // Periods extend the auto range so a sprint before the first task stays visible.
+  const starts = [
+    ...tasks.value.map(t => t.start),
+    ...(props.periods ?? []).map(p => toDate(p.start)),
+  ]
   const base = starts.length ? minDate(starts) : today.value
   return floorToUnit(base, coarsestUnit.value)
 })
 
 const end = computed<Date>(() => {
   if (props.endDate != null) return toDate(props.endDate)
-  const ends = tasks.value.map(t => t.end)
+  const ends = [
+    ...tasks.value.map(t => t.end),
+    ...(props.periods ?? []).map(p => toDate(p.end)),
+  ]
   const base = ends.length ? maxDate(ends) : addDays(today.value, 14)
   return ceilToUnit(base, coarsestUnit.value)
 })
@@ -435,7 +444,29 @@ function setViewport(metrics: Partial<GanttViewport>): void {
   Object.assign(viewport, metrics)
 }
 
-const headerHeight = computed(() => tiers.value.length * props.headerRowHeight)
+// Custom timeline periods (sprints), positioned in pixels via the scale.
+const periods = computed<ResolvedPeriod[]>(() =>
+  (props.periods ?? []).map((p, index) => {
+    const start = toDate(p.start)
+    const end = toDate(p.end)
+    const x = scale.dateToX(start)
+    return {
+      id: p.id,
+      label: p.label ?? p.id,
+      start,
+      end,
+      x,
+      width: scale.widthBetween(start, end),
+      index,
+      meta: p.meta ?? {},
+    }
+  }),
+)
+
+// A non-empty `periods` adds a labelled header row above the tiers.
+const headerHeight = computed(
+  () => (tiers.value.length + (periods.value.length ? 1 : 0)) * props.headerRowHeight,
+)
 
 // --- Imperative scroll API ------------------------------------------------
 // The scroll container (registered by `GanttView`) lives below the frozen
@@ -622,6 +653,7 @@ const context: GanttContext = {
   rowOf: taskId => taskOrder.value.get(taskId) ?? -1,
   taskBand,
   conflicts,
+  periods,
   criticalTasks,
   slack: slackMap,
   registerRow,

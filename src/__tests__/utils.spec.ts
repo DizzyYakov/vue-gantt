@@ -17,6 +17,7 @@ import {
   rollupProgress,
   slack,
   sortRows,
+  sprintPeriods,
   tasksExtent,
   topologicalOrder,
   updateRow,
@@ -390,5 +391,43 @@ describe('validateRows', () => {
     expect(types).toContain('missing-dependency')
     expect(types).toContain('orphan-group')
     expect(validateRows(sample())).toEqual([])
+  })
+})
+
+describe('sprintPeriods', () => {
+  it('builds a contiguous run of equal-length weekly periods', () => {
+    const periods = sprintPeriods({ from: '2026-06-01', every: 2, unit: 'week', count: 3 })
+    expect(periods).toHaveLength(3)
+    // Dates are coerced to `Date` (local midnight for a bare YYYY-MM-DD).
+    expect(periods[0]!.start).toEqual(new Date(2026, 5, 1))
+    // Contiguous: each period's start equals the previous period's end.
+    expect(periods[0]!.end).toEqual(periods[1]!.start)
+    expect(periods[1]!.end).toEqual(periods[2]!.start)
+    // Two weeks = 14 days.
+    expect((periods[0]!.end as Date).getTime() - (periods[0]!.start as Date).getTime()).toBe(
+      14 * 86_400_000,
+    )
+  })
+
+  it('supports a day unit and default `Sprint N` labels + ids', () => {
+    const periods = sprintPeriods({ from: '2026-06-01', every: 10, unit: 'day', count: 2 })
+    expect(periods.map(p => p.label)).toEqual(['Sprint 1', 'Sprint 2'])
+    expect(periods.map(p => p.id)).toEqual(['sprint-1', 'sprint-2'])
+    expect((periods[0]!.end as Date).getTime() - (periods[0]!.start as Date).getTime()).toBe(
+      10 * 86_400_000,
+    )
+  })
+
+  it('accepts custom label + id builders', () => {
+    const periods = sprintPeriods({
+      from: new Date(2026, 5, 1),
+      every: 1,
+      unit: 'week',
+      count: 2,
+      label: i => `S${i}`,
+      id: i => `s${i}`,
+    })
+    expect(periods.map(p => p.label)).toEqual(['S0', 'S1'])
+    expect(periods.map(p => p.id)).toEqual(['s0', 's1'])
   })
 })

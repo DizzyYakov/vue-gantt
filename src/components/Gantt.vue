@@ -79,6 +79,8 @@ defineSlots<{
   corner?: (props: { config: unknown }) => unknown
   timeline?: (props: { config: unknown; visibleColumnsFor: unknown }) => unknown
   column?: (props: { column: unknown; tier: unknown }) => unknown
+  'period-bands'?: (props: { periods: unknown }) => unknown
+  period?: (props: { period: unknown }) => unknown
   bar?: (props: { task: unknown; progress: number }) => unknown
   milestone?: (props: { task: unknown }) => unknown
   tooltip?: (props: { task: unknown }) => unknown
@@ -163,6 +165,12 @@ defineExpose({
       </template>
       <template v-if="$slots.baselines" #baselines="slotProps">
         <slot name="baselines" v-bind="slotProps" />
+      </template>
+      <template v-if="$slots['period-bands']" #period-bands="slotProps">
+        <slot name="period-bands" v-bind="slotProps" />
+      </template>
+      <template v-if="$slots.period" #period="slotProps">
+        <slot name="period" v-bind="slotProps" />
       </template>
       <template v-if="$slots.conflicts" #conflicts="slotProps">
         <slot name="conflicts" v-bind="slotProps" />

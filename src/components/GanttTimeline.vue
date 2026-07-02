@@ -2,7 +2,7 @@
 import { useGanttContext } from '../composables/useGanttContext'
 import type { GanttColumn, GanttColumnEvent, GanttUnit } from '../types'
 
-const { config, visibleColumnsFor, contentWidth, dispatch } = useGanttContext()
+const { config, visibleColumnsFor, contentWidth, periods, dispatch } = useGanttContext()
 
 const emit = defineEmits<{
   'column-click': [event: GanttColumnEvent]
@@ -16,6 +16,21 @@ function onColumnClick(column: GanttColumn, tier: GanttUnit, event: MouseEvent):
 
 <template>
   <div class="gantt-timeline" :style="{ width: `${contentWidth}px` }">
+    <!-- Custom period bands (sprints): a labelled row above the tiers. -->
+    <div v-if="periods.length" class="gantt-timeline__row gantt-timeline__row--periods">
+      <div
+        v-for="p in periods"
+        :key="p.id"
+        class="gantt-timeline__cell gantt-timeline__cell--period"
+        :data-id="p.id"
+        :data-parity="p.index % 2"
+        :style="{ left: `${p.x}px`, width: `${p.width}px` }"
+      >
+        <slot name="period" :period="p">
+          <span class="gantt-timeline__label gantt-timeline__label--period">{{ p.label }}</span>
+        </slot>
+      </div>
+    </div>
     <div v-for="tier in config.tiers" :key="tier" class="gantt-timeline__row" :data-tier="tier">
       <div
         v-for="column in visibleColumnsFor(tier)"
@@ -68,5 +83,20 @@ function onColumnClick(column: GanttColumn, tier: GanttUnit, event: MouseEvent):
   padding: 0 var(--gantt-header-padding, 4px);
   white-space: nowrap;
   font-size: var(--gantt-header-font-size, 0.8em);
+}
+
+/* Period-band header row: a labelled cell per sprint (shares the body band fill). */
+.gantt-timeline__cell--period {
+  background: var(--gantt-period-band-bg, rgb(99 102 241 / 4%));
+  border-left: var(--gantt-period-border, 1px dashed var(--gantt-grid-color, #e5e7eb));
+}
+.gantt-timeline__cell--period[data-parity='1'] {
+  background: var(--gantt-period-band-alt-bg, transparent);
+}
+
+.gantt-timeline__label--period {
+  color: var(--gantt-period-color, inherit);
+  font-weight: var(--gantt-period-font-weight, 600);
+  font-size: var(--gantt-period-font-size, var(--gantt-header-font-size, 0.8em));
 }
 </style>

@@ -9,6 +9,7 @@ import GanttDependencies from './GanttDependencies.vue'
 import GanttGrid from './GanttGrid.vue'
 import GanttGroupBar from './GanttGroupBar.vue'
 import GanttMilestone from './GanttMilestone.vue'
+import GanttPeriods from './GanttPeriods.vue'
 import GanttSlack from './GanttSlack.vue'
 import GanttTask from './GanttTask.vue'
 import GanttTaskList from './GanttTaskList.vue'
@@ -31,6 +32,7 @@ const {
   tasks,
   config,
   conflicts,
+  periods,
   slack,
   visibleColumnsFor,
   dateToX,
@@ -75,6 +77,9 @@ const scrollStyle = computed(() => {
             <template v-if="$slots.column" #column="columnProps">
               <slot name="column" v-bind="columnProps" />
             </template>
+            <template v-if="$slots.period" #period="periodProps">
+              <slot name="period" v-bind="periodProps" />
+            </template>
           </GanttTimeline>
         </slot>
       </div>
@@ -101,6 +106,10 @@ const scrollStyle = computed(() => {
       <div class="gantt__body">
         <slot name="grid" :columns="gridColumns" :rows="visibleRows">
           <GanttGrid />
+        </slot>
+
+        <slot name="period-bands" :periods="periods">
+          <GanttPeriods />
         </slot>
 
         <slot name="group-bars" :groups="visibleGroups">

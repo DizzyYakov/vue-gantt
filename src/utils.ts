@@ -8,12 +8,14 @@
  * All edit helpers are immutable: they return a new `rows` array (cloning only
  * the rows/tasks that change) and never mutate the input.
  */
+import { addDays, addWeeks } from 'date-fns'
 import { toDate } from './context'
 import type {
   GanttConstraint,
   GanttGroup,
   GanttIssue,
   GanttMoveEvent,
+  GanttPeriod,
   GanttRow,
   GanttTask,
   ResolvedTask,
@@ -528,4 +530,47 @@ function descendants(tasks: GanttTask[], id: string): Set<string> {
     queue.push(...(dependents.get(next) ?? []))
   }
   return out
+}
+
+// --- Timeline periods -------------------------------------------------------
+
+/** Options for `sprintPeriods` (a regular cadence of equal-length periods). */
+export interface SprintPeriodsOptions {
+  /** Start of the first period. */
+  from: Date | string | number
+  /** Length of each period, in `unit`s. */
+  every: number
+  /** Period length unit. */
+  unit: 'day' | 'week'
+  /** How many periods to generate. */
+  count: number
+  /** Label builder. Defaults to `Sprint {n}` (1-based). */
+  label?: (index: number, start: Date) => string
+  /** Id builder. Defaults to `sprint-{n}` (1-based). */
+  id?: (index: number, start: Date) => string
+}
+
+/**
+ * Build a contiguous run of equal-length timeline periods (e.g. two-week sprints)
+ * for the `periods` prop. Pure — pass the result to `<Gantt :periods>`.
+ *
+ * ```ts
+ * sprintPeriods({ from: '2026-06-01', every: 2, unit: 'week', count: 6 })
+ * // → [{ id:'sprint-1', start, end, label:'Sprint 1' }, …]
+ * ```
+ */
+export function sprintPeriods(options: SprintPeriodsOptions): GanttPeriod[] {
+  const { from, every, unit, count } = options
+  const label = options.label ?? ((i: number) => `Sprint ${i + 1}`)
+  const id = options.id ?? ((i: number) => `sprint-${i + 1}`)
+  const step = unit === 'week' ? addWeeks : addDays
+
+  const periods: GanttPeriod[] = []
+  let start = toDate(from)
+  for (let i = 0; i < count; i++) {
+    const end = step(start, every)
+    periods.push({ id: id(i, start), start, end, label: label(i, start) })
+    start = end
+  }
+  return periods
 }

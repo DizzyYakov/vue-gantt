@@ -30,6 +30,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Added
 
+- **Timeline period bands (sprints).** New `periods` prop (`GanttPeriod[]`) draws custom
+  horizontal time periods — a faint full-height band over the chart body plus a labelled
+  row in the timeline header — for sprints/phases/release windows. Periods also extend the
+  auto date range. New `GanttPeriods` component, `periods`/`period` section slots,
+  `--gantt-period-*` tokens, and an exported `sprintPeriods({ from, every, unit, count })`
+  helper for a regular cadence. Exports `GanttPeriod`/`ResolvedPeriod` types.
 - **Performance tooling for 10k+ tasks.** A `vitest bench` harness
   (`src/__tests__/perf.bench.ts`, run via `bun run bench` — not in CI) measuring
   layout, critical-path, slack and the per-scroll visible-task filter at 1k/10k; a

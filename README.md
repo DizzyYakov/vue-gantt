@@ -259,6 +259,7 @@ parent collapses to the content height and simply grows to fit (as before).
 | `tiers`                 | `GanttUnit[]`                                     | `[unit]`        | Header rows, coarse → fine, e.g. `['month','week','day']`.                                                                                                                                                                                                    |
 | `columnWidth`           | `number`                                          | `40`            | Width of one base-unit cell, px.                                                                                                                                                                                                                              |
 | `zoomLevels`            | `GanttZoomLevel[]`                                | `DEFAULT_ZOOM_LEVELS` | Named view-mode presets the `zoom` prop / `GanttZoom` switch between; each bundles `tiers` + `columnWidth` (year → hour).                                                                                                                                |
+| `periods`               | `GanttPeriod[]`                                   | —               | Custom timeline periods (sprints): a background band over the body + a labelled header row. Build a cadence with `sprintPeriods` or pass your own list. See [Timeline period bands](#timeline-period-bands-sprints).                                            |
 | `zoom`                  | `string`                                          | —               | Active zoom level id; supports `v-model:zoom`. When set, the matching level's `tiers`/`columnWidth` override those props. Omit for the classic `tiers`/`columnWidth`/`unit` behavior.                                                                          |
 | `rowHeight`             | `number`                                          | `36`            | Row height, px.                                                                                                                                                                                                                                               |
 | `headerRowHeight`       | `number`                                          | `28`            | Height of one timeline tier row, px.                                                                                                                                                                                                                          |
@@ -730,6 +731,35 @@ override it via the `baselines` section slot). `<GanttBaselines>` exposes a
 default slot `{ task }` to render each baseline segment yourself. Style the shadow
 bars with the `--gantt-baseline-*` [variables](#css-variables).
 
+## Timeline period bands (sprints)
+
+Custom **periods** group the *time axis* (unlike [row groups](#row-grouping), which
+group rows). Each period renders a faint full-height **band** over the chart body
+plus a **labelled row** in the timeline header — ideal for sprints, phases or
+release windows. Pass a `periods` list (uneven spans + custom labels are fine); the
+`periods` also extend the auto date range so a period before the first task stays
+visible.
+
+```vue
+<script setup>
+import { Gantt, sprintPeriods } from '@dizzy_yakov/vue-gantt'
+
+// A regular cadence…
+const periods = sprintPeriods({ from: '2026-06-01', every: 2, unit: 'week', count: 6 })
+// …or your own: [{ id: 's1', start: '2026-06-01', end: '2026-06-15', label: 'Sprint 1' }, …]
+</script>
+
+<template>
+  <Gantt :rows="rows" :periods="periods" :tiers="['month', 'week', 'day']" />
+</template>
+```
+
+`sprintPeriods({ from, every, unit: 'day' | 'week', count, label?, id? })` builds a
+contiguous run of equal-length periods. The bands are rendered by `<GanttPeriods>`
+(auto-mounted; override via the `period-bands` section slot for the body band, or
+the `period` slot for the header label). Style with the `--gantt-period-*`
+[variables](#css-variables).
+
 ## Zoom / view-mode
 
 A zoom level is a **view-mode preset** — a named bundle of `tiers` + `columnWidth`.
@@ -1007,6 +1037,17 @@ hatched look.
 | `--gantt-tooltip-radius`    | drag-label radius          | Hover tooltip corner radius. |
 | `--gantt-tooltip-font-size` | drag-label font size       | Hover tooltip font size.     |
 | `--gantt-tooltip-shadow`    | `0 2px 8px rgb(0 0 0/25%)` | Hover tooltip drop shadow.   |
+
+**Timeline period bands (sprints)**
+
+| Variable                      | Default              | Purpose                                        |
+| ----------------------------- | -------------------- | ---------------------------------------------- |
+| `--gantt-period-band-bg`      | `rgb(99 102 241/4%)` | Body band fill (even periods).                 |
+| `--gantt-period-band-alt-bg`  | `transparent`        | Body band fill (odd periods, alternating).     |
+| `--gantt-period-border`       | `1px dashed …grid`   | Divider between periods (body + header).        |
+| `--gantt-period-color`        | `inherit`            | Header period label colour.                     |
+| `--gantt-period-font-weight`  | `600`                | Header period label weight.                     |
+| `--gantt-period-font-size`    | header font size     | Header period label size.                       |
 
 **Today**
 
