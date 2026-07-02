@@ -66,7 +66,18 @@ const labelStyle = computed(() =>
 
 // Opt-in hover tooltip (enabled by the `tooltip` flag or a `tooltip` slot);
 // `tipStyle` clamps the centred tooltip within the content (no edge clipping).
-const { hovered, show: showHoverTip, tipStyle: hoverTipStyle } = useHoverTooltip(dragging, left, true)
+const {
+  show: showHoverTip,
+  tipStyle: hoverTipStyle,
+  toggleTouch,
+  onPointerEnter,
+  onPointerLeave,
+} = useHoverTooltip(dragging, left, true)
+
+// Touch has no hover, so a tap (non-drag) toggles the tooltip.
+function onMarkerUp(event: PointerEvent): void {
+  if (event.pointerType === 'touch' && !moved.value) toggleTouch()
+}
 </script>
 
 <template>
@@ -79,14 +90,16 @@ const { hovered, show: showHoverTip, tipStyle: hoverTipStyle } = useHoverTooltip
     :style="rowStyle"
   >
     <div
+      ref="anchor"
       class="gantt-milestone__marker"
       :data-draggable="draggable || undefined"
       :data-link-target="linkTarget || undefined"
       :data-critical="critical || undefined"
       :style="markerStyle"
       @pointerdown="onPointerDown"
-      @pointerenter="hovered = true"
-      @pointerleave="hovered = false"
+      @pointerenter="onPointerEnter"
+      @pointerleave="onPointerLeave"
+      @pointerup="onMarkerUp"
       @click="onClick"
       @dblclick="onDblclick"
       @contextmenu="onContextmenu"

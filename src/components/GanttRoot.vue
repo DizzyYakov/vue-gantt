@@ -85,6 +85,7 @@ const props = withDefaults(defineProps<GanttRootProps>(), {
   rowMovable: GANTT_DEFAULTS.rowMovable,
   resizable: GANTT_DEFAULTS.resizable,
   editable: GANTT_DEFAULTS.editable,
+  touchTargets: GANTT_DEFAULTS.touchTargets,
   progressDraggable: GANTT_DEFAULTS.progressDraggable,
   tooltip: GANTT_DEFAULTS.tooltip,
   criticalPath: GANTT_DEFAULTS.criticalPath,
@@ -375,6 +376,7 @@ const config = computed<GanttConfig>(() => ({
   rowMovable: props.rowMovable,
   resizable: props.resizable,
   editable: props.editable,
+  touchTargets: props.touchTargets,
   progressDraggable: props.progressDraggable,
   tooltip: props.tooltip,
   criticalPath: props.criticalPath,
@@ -738,7 +740,12 @@ defineExpose({
 </script>
 
 <template>
-  <div class="gantt-root" :data-unit="config.unit" :style="rootStyle">
+  <div
+    class="gantt-root"
+    :data-unit="config.unit"
+    :data-touch="config.touchTargets || undefined"
+    :style="rootStyle"
+  >
     <slot :rows="rows" :tasks="tasks" :columns="scale.columns.value" :config="config" />
   </div>
 </template>

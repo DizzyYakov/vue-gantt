@@ -54,6 +54,14 @@ describe('Gantt (prop-driven)', () => {
     const timelineRows = wrapper.findAll('.gantt-timeline__row')
     expect(timelineRows.map(r => r.attributes('data-tier'))).toEqual(['month', 'week', 'day'])
   })
+
+  it('sets data-touch on the root only when touchTargets is on', () => {
+    const off = mount(Gantt, { props: { rows } })
+    expect(off.find('.gantt-root').attributes('data-touch')).toBeUndefined()
+
+    const on = mount(Gantt, { props: { rows, touchTargets: true } })
+    expect(on.find('.gantt-root').attributes('data-touch')).toBe('true')
+  })
 })
 
 describe('grid + virtualization', () => {

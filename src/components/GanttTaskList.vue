@@ -2,6 +2,7 @@
 import { computed, ref } from 'vue'
 import { useGanttContext } from '../composables/useGanttContext'
 import { useInlineEdit, vFocus } from '../composables/useInlineEdit'
+import { useLongPress } from '../composables/useLongPress'
 import type { GanttRowEvent, ResolvedRow } from '../types'
 
 const { visibleRows, visibleGroups, toggleGroup, dispatch, config, editRow } = useGanttContext()
@@ -34,6 +35,17 @@ const {
 function startRowEdit(row: ResolvedRow): void {
   editingRow.value = row
   start()
+}
+
+// Touch has no `dblclick`; a long-press on a row opens the same name editor. One
+// shared timer edits whichever row armed it (`pressedRow`).
+let pressedRow: ResolvedRow | null = null
+const longPress = useLongPress(() => {
+  if (editable.value && pressedRow) startRowEdit(pressedRow)
+})
+function onRowDown(row: ResolvedRow, event: PointerEvent): void {
+  pressedRow = row
+  longPress.onPointerdown(event)
 }
 
 function onRowClick(row: ResolvedRow, event: MouseEvent): void {
@@ -87,6 +99,10 @@ function onRowContextmenu(row: ResolvedRow, event: MouseEvent): void {
       :data-id="row.id"
       :data-group="row.groupId || undefined"
       :style="{ top: `${row.top}px`, height: `${row.height}px` }"
+      @pointerdown="onRowDown(row, $event)"
+      @pointermove="longPress.onPointermove"
+      @pointerup="longPress.onPointerup"
+      @pointercancel="longPress.onPointercancel"
       @click="onRowClick(row, $event)"
       @dblclick="onRowDblclick(row, $event)"
       @contextmenu="onRowContextmenu(row, $event)"

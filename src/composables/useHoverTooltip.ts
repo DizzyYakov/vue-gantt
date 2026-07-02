@@ -1,4 +1,13 @@
-import { computed, nextTick, ref, useSlots, useTemplateRef, watch, type Ref } from 'vue'
+import {
+  computed,
+  nextTick,
+  onUnmounted,
+  ref,
+  useSlots,
+  useTemplateRef,
+  watch,
+  type Ref,
+} from 'vue'
 import { useGanttContext } from './useGanttContext'
 
 /**
@@ -12,6 +21,10 @@ import { useGanttContext } from './useGanttContext'
  * `ref="tip"` tooltip element so it can be measured and clamped to the content
  * bounds. `anchorLeft` is the item's x; `centered` matches the marker tooltip's
  * `translateX(-50%)` (the bar tooltip is left-anchored).
+ *
+ * Touch has no hover, so components call `toggleTouch()` on a tap (non-drag) to
+ * open/close the tooltip; while it's open a document `pointerdown` outside the
+ * anchor (`ref="anchor"`) and the tip closes it again.
  */
 export function useHoverTooltip(dragging: Ref<boolean>, anchorLeft: Ref<number>, centered: boolean) {
   const ctx = useGanttContext()
@@ -23,17 +36,45 @@ export function useHoverTooltip(dragging: Ref<boolean>, anchorLeft: Ref<number>,
 
   // Measure the tooltip once shown so its left can be clamped within the content.
   const tip = useTemplateRef<HTMLElement>('tip')
+  const anchor = useTemplateRef<HTMLElement>('anchor')
   const tipWidth = ref(0)
+
+  /** Tap toggle for touch (mouse keeps using hover enter/leave). */
+  function toggleTouch(): void {
+    hovered.value = !hovered.value
+  }
+
+  // Hover is mouse/pen only — touch has no hover and uses `toggleTouch` instead.
+  function onPointerEnter(event: PointerEvent): void {
+    if (event.pointerType !== 'touch') hovered.value = true
+  }
+  function onPointerLeave(event: PointerEvent): void {
+    if (event.pointerType !== 'touch') hovered.value = false
+  }
+
+  // Close a tap-opened tooltip when the next tap lands outside the anchor + tip.
+  function onDocPointerDown(event: PointerEvent): void {
+    const target = event.target as Node | null
+    if (target && (anchor.value?.contains(target) || tip.value?.contains(target))) return
+    hovered.value = false
+  }
+
   watch(show, async on => {
-    if (!on) return
+    if (!on) {
+      document.removeEventListener('pointerdown', onDocPointerDown)
+      return
+    }
     await nextTick()
     tipWidth.value = tip.value?.offsetWidth ?? 0
+    document.addEventListener('pointerdown', onDocPointerDown)
   })
+  onUnmounted(() => document.removeEventListener('pointerdown', onDocPointerDown))
+
   const tipStyle = computed(() => ({
     left: `${clampFloatingLeft(anchorLeft.value, tipWidth.value, ctx.contentWidth.value, centered)}px`,
   }))
 
-  return { hovered, show, tipStyle }
+  return { hovered, show, tipStyle, toggleTouch, onPointerEnter, onPointerLeave }
 }
 
 /**
