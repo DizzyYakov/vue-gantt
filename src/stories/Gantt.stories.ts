@@ -27,7 +27,9 @@ const meta: Meta<typeof Gantt> = {
       control: 'object',
       description:
         'Custom timeline periods (sprints): a background band + a labelled header row. ' +
-        'Build a cadence with `sprintPeriods` or pass your own list.',
+        'Build a cadence with `sprintPeriods` or pass your own list. Override via the ' +
+        '`period-bands` / `period` slots; theme with `--gantt-period-*`. See ' +
+        'Components/GanttPeriods.',
     },
     unit: {
       control: 'select',
@@ -363,7 +365,9 @@ export const Grouping: Story = {
  * Custom timeline **periods** (e.g. sprints): each renders a faint background band
  * over the chart body + a labelled row in the header. Group the *time axis*, not
  * the rows. Pass your own `periods` list (uneven spans, custom labels) or build a
- * regular cadence with the exported `sprintPeriods` helper.
+ * regular cadence with the exported `sprintPeriods` helper. Customize via the
+ * `period-bands` / `period` slots and the `--gantt-period-*` tokens — see
+ * `Components/GanttPeriods` for the full API.
  */
 export const Sprints: Story = {
   args: {
