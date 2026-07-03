@@ -56,12 +56,20 @@ const slots = useSlots()
 // else the generic `bar` / `milestone` slot, else `undefined` so the component
 // falls back to its own default render (a plain bar / diamond).
 function barSlotName(task: ResolvedTask): string | undefined {
-  const typed = task.variant ? `task-${task.variant}` : undefined
-  return typed && slots[typed] ? typed : slots.bar ? 'bar' : undefined
+  if (task.variant) {
+    const variantSlotName = `task-${task.variant}`
+    if (slots[variantSlotName]) return variantSlotName
+  }
+  if (slots.bar) return 'bar'
+  return undefined
 }
 function milestoneSlotName(task: ResolvedTask): string | undefined {
-  const typed = task.variant ? `milestone-${task.variant}` : undefined
-  return typed && slots[typed] ? typed : slots.milestone ? 'milestone' : undefined
+  if (task.variant) {
+    const variantSlotName = `milestone-${task.variant}`
+    if (slots[variantSlotName]) return variantSlotName
+  }
+  if (slots.milestone) return 'milestone'
+  return undefined
 }
 
 // Expose the scroll container to the context so scrollToDate/Task/Today work.

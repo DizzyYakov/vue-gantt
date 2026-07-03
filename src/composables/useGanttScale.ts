@@ -163,12 +163,14 @@ export function useGanttScale(options: ScaleOptions) {
     if (typeof lf === 'function') {
       labelFor = (date) => lf(date, tier)
     } else {
-      const fmt =
-        lf && typeof lf === 'object'
-          ? (lf[tier] ?? DEFAULT_LABEL_FORMAT[tier])
-          : typeof lf === 'string' && tier === toValue(options.unit)
-            ? lf
-            : DEFAULT_LABEL_FORMAT[tier]
+      let fmt: string = DEFAULT_LABEL_FORMAT[tier]
+      if (lf && typeof lf === 'object') {
+        // A per-tier format map: use this tier's entry, or the default if absent.
+        fmt = lf[tier] ?? DEFAULT_LABEL_FORMAT[tier]
+      } else if (typeof lf === 'string' && tier === toValue(options.unit)) {
+        // A single format string only styles the base unit's tier.
+        fmt = lf
+      }
       labelFor = (date) => format(date, fmt, { locale: loc })
     }
 

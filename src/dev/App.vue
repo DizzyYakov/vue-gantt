@@ -63,12 +63,11 @@ const linkable = ref(true)
 const autoSchedule = ref(true)
 
 // Custom drag tooltip text for every drag kind (move / resize / progress).
-const dragLabel = (i: GanttDragLabelInfo) =>
-  i.mode === 'progress'
-    ? `${i.progress}% готово`
-    : i.task.type === 'milestone'
-      ? format(i.start, 'd MMM')
-      : `${format(i.start, 'd MMM')} – ${format(i.end, 'd MMM')}`
+const dragLabel = (i: GanttDragLabelInfo) => {
+  if (i.mode === 'progress') return `${i.progress}% готово`
+  if (i.task.type === 'milestone') return format(i.start, 'd MMM')
+  return `${format(i.start, 'd MMM')} – ${format(i.end, 'd MMM')}`
+}
 
 // Rows are containers; each holds any number of tasks (note multiple bars per row).
 const rows = ref<GanttRowData[]>([
