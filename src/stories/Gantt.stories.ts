@@ -91,6 +91,11 @@ const meta: Meta<typeof Gantt> = {
         'Push finish-to-start successors forward on a move/resize/link change ' +
         '(MS-Project style). Effective only with `v-model:rows`.',
     },
+    timelineMode: {
+      control: 'select',
+      options: ['fixed', 'infinite'],
+      description: 'Edge behaviour: `infinite` auto-extends the range when scrolled to an edge.',
+    },
     today: { control: 'text' },
     labelFormat: { control: 'text' },
     locale: {
@@ -100,6 +105,7 @@ const meta: Meta<typeof Gantt> = {
         "(e.g. `import { ru } from 'date-fns/locale'`) and pass the object.",
     },
     'onZoom-change': { action: 'zoom-change', table: { category: 'events' } },
+    'onRange-change': { action: 'range-change', table: { category: 'events' } },
     onMove: { action: 'move', table: { category: 'events' } },
     onResize: { action: 'resize', table: { category: 'events' } },
     onProgress: { action: 'progress', table: { category: 'events' } },
@@ -698,6 +704,23 @@ export const CriticalPath: Story = {
   args: {
     criticalPath: true,
     tiers: ['month', 'week', 'day'],
+    height: 260,
+  },
+}
+
+/**
+ * `timeline-mode="infinite"`: scroll to either horizontal edge and the axis extends by
+ * one screenful of dates so you can pan indefinitely. Prepending dates on the left
+ * corrects the scroll so the view stays anchored. A `range-change` event fires on
+ * every edge reach (watch the Actions panel) — in `infinite` mode the bounds are
+ * already applied; in `fixed` mode you'd use it to widen `startDate`/`endDate`
+ * yourself. Column virtualization keeps the DOM bounded however far you scroll.
+ */
+export const InfiniteTimeline: Story = {
+  args: {
+    timelineMode: 'infinite',
+    tiers: ['month', 'week', 'day'],
+    columnWidth: 36,
     height: 260,
   },
 }

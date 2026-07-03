@@ -9,6 +9,7 @@ import type {
   GanttGroupToggleEvent,
   GanttMoveEvent,
   GanttProgressEvent,
+  GanttRangeChangeEvent,
   GanttResizeEvent,
   GanttRootProps,
   GanttRow as GanttRowData,
@@ -38,6 +39,7 @@ const emit = defineEmits<{
   'update:rows': [rows: GanttRowData[]]
   'update:zoom': [id: string]
   'zoom-change': [event: GanttZoomEvent]
+  'range-change': [event: GanttRangeChangeEvent]
   'group-toggle': [event: GanttGroupToggleEvent]
   'dependency-create': [event: GanttDependencyChange]
   'dependency-remove': [event: GanttDependencyChange]
@@ -141,6 +143,7 @@ defineExpose({
     @update:rows="emit('update:rows', $event)"
     @update:zoom="emit('update:zoom', $event)"
     @zoom-change="emit('zoom-change', $event)"
+    @range-change="emit('range-change', $event)"
     @group-toggle="emit('group-toggle', $event)"
     @dependency-create="emit('dependency-create', $event)"
     @dependency-remove="emit('dependency-remove', $event)"

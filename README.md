@@ -302,6 +302,7 @@ parent collapses to the content height and simply grows to fit (as before).
 | `dragLabelFormat`       | `string`                                          | `'d MMM HH:mm'` | date-fns format for the live drag tooltip.                                                                                                                                                                                                                    |
 | `dragLabel`             | `(info: GanttDragLabelInfo) => string`            | —               | Override the drag tooltip text (move/resize/progress).                                                                                                                                                                                                        |
 | `startDate` / `endDate` | `Date \| string \| number`                        | auto            | Explicit axis bounds (auto-derived from tasks otherwise).                                                                                                                                                                                                     |
+| `timelineMode`          | `'fixed' \| 'infinite'`                           | `'fixed'`       | Edge behaviour. `infinite` auto-extends the range by one screen when you scroll to an edge (anchoring the scroll on the left). Both modes emit `range-change` at an edge — see [Timeline range](#timeline-range-infinite-scroll).                              |
 | `today`                 | `Date \| string \| number`                        | now             | The "today" reference.                                                                                                                                                                                                                                        |
 | `labelFormat`           | `GanttLabelFormat`                                | per tier        | Column label formatting. A date-fns `string` (base unit only — other tiers keep defaults), a per-tier map `Partial<Record<GanttUnit, string>>`, or a `(date, tier) => string` function (full control). E.g. `{ month: 'LLLL yyyy', week: "'W'w", day: 'd' }`. |
 | `locale`                | `Locale` (date-fns)                               | English         | date-fns locale for all date labels (headers, drag labels, tooltips). See [Localization](#localization-i18n).                                                                                                                                                  |
@@ -437,6 +438,7 @@ your data (the [utilities](#utilities) make this one-liners).
 | `update:rows`                  | `GanttRowData[]`                             | a task/dependency change is applied (`v-model:rows`).  |
 | `update:zoom`                  | `string`                                     | the active zoom level changes (`v-model:zoom`).        |
 | `zoom-change`                  | `GanttZoomEvent`                             | the active zoom level changes (carries the level).     |
+| `range-change`                 | `GanttRangeChangeEvent`                      | a scroll reaches a timeline edge (both `timelineMode`s).  |
 | `group-toggle`                 | `GanttGroupToggleEvent`                      | a group is collapsed/expanded.                         |
 | `dependency-create`            | `GanttDependencyChange`                      | a link is dragged from one task to another.            |
 | `dependency-update`            | `GanttDependencyUpdate`                      | an arrow endpoint is re-routed (carries `previous`).   |
@@ -506,6 +508,11 @@ interface GanttZoomLevel {
 interface GanttZoomEvent {
   id: string
   level: GanttZoomLevel
+}
+interface GanttRangeChangeEvent {
+  side: 'start' | 'end'
+  start: Date
+  end: Date
 }
 ```
 
@@ -818,6 +825,33 @@ Its default slot exposes `{ levels, active, setZoom, zoomIn, zoomOut, canZoomIn,
 for a fully custom UI. You can also drive zoom imperatively
 ([`setZoom`/`zoomIn`/`zoomOut`](#imperative-methods) via a ref) or react to the
 `zoom-change` event ([`GanttZoomEvent`](#events)).
+
+## Timeline range (infinite scroll)
+
+By default the axis spans a **fixed** range — the explicit `startDate`/`endDate`
+if you pass them, otherwise a range auto-derived from the tasks (and periods),
+snapped to the coarsest tier. Both bounds are reactive, so binding refs to
+`startDate`/`endDate` lets you drive the window yourself.
+
+Set `timeline-mode="infinite"` to pan the axis indefinitely: scrolling to either edge
+extends the range by one screenful of dates. Prepending dates on the **left**
+would shift every bar right, so the scroll position is corrected automatically —
+the view stays anchored where you were. Column virtualization keeps the DOM
+bounded no matter how far you scroll.
+
+In **both** modes a `range-change` event fires whenever a scroll reaches an edge:
+`range-change` → `GanttRangeChangeEvent { side: 'start' | 'end', start: Date, end: Date }`
+(`start`/`end` are the proposed axis bounds after extending by one screen — see
+[Events](#events)).
+
+- In `infinite` mode the bounds are **already applied** — use the event to
+  lazy-load the data for the newly revealed span.
+- In `fixed` mode it's a **suggestion**: widen your own `startDate`/`endDate`
+  (and fetch data) to implement a fully controlled infinite scroll.
+
+```vue
+<Gantt :rows="rows" :height="480" timeline-mode="infinite" @range-change="onRange" />
+```
 
 ## Critical path & slack
 

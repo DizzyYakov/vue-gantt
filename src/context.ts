@@ -38,6 +38,7 @@ export const GANTT_DEFAULTS = {
   linkable: false,
   snapToGrid: false,
   autoSchedule: false,
+  timelineMode: 'fixed',
   dragLabelFormat: 'd MMM HH:mm',
 } as const
 

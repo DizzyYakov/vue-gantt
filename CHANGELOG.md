@@ -39,6 +39,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Added
 
+- **Timeline range control + infinite scroll.** New `timelineMode` prop (`'fixed' |
+  'infinite'`, default `'fixed'`): in `infinite` mode, scrolling to either horizontal
+  edge auto-extends the axis by one screen of dates so the chart can be panned
+  indefinitely, with the scroll position anchored when dates are prepended on the left
+  (column virtualization keeps the DOM bounded). A new `range-change` event
+  (`GanttRangeChangeEvent`) fires on every edge reach in **both** modes — the applied
+  bounds in `infinite`, or a suggestion to widen `startDate`/`endDate` and lazy-load data
+  in `fixed`. Explicit `startDate`/`endDate` remain reactive as before.
 - **Per-variant item slots.** Tasks and milestones accept a free-form `variant` tag,
   and the prop-driven `<Gantt>` render routes each item to a `task-${variant}` (bars) or
   `milestone-${variant}` (markers) slot, falling back to the generic `bar`/`milestone`
