@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import { computed, ref, useSlots } from 'vue'
 import type {
   GanttCellEvent,
   GanttColumnEvent,
@@ -92,7 +92,22 @@ defineSlots<{
   dependencies?: (props: { tasks: unknown }) => unknown
   today?: (props: { today: unknown; dateToX: unknown }) => unknown
   'body-extra'?: (props: { contentWidth: number; contentHeight: number }) => unknown
+  /** Per-variant bar slot: used for a task whose `variant` matches (falls back to `bar`). */
+  [name: `task-${string}`]: (props: { task: unknown; progress: number }) => unknown
+  /** Per-variant marker slot: used for a milestone whose `variant` matches (falls back to `milestone`). */
+  [name: `milestone-${string}`]: (props: { task: unknown }) => unknown
 }>()
+
+// Consumer-provided per-variant item slots (`task-*` / `milestone-*`) — forwarded
+// to GanttView by their dynamic names since they can't be enumerated statically.
+const slots = useSlots()
+const dynamicItemSlots = computed(
+  () =>
+    Object.keys(slots).filter(name => /^(?:task|milestone)-/.test(name)) as (
+      | `task-${string}`
+      | `milestone-${string}`
+    )[],
+)
 
 // Everything except `height` is forwarded to GanttRoot.
 const rootProps = computed<GanttRootProps>(() => {
@@ -160,6 +175,9 @@ defineExpose({
       <template v-if="$slots.bars" #bars="slotProps"
         ><slot name="bars" v-bind="slotProps"
       /></template>
+      <template v-for="name in dynamicItemSlots" :key="name" #[name]="slotProps">
+        <slot :name="name" v-bind="slotProps" />
+      </template>
       <template v-if="$slots['group-bars']" #group-bars="slotProps">
         <slot name="group-bars" v-bind="slotProps" />
       </template>

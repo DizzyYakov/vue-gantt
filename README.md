@@ -168,6 +168,22 @@ task id (empty unless `slack` is on).
 `tooltip` (`{ task }`), `rowEditor` (`{ row, value, commit, cancel }`) and
 `taskEditor` (`{ task, value, commit, cancel }`).
 
+**Per-variant item slots.** Tag an item with a free-form `variant` and the
+prop-driven render picks a slot by it: a bar looks for `task-${variant}`
+(`{ task, progress }`), a marker for `milestone-${variant}` (`{ task }`). When no
+such slot is provided it falls back to the generic `bar` / `milestone` slot, then
+to the built-in default — so variants are purely additive. Handy for rendering
+categories (design vs. dev bars, release vs. checkpoint markers) differently:
+
+```vue
+<Gantt :rows="rows">
+  <!-- rows include e.g. { id, start, end, variant: 'design' } and a { type: 'milestone', variant: 'release' } -->
+  <template #task-design="{ task }">🎨 {{ task.name }}</template>
+  <template #milestone-release="{ task }">🚀 {{ task.name }}</template>
+  <template #bar="{ task }">{{ task.name }}</template> <!-- fallback for un-tagged / other bars -->
+</Gantt>
+```
+
 The `rowEditor` / `taskEditor` slots replace the built-in inline `<input>` (see
 [Inline editing](#inline-editing)) with your own editor — a `<select>`, a masked
 field, etc. They render only while that row/task is being edited (`editable`
@@ -302,6 +318,7 @@ Declarative fields — the item registers into the enclosing `<GanttRow>`:
 | `end`          | `Date \| string \| number` | End date (ignored for milestones).             |
 | `progress`     | `number`                   | Completion 0–100.                              |
 | `dependencies` | `string[]`                 | Ids of predecessors (finish-to-start).         |
+| `variant`      | `string`                   | Free-form category → per-variant slot (above). |
 | `segments`     | `GanttSegment[]`           | Work spans with paused gaps (a "split" task).  |
 | `deadline`     | `Date \| string \| number` | Target date (drawn as a line; flags overdue).  |
 | `constraint`   | `GanttConstraint`          | Scheduling constraint (`{ type, date }`).      |

@@ -39,6 +39,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Added
 
+- **Per-variant item slots.** Tasks and milestones accept a free-form `variant` tag,
+  and the prop-driven `<Gantt>` render routes each item to a `task-${variant}` (bars) or
+  `milestone-${variant}` (markers) slot, falling back to the generic `bar`/`milestone`
+  slot and then the built-in default — so it's purely additive. New `variant` field on
+  `GanttTask`/`ResolvedTask`; new `TypedItemSlots` story.
 - **Docs: full Storybook/README coverage audit.** New `Guides/Localization` (ru/de +
   `labelFormat`) and `Guides/Row grouping` (default/collapsed/custom `group`/`groupBar`
   slots) stories; new cases for the period slots (`period`, `period-bands`, hand-authored
