@@ -39,6 +39,15 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Added
 
+- **Non-working calendar shading.** New `nonWorking` prop (`boolean |
+  NonWorkingCalendar`) shades non-working time — weekends, holidays and arbitrary off
+  periods — as a faint background band on the axis. `true` shades Sat/Sun; a
+  `NonWorkingCalendar` (`weekends`/`holidays`/`periods`) gives full control. Purely
+  decorative: it never extends the axis or adds a header row. Ships the `GanttNonWorking`
+  overlay component, a `non-working` section slot (`{ bands }`) forwarded through
+  `<Gantt>`, the `--gantt-nonworking-bg` theme token, and a pure `nonWorkingBands(calendar,
+  range)` helper (with `NonWorkingCalendar`/`NonWorkingBand`/`ResolvedNonWorkingBand`
+  types) exported from the package root.
 - **CSV export.** New pure, zero-dependency `toCSV(rows, options?)` serializer (RFC 4180 —
   one line per task, owning row's id/name as leading columns) and a `downloadCSV(rows,
   filename?, options?)` browser helper. Default columns cover id/name/type/start/end/

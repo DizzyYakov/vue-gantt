@@ -12,6 +12,7 @@ import {
   flattenTasks,
   getDependents,
   isOverdue,
+  nonWorkingBands,
   removeDependency,
   removeTask,
   rollupProgress,
@@ -429,5 +430,123 @@ describe('sprintPeriods', () => {
     })
     expect(periods.map(p => p.label)).toEqual(['S0', 'S1'])
     expect(periods.map(p => p.id)).toEqual(['s0', 's1'])
+  })
+})
+
+describe('nonWorkingBands', () => {
+  // 2026-07-01 is a Wednesday; the range below spans two full weekends
+  // (Sat 07-04/Sun 07-05 and Sat 07-11/Sun 07-12).
+  const range = { start: new Date(2026, 6, 1), end: new Date(2026, 6, 15) }
+
+  it('returns no bands when the calendar is `false` or `undefined`', () => {
+    expect(nonWorkingBands(false, range)).toEqual([])
+    expect(nonWorkingBands(undefined as unknown as false, range)).toEqual([])
+  })
+
+  it('`true` shades Sat/Sun (default weekends [0, 6]), merging each weekend into one band', () => {
+    const bands = nonWorkingBands(true, range)
+    expect(bands).toHaveLength(2)
+    expect(bands[0]).toEqual({
+      id: `nonworking-${new Date(2026, 6, 4).getTime()}`,
+      start: new Date(2026, 6, 4), // Sat
+      end: new Date(2026, 6, 6), // Mon (exclusive)
+    })
+    expect(bands[1]).toEqual({
+      id: `nonworking-${new Date(2026, 6, 11).getTime()}`,
+      start: new Date(2026, 6, 11), // Sat
+      end: new Date(2026, 6, 13), // Mon (exclusive)
+    })
+  })
+
+  it('an object with no `weekends` also defaults to [0, 6]', () => {
+    const bands = nonWorkingBands({}, range)
+    expect(bands).toHaveLength(2)
+    expect(bands[0]!.start).toEqual(new Date(2026, 6, 4))
+    expect(bands[1]!.start).toEqual(new Date(2026, 6, 11))
+  })
+
+  it('`weekends: []` shows no weekend shading (holidays/periods still apply)', () => {
+    expect(nonWorkingBands({ weekends: [] }, range)).toEqual([])
+    const withHoliday = nonWorkingBands({ weekends: [], holidays: ['2026-07-01'] }, range)
+    expect(withHoliday).toEqual([
+      {
+        id: `nonworking-${new Date(2026, 6, 1).getTime()}`,
+        start: new Date(2026, 6, 1),
+        end: new Date(2026, 6, 2),
+      },
+    ])
+  })
+
+  it('a bare `YYYY-MM-DD` holiday shades that whole local day', () => {
+    // A standalone Wednesday holiday, not adjacent to a weekend.
+    const bands = nonWorkingBands({ weekends: [], holidays: ['2026-07-08'] }, range)
+    expect(bands).toEqual([
+      {
+        id: `nonworking-${new Date(2026, 6, 8).getTime()}`,
+        start: new Date(2026, 6, 8),
+        end: new Date(2026, 6, 9),
+      },
+    ])
+  })
+
+  it('merges a holiday adjacent to a weekend into a single band', () => {
+    // Friday 07-03 as a holiday, immediately followed by Sat 07-04 + Sun 07-05.
+    const bands = nonWorkingBands({ holidays: ['2026-07-03'] }, range)
+    const merged = bands.find(b => b.start.getTime() === new Date(2026, 6, 3).getTime())
+    expect(merged).toEqual({
+      id: `nonworking-${new Date(2026, 6, 3).getTime()}`,
+      start: new Date(2026, 6, 3), // Fri
+      end: new Date(2026, 6, 6), // Mon (exclusive) — Fri+Sat+Sun merged
+    })
+    // The other (unrelated) weekend is untouched.
+    expect(bands).toHaveLength(2)
+  })
+
+  it('adds explicit `periods` spans alongside weekend/holiday bands', () => {
+    const bands = nonWorkingBands(
+      {
+        weekends: [],
+        periods: [{ id: 'offsite', start: '2026-07-08', end: '2026-07-10' }],
+      },
+      range,
+    )
+    expect(bands).toEqual([
+      { id: 'offsite', start: new Date(2026, 6, 8), end: new Date(2026, 6, 10) },
+    ])
+  })
+
+  it('defaults an id for an explicit period without one (`nonworking-period-{index}`)', () => {
+    const bands = nonWorkingBands(
+      { weekends: [], periods: [{ start: '2026-07-08', end: '2026-07-10' }] },
+      range,
+    )
+    expect(bands[0]!.id).toBe('nonworking-period-0')
+  })
+
+  it('clips bands to the range end (a weekend cut short by the range boundary)', () => {
+    // Range ends exactly at Sunday's start, so only Saturday should be shaded.
+    const clippedRange = { start: new Date(2026, 6, 1), end: new Date(2026, 6, 5) }
+    const bands = nonWorkingBands(true, clippedRange)
+    expect(bands).toHaveLength(1)
+    expect(bands[0]!.start).toEqual(new Date(2026, 6, 4))
+    expect(bands[0]!.end).toEqual(new Date(2026, 6, 5))
+  })
+
+  it('clips an explicit period to the range start/end and drops one entirely outside', () => {
+    const bands = nonWorkingBands(
+      {
+        weekends: [],
+        periods: [
+          { id: 'before', start: '2026-06-25', end: '2026-07-03' }, // starts before range
+          { id: 'after', start: '2026-07-13', end: '2026-07-20' }, // ends after range
+          { id: 'outside', start: '2026-06-01', end: '2026-06-10' }, // fully before range
+        ],
+      },
+      range,
+    )
+    expect(bands).toEqual([
+      { id: 'before', start: range.start, end: new Date(2026, 6, 3) },
+      { id: 'after', start: new Date(2026, 6, 13), end: range.end },
+    ])
   })
 })

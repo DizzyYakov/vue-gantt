@@ -14,6 +14,7 @@ export { default as GanttRow } from './components/GanttRow.vue'
 export { default as GanttTask } from './components/GanttTask.vue'
 export { default as GanttMilestone } from './components/GanttMilestone.vue'
 export { default as GanttGrid } from './components/GanttGrid.vue'
+export { default as GanttNonWorking } from './components/GanttNonWorking.vue'
 export { default as GanttDependencies } from './components/GanttDependencies.vue'
 export { default as GanttConflicts } from './components/GanttConflicts.vue'
 export { default as GanttSlack } from './components/GanttSlack.vue'
@@ -91,6 +92,7 @@ export {
   validateRows,
   sprintPeriods,
   type SprintPeriodsOptions,
+  nonWorkingBands,
 } from './utils'
 
 // Data export (pure serializers + browser download helpers)
@@ -141,7 +143,10 @@ export type {
   GanttViewport,
   GanttZoomEvent,
   GanttZoomLevel,
+  NonWorkingBand,
+  NonWorkingCalendar,
   ResolvedGroup,
+  ResolvedNonWorkingBand,
   ResolvedPeriod,
   ResolvedRow,
   ResolvedSegment,

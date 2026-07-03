@@ -141,6 +141,7 @@ slots for overriding any part. Every slot is scoped — its props give you the s
 | `timeline`     | `{ config, visibleColumnsFor }`   | `<GanttTimeline>` (the axis header) |
 | `sidebar`      | `{ rows, groups }`                | `<GanttTaskList>` (the row labels)  |
 | `grid`         | `{ columns, rows }`               | `<GanttGrid>` (the body grid)       |
+| `non-working`  | `{ bands }`                       | `<GanttNonWorking>` (calendar shading) |
 | `period-bands` | `{ periods }`                     | `<GanttPeriods>` (sprint bands)     |
 | `bars`         | `{ tasks }`                       | the task bar / milestone layer      |
 | `group-bars`   | `{ groups }`                      | `<GanttGroupBar>` (group rollups)   |
@@ -156,11 +157,12 @@ slots for overriding any part. Every slot is scoped — its props give you the s
 is `(date: Date \| string \| number) => number`, `rows`/`groups` are the visible
 `ResolvedRow[]` / `ResolvedGroup[]`, `columns` are the visible base-unit
 `GanttColumn[]`, `periods` is the resolved `ResolvedPeriod[]` (empty unless the
-`periods` prop is set), `tasks` are `ResolvedTask[]` (all of them for `dependencies`,
-the plotted/visible ones for `bars`, `baselines` and `deadlines`), `today` is the
-configured reference `Date`, `conflicts` is `GanttConflict[]` (empty unless
-`overlap: 'conflict'`), and `slack` is a `Map<string, number>` of free-float days by
-task id (empty unless `slack` is on).
+`periods` prop is set), `bands` is the resolved `ResolvedNonWorkingBand[]` (empty
+unless the `nonWorking` prop is set), `tasks` are `ResolvedTask[]` (all of them for
+`dependencies`, the plotted/visible ones for `bars`, `baselines` and `deadlines`),
+`today` is the configured reference `Date`, `conflicts` is `GanttConflict[]` (empty
+unless `overlap: 'conflict'`), and `slack` is a `Map<string, number>` of free-float
+days by task id (empty unless `slack` is on).
 
 **Leaf slots** customize a single repeated item: `row` (`{ row, index }`),
 `group` (`{ group, collapsed, toggle }`), `groupBar` (`{ group }`), `column`
@@ -247,6 +249,7 @@ every [chart event](#events); the rest are the building blocks.
 | `<GanttTask>`         | `GanttItemProps`                                 | `click` · `dblclick` · `contextmenu`             |
 | `<GanttMilestone>`    | `GanttItemProps`                                 | `click` · `dblclick` · `contextmenu`             |
 | `<GanttGrid>`         | `tier?: GanttUnit`                               | `cell-click` · `cell-dblclick`                   |
+| `<GanttNonWorking>`   | — (default slot `{ band }`)                      | —                                                |
 | `<GanttDependencies>` | —                                                | `dependency-click`                               |
 | `<GanttConflicts>`    | —                                                | —                                                |
 | `<GanttSlack>`        | — (default slot `{ taskId, slack }`)             | —                                                |
@@ -279,6 +282,7 @@ parent collapses to the content height and simply grows to fit (as before).
 | `columnWidth`           | `number`                                          | `40`            | Width of one base-unit cell, px.                                                                                                                                                                                                                              |
 | `zoomLevels`            | `GanttZoomLevel[]`                                | `DEFAULT_ZOOM_LEVELS` | Named view-mode presets the `zoom` prop / `GanttZoom` switch between; each bundles `tiers` + `columnWidth` (year → hour).                                                                                                                                |
 | `periods`               | `GanttPeriod[]`                                   | —               | Custom timeline periods (sprints): a background band over the body + a labelled header row. Build a cadence with `sprintPeriods` or pass your own list. See [Timeline period bands](#timeline-period-bands-sprints).                                            |
+| `nonWorking`            | `boolean \| NonWorkingCalendar`                   | —               | Working calendar: shade non-working time (weekends/holidays/custom off periods) as a background band. `true` shades Sat/Sun. Purely decorative — never extends the axis or adds a header row. See [Non-working calendar](#non-working-calendar).              |
 | `zoom`                  | `string`                                          | —               | Active zoom level id; supports `v-model:zoom`. When set, the matching level's `tiers`/`columnWidth` override those props. Omit for the classic `tiers`/`columnWidth`/`unit` behavior.                                                                          |
 | `rowHeight`             | `number`                                          | `36`            | Row height, px.                                                                                                                                                                                                                                               |
 | `headerRowHeight`       | `number`                                          | `28`            | Height of one timeline tier row, px.                                                                                                                                                                                                                          |
@@ -702,6 +706,7 @@ import {
   rollupProgress,
   validateRows,
   sprintPeriods, // build a run of equal-length timeline periods (sprints; see SprintPeriodsOptions)
+  nonWorkingBands, // compute non-working (weekend/holiday/off-period) bands over a range
   toCSV,
   downloadCSV, // serialize tasks to CSV / trigger a browser download (see Export)
 } from '@dizzy_yakov/vue-gantt'
@@ -819,6 +824,52 @@ contiguous run of equal-length periods. The bands are rendered by `<GanttPeriods
 (auto-mounted; override via the `period-bands` section slot for the body band, or
 the `period` slot for the header label). Style with the `--gantt-period-*`
 [variables](#css-variables).
+
+## Non-working calendar
+
+A **working calendar** shades non-working time — weekends, holidays, or arbitrary
+off spans — as a faint background band. Unlike [periods](#timeline-period-bands-sprints)
+above, it's purely decorative: it never adds a header row and never extends the
+auto date range, it only tints time already on the chart. Pass `true` to shade
+Saturday/Sunday, or a `NonWorkingCalendar` for full control:
+
+```vue
+<script setup>
+import { Gantt } from '@dizzy_yakov/vue-gantt'
+</script>
+
+<template>
+  <!-- Sat/Sun only -->
+  <Gantt :rows="rows" non-working />
+
+  <!-- weekends + a holiday + a custom off span -->
+  <Gantt
+    :rows="rows"
+    :non-working="{
+      holidays: ['2026-12-25'],
+      periods: [{ id: 'maintenance', start: '2026-06-15', end: '2026-06-17' }],
+    }"
+  />
+</template>
+```
+
+`NonWorkingCalendar` is `{ weekends?: number[]; holidays?: (Date | string | number)[];
+periods?: { id?: string; start; end }[] }`. `weekends` is a list of `getDay()`
+weekday numbers (`0`=Sunday … `6`=Saturday), defaulting to `[0, 6]`; pass `[]` to
+shade only `holidays`/`periods`. Consecutive non-working days are merged into a
+single band. The bands are rendered by `<GanttNonWorking>` (auto-mounted; override
+via the `non-working` section slot, or its own default slot (`{ band }`) for custom
+content inside each band). Style with `--gantt-nonworking-bg`.
+
+The pure `nonWorkingBands(calendar, range)` helper computes the same bands outside
+of Vue (e.g. to report or validate a schedule against the calendar):
+
+```ts
+import { nonWorkingBands } from '@dizzy_yakov/vue-gantt'
+
+nonWorkingBands(true, { start, end }) // Sat/Sun shaded
+nonWorkingBands({ holidays: ['2026-07-04'] }, { start, end }) // + a holiday
+```
 
 ## Zoom / view-mode
 
@@ -1162,6 +1213,12 @@ hatched look.
 | `--gantt-period-color`        | `inherit`            | Header period label colour.                     |
 | `--gantt-period-font-weight`  | `600`                | Header period label weight.                     |
 | `--gantt-period-font-size`    | header font size     | Header period label size.                       |
+
+**Non-working calendar**
+
+| Variable                | Default                 | Purpose                                                 |
+| ----------------------- | ------------------------ | -------------------------------------------------------- |
+| `--gantt-nonworking-bg` | `rgb(100 116 139 / 8%)` | Non-working band fill (weekends/holidays/off periods).   |
 
 **Today**
 

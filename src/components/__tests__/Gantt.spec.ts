@@ -87,6 +87,21 @@ describe('Gantt (prop-driven)', () => {
     expect(wrapper.findAll('.gantt-milestone__diamond')).toHaveLength(1)
   })
 
+  it('forwards the `non-working` section slot through the public wrapper', () => {
+    const wrapper = mount(Gantt, {
+      props: { rows, unit: 'day', nonWorking: true },
+      slots: {
+        'non-working': (props: { bands: unknown }) =>
+          h('div', { class: 'custom-nonworking' }, String((props.bands as unknown[]).length)),
+      },
+    })
+    // The custom slot replaces the default GanttNonWorking layer and receives the bands.
+    const custom = wrapper.find('.custom-nonworking')
+    expect(custom.exists()).toBe(true)
+    expect(Number(custom.text())).toBeGreaterThan(0)
+    expect(wrapper.findAll('.gantt-nonworking-band')).toHaveLength(0)
+  })
+
   it('positions a bar using the shared scale', () => {
     const wrapper = mount(Gantt, {
       props: { rows, unit: 'day', columnWidth: 40, today: '2026-01-03' },
