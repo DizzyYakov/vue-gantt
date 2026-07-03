@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import { computed, onMounted, onUnmounted, useTemplateRef, watch } from 'vue'
+import { computed, onMounted, onUnmounted, useSlots, useTemplateRef, watch } from 'vue'
+import type { ResolvedTask } from '../types'
 import { useGanttContext } from '../composables/useGanttContext'
 import { useGanttViewport } from '../composables/useGanttViewport'
 import GanttBaselines from './GanttBaselines.vue'
@@ -47,6 +48,21 @@ const gridColumns = computed(() => visibleColumnsFor(config.value.unit))
 
 const scroller = useTemplateRef<HTMLElement>('scroller')
 useGanttViewport(scroller)
+
+const slots = useSlots()
+
+// Pick the slot that renders an item's body: a per-variant slot
+// (`task-${variant}` / `milestone-${variant}`) when the consumer supplied one,
+// else the generic `bar` / `milestone` slot, else `undefined` so the component
+// falls back to its own default render (a plain bar / diamond).
+function barSlotName(task: ResolvedTask): string | undefined {
+  const typed = task.variant ? `task-${task.variant}` : undefined
+  return typed && slots[typed] ? typed : slots.bar ? 'bar' : undefined
+}
+function milestoneSlotName(task: ResolvedTask): string | undefined {
+  const typed = task.variant ? `milestone-${task.variant}` : undefined
+  return typed && slots[typed] ? typed : slots.milestone ? 'milestone' : undefined
+}
 
 // Expose the scroll container to the context so scrollToDate/Task/Today work.
 // Register on mount (when the template ref is populated) and re-bind on change.
@@ -127,16 +143,16 @@ const scrollStyle = computed(() => {
         <slot name="bars" :tasks="visibleTasks">
           <template v-for="task in visibleTasks" :key="task.id">
             <GanttMilestone v-if="task.type === 'milestone'" :task="task">
-              <template v-if="$slots.milestone" #default="slotProps">
-                <slot name="milestone" v-bind="slotProps" />
+              <template v-if="milestoneSlotName(task)" #default="slotProps">
+                <slot :name="milestoneSlotName(task)" v-bind="slotProps" />
               </template>
               <template v-if="$slots.tooltip" #tooltip="slotProps">
                 <slot name="tooltip" v-bind="slotProps" />
               </template>
             </GanttMilestone>
             <GanttTask v-else :task="task">
-              <template v-if="$slots.bar" #default="slotProps">
-                <slot name="bar" v-bind="slotProps" />
+              <template v-if="barSlotName(task)" #default="slotProps">
+                <slot :name="barSlotName(task)" v-bind="slotProps" />
               </template>
               <template v-if="$slots.taskEditor" #taskEditor="editorProps">
                 <slot name="taskEditor" v-bind="editorProps" />

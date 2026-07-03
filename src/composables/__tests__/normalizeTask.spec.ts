@@ -13,6 +13,16 @@ describe('normalizeTask', () => {
     expect(task.order).toBe(0)
   })
 
+  it('carries `variant` through (undefined when absent)', () => {
+    expect(
+      normalizeTask({ id: 'a', start: '2026-01-01', end: '2026-01-05', variant: 'summary' }, 'r', 0)
+        .variant,
+    ).toBe('summary')
+    expect(
+      normalizeTask({ id: 'b', start: '2026-01-01', end: '2026-01-05' }, 'r', 0).variant,
+    ).toBeUndefined()
+  })
+
   it('clamps progress into 0–100', () => {
     expect(normalizeTask({ id: 'a', start: 0, end: 0, progress: 150 }, 'r', 0).progress).toBe(100)
     expect(normalizeTask({ id: 'a', start: 0, end: 0, progress: -5 }, 'r', 0).progress).toBe(0)

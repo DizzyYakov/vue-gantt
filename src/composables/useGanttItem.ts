@@ -16,6 +16,8 @@ export interface GanttItemProps {
   end?: Date | string | number
   progress?: number
   dependencies?: string[]
+  /** Free-form category tag (selects a per-variant slot in the prop-driven render). */
+  variant?: string
   segments?: GanttSegment[]
   deadline?: Date | string | number
   constraint?: GanttConstraint
@@ -52,6 +54,7 @@ export function useGanttItem(props: GanttItemProps, overrides: Partial<GanttTask
     end: props.end ?? props.start ?? new Date(0),
     progress: props.progress,
     dependencies: props.dependencies,
+    variant: props.variant,
     segments: props.segments,
     deadline: props.deadline,
     constraint: props.constraint,

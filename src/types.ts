@@ -100,6 +100,14 @@ export interface GanttTask {
   dependencies?: string[]
   type?: GanttItemType
   /**
+   * Free-form category tag. In the prop-driven `<Gantt>` render it selects a
+   * per-variant slot — `task-${variant}` for bars, `milestone-${variant}` for
+   * markers — falling back to the generic `bar`/`milestone` slot when no such
+   * slot is provided. Independent of `type` (which stays the bar/marker
+   * discriminator).
+   */
+  variant?: string
+  /**
    * Work segments — when set, the bar is drawn as these spans with paused gaps
    * between them (a "split" task). `start`/`end` still define the overall extent.
    */
@@ -196,6 +204,8 @@ export interface ResolvedTask {
   progress: number
   dependencies: string[]
   type: GanttItemType
+  /** Free-form category tag selecting a per-variant slot (absent when not set). */
+  variant?: string
   /** Work segments coerced to `Date`s (absent when the task isn't split). */
   segments?: ResolvedSegment[]
   /** Deadline target, coerced to a `Date` (absent when not set). */
