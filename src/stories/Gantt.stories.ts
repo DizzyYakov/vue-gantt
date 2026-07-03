@@ -1,8 +1,11 @@
 import type { Meta, StoryObj } from '@storybook/vue3-vite'
+import { de } from 'date-fns/locale'
 import { ref } from 'vue'
 import Gantt from '../components/Gantt.vue'
 import GanttZoom from '../components/GanttZoom.vue'
+import { downloadCSV } from '../export'
 import type { GanttMoveEvent, GanttRow } from '../types'
+import { sprintPeriods } from '../utils'
 import { sampleRows } from './_shared'
 
 /**
@@ -21,6 +24,24 @@ const meta: Meta<typeof Gantt> = {
       control: 'check',
       options: ['year', 'quarter', 'month', 'week', 'day', 'hour', 'minute'],
       description: 'Time-group rows shown on the header (coarse → fine).',
+    },
+    periods: {
+      control: 'object',
+      description:
+        'Custom timeline periods (sprints): a background band + a labelled header row. ' +
+        'Build a cadence with `sprintPeriods` or pass your own list. Override via the ' +
+        '`period-bands` / `period` slots; theme with `--gantt-period-*`. See ' +
+        'Components/GanttPeriods.',
+    },
+    nonWorking: {
+      control: 'object',
+      description:
+        'Working calendar: shade non-working time (weekends/holidays/custom off periods) ' +
+        'as a faint background band. `true` shades Sat/Sun; pass a `NonWorkingCalendar` ' +
+        '(`{ weekends?, holidays?, periods? }`) for full control. Unlike `periods`, purely ' +
+        'decorative — never extends the axis or adds a header row. Override via the ' +
+        '`non-working` / default slots; theme with `--gantt-nonworking-bg`. See ' +
+        'Components/GanttNonWorking.',
     },
     unit: {
       control: 'select',
@@ -81,9 +102,21 @@ const meta: Meta<typeof Gantt> = {
         'Push finish-to-start successors forward on a move/resize/link change ' +
         '(MS-Project style). Effective only with `v-model:rows`.',
     },
+    timelineMode: {
+      control: 'select',
+      options: ['fixed', 'infinite'],
+      description: 'Edge behaviour: `infinite` auto-extends the range when scrolled to an edge.',
+    },
     today: { control: 'text' },
     labelFormat: { control: 'text' },
+    locale: {
+      control: false,
+      description:
+        'date-fns `Locale` for all date labels. Import it yourself ' +
+        "(e.g. `import { ru } from 'date-fns/locale'`) and pass the object.",
+    },
     'onZoom-change': { action: 'zoom-change', table: { category: 'events' } },
+    'onRange-change': { action: 'range-change', table: { category: 'events' } },
     onMove: { action: 'move', table: { category: 'events' } },
     onResize: { action: 'resize', table: { category: 'events' } },
     onProgress: { action: 'progress', table: { category: 'events' } },
@@ -353,6 +386,110 @@ export const Grouping: Story = {
 }
 
 /**
+ * Custom timeline **periods** (e.g. sprints): each renders a faint background band
+ * over the chart body + a labelled row in the header. Group the *time axis*, not
+ * the rows. Pass your own `periods` list (uneven spans, custom labels) or build a
+ * regular cadence with the exported `sprintPeriods` helper. Customize via the
+ * `period-bands` / `period` slots and the `--gantt-period-*` tokens — see
+ * `Components/GanttPeriods` for the full API.
+ */
+const sprintArgs: Story['args'] = {
+  periods: sprintPeriods({ from: '2026-06-01', every: 2, unit: 'week', count: 4 }),
+  tiers: ['month', 'week', 'day'],
+  height: 300,
+}
+
+export const Sprints: Story = {
+  args: { ...sprintArgs },
+}
+
+/**
+ * Replace each period's **header label** with the `period` slot (`{ period }`).
+ * You get the resolved period (`id`, `label`, `start`/`end`, `meta`); here it renders
+ * a runner icon before the sprint name. The background bands are untouched.
+ */
+export const SprintsHeaderSlot: Story = {
+  args: { ...sprintArgs },
+  render: args => ({
+    components: { Gantt },
+    setup: () => ({ args }),
+    template: `
+      <Gantt v-bind="args">
+        <template #period="{ period }">
+          <span style="display:inline-flex;align-items:center;gap:4px;font-weight:700;color:#6366f1">
+            🏃 {{ period.label }}
+          </span>
+        </template>
+      </Gantt>`,
+  }),
+}
+
+/**
+ * Replace the whole body **band layer** with the `period-bands` slot (`{ periods }`).
+ * Each `ResolvedPeriod` carries pixel geometry (`x` / `width`) and an `index` for the
+ * alternating fill, so you can paint the bands yourself — here as tinted, alternating
+ * full-height columns behind the bars.
+ */
+export const SprintsBandSlot: Story = {
+  args: { ...sprintArgs },
+  render: args => ({
+    components: { Gantt },
+    setup: () => ({ args }),
+    template: `
+      <Gantt v-bind="args">
+        <template #period-bands="{ periods }">
+          <div style="position:absolute;inset:0;pointer-events:none">
+            <div
+              v-for="p in periods"
+              :key="p.id"
+              :style="{
+                position: 'absolute', top: 0, bottom: 0,
+                left: p.x + 'px', width: p.width + 'px',
+                background: p.index % 2 ? 'rgba(16,185,129,.10)' : 'rgba(99,102,241,.10)',
+                borderLeft: '1px dashed #cbd5e1',
+              }"
+            />
+          </div>
+        </template>
+      </Gantt>`,
+  }),
+}
+
+/**
+ * A **working calendar**: shade non-working time (weekends, holidays, custom off
+ * spans) as a faint background band. `true` shades Saturday/Sunday; pass a
+ * `NonWorkingCalendar` (`weekends`, `holidays`, `periods`) for full control. Unlike
+ * `periods` above, it's purely decorative — it never adds a header row and never
+ * extends the auto date range, it only tints time already on the chart. Here the
+ * default weekends are shaded plus a single holiday (Jun 19). Override via the
+ * `non-working` slot; theme with `--gantt-nonworking-bg` — see
+ * `Components/GanttNonWorking` for the full API.
+ */
+export const NonWorkingCalendar: Story = {
+  args: {
+    nonWorking: { holidays: ['2026-06-19'] },
+    tiers: ['month', 'week', 'day'],
+    height: 300,
+  },
+}
+
+/**
+ * Localize every date label — column headers, drag labels and tooltips — by passing
+ * a date-fns `Locale`. Import the locale yourself (locales are not bundled), e.g.
+ * `import { de } from 'date-fns/locale'`, then `<Gantt :locale="de" …>`. Here the
+ * month/week headers render in German. Pair it with `labelFormat` for locale-aware
+ * custom formats. (RTL layout is not part of this — a separate concern.)
+ */
+export const Localized: Story = {
+  args: {
+    locale: de,
+    tiers: ['month', 'week', 'day'],
+    tooltip: true,
+    height: 300,
+  },
+}
+
+/**
  * Opt in to the hover tooltip with the `tooltip` prop: hover any bar or
  * milestone to see a floating summary. The default content is the name plus
  * `start – end` and `progress%` for a bar, or the name plus the date for a
@@ -415,6 +552,57 @@ export const CustomBarSlot: Story = {
           <span style="padding:0 8px;font-size:.72em;font-weight:600">
             {{ task.name }} · {{ progress }}%
           </span>
+        </template>
+      </Gantt>`,
+  }),
+}
+
+/**
+ * Tag items with a free-form `variant` to render each category differently.
+ * The prop-driven render looks for a `task-${variant}` slot for a bar (and a
+ * `milestone-${variant}` slot for a marker); if none is provided it falls back
+ * to the generic `bar` / `milestone` slot, then to the built-in default. Here
+ * `design` and `dev` bars get their own look, `release` milestones get a labeled
+ * flag, and an un-tagged bar (`variant` omitted) falls through to `#bar`.
+ */
+export const TypedItemSlots: Story = {
+  render: () => ({
+    components: { Gantt },
+    setup: () => ({
+      rows: [
+        {
+          id: 'r1',
+          name: 'Design',
+          tasks: [{ id: 'a', name: 'Wireframes', start: '2026-01-01', end: '2026-01-06', variant: 'design' }],
+        },
+        {
+          id: 'r2',
+          name: 'Build',
+          tasks: [
+            { id: 'b', name: 'API', start: '2026-01-04', end: '2026-01-12', variant: 'dev' },
+            { id: 'c', name: 'Chore', start: '2026-01-13', end: '2026-01-16' },
+          ],
+        },
+        {
+          id: 'r3',
+          name: 'Ship',
+          tasks: [{ id: 'm', name: 'v1.0', type: 'milestone', start: '2026-01-18', variant: 'release' }],
+        },
+      ],
+    }),
+    template: `
+      <Gantt :rows="rows" unit="day">
+        <template #task-design="{ task }">
+          <span style="padding:0 8px;font-size:.72em;font-weight:600;color:#7c3aed">🎨 {{ task.name }}</span>
+        </template>
+        <template #task-dev="{ task, progress }">
+          <span style="padding:0 8px;font-size:.72em;font-weight:600;color:#0369a1">⚙️ {{ task.name }} · {{ progress }}%</span>
+        </template>
+        <template #milestone-release="{ task }">
+          <span style="display:inline-block;padding:1px 6px;font-size:.68em;font-weight:700;white-space:nowrap;color:#fff;background:#16a34a;border-radius:4px;transform:translateX(-50%)">🚀 {{ task.name }}</span>
+        </template>
+        <template #bar="{ task }">
+          <span style="padding:0 8px;font-size:.72em;opacity:.75">{{ task.name }}</span>
         </template>
       </Gantt>`,
   }),
@@ -533,4 +721,53 @@ export const CriticalPathAndSlack: Story = {
       },
     ],
   },
+}
+
+/**
+ * `critical-path` on its own: only the longest finish-to-start chain
+ * (`spec → design → build → review`) is highlighted via `data-critical` (styled with
+ * `--gantt-critical-*`); no slack overlay. The `criticalPath(rows)` utility returns
+ * the same ids headless.
+ */
+export const CriticalPath: Story = {
+  args: {
+    criticalPath: true,
+    tiers: ['month', 'week', 'day'],
+    height: 260,
+  },
+}
+
+/**
+ * `timeline-mode="infinite"`: scroll to either horizontal edge and the axis extends by
+ * one screenful of dates so you can pan indefinitely. Prepending dates on the left
+ * corrects the scroll so the view stays anchored. A `range-change` event fires on
+ * every edge reach (watch the Actions panel) — in `infinite` mode the bounds are
+ * already applied; in `fixed` mode you'd use it to widen `startDate`/`endDate`
+ * yourself. Column virtualization keeps the DOM bounded however far you scroll.
+ */
+export const InfiniteTimeline: Story = {
+  args: {
+    timelineMode: 'infinite',
+    tiers: ['month', 'week', 'day'],
+    columnWidth: 36,
+    height: 260,
+  },
+}
+
+/**
+ * `downloadCSV(rows)` serializes the tasks to an RFC-4180 CSV file and triggers a
+ * browser download (one line per task, with its row's id/name as leading columns).
+ * `toCSV(rows, options)` returns the string for custom handling — override the
+ * `columns`, `delimiter`, `dateFormat`, etc.
+ */
+export const ExportCsv: Story = {
+  render: (args) => ({
+    components: { Gantt },
+    setup: () => ({ args, exportCsv: () => downloadCSV(args.rows ?? [], 'gantt.csv') }),
+    template: `
+      <div>
+        <button type="button" style="margin-bottom:8px" @click="exportCsv">Export CSV</button>
+        <Gantt v-bind="args" />
+      </div>`,
+  }),
 }

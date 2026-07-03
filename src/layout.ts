@@ -124,9 +124,19 @@ export function layoutGroups(rows: ResolvedRow[], options: LayoutGroupsOptions):
     group?.rowIds.push(row.id)
   }
 
+  // Bucket rows by group id in one pass, so the rollup below stays O(R) instead of
+  // O(groups × rows) (a per-group `filter` re-scans every row).
+  const rowsByGroup = new Map<string, ResolvedRow[]>()
+  for (const r of outRows) {
+    if (!r.groupId) continue
+    const list = rowsByGroup.get(r.groupId)
+    if (list) list.push(r)
+    else rowsByGroup.set(r.groupId, [r])
+  }
+
   // Roll up each group's task extent + aggregate progress (collapsed included).
   for (const group of groups) {
-    const tasks = outRows.filter(r => r.groupId === group.id).flatMap(r => r.tasks)
+    const tasks = (rowsByGroup.get(group.id) ?? []).flatMap(r => r.tasks)
     if (!tasks.length) continue
     let start = tasks[0]!.start
     let end = tasks[0]!.end

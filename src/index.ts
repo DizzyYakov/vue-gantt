@@ -14,11 +14,13 @@ export { default as GanttRow } from './components/GanttRow.vue'
 export { default as GanttTask } from './components/GanttTask.vue'
 export { default as GanttMilestone } from './components/GanttMilestone.vue'
 export { default as GanttGrid } from './components/GanttGrid.vue'
+export { default as GanttNonWorking } from './components/GanttNonWorking.vue'
 export { default as GanttDependencies } from './components/GanttDependencies.vue'
 export { default as GanttConflicts } from './components/GanttConflicts.vue'
 export { default as GanttSlack } from './components/GanttSlack.vue'
 export { default as GanttDeadlines } from './components/GanttDeadlines.vue'
 export { default as GanttBaselines } from './components/GanttBaselines.vue'
+export { default as GanttPeriods } from './components/GanttPeriods.vue'
 export { default as GanttToday } from './components/GanttToday.vue'
 export { default as GanttZoom } from './components/GanttZoom.vue'
 
@@ -88,7 +90,13 @@ export {
   isOverdue,
   violatesConstraint,
   validateRows,
+  sprintPeriods,
+  type SprintPeriodsOptions,
+  nonWorkingBands,
 } from './utils'
+
+// Data export (pure serializers + browser download helpers)
+export { toCSV, downloadCSV, type CSVColumn, type CSVOptions } from './export'
 
 // Types
 export type {
@@ -117,7 +125,9 @@ export type {
   GanttLinkMode,
   GanttMoveEvent,
   GanttOverlapMode,
+  GanttPeriod,
   GanttProgressEvent,
+  GanttRangeChangeEvent,
   GanttResizeEvent,
   GanttRowEditEvent,
   GanttTaskEditEvent,
@@ -128,11 +138,16 @@ export type {
   GanttSegment,
   GanttTask as GanttTaskData,
   GanttTaskEvent,
+  GanttTimelineMode,
   GanttUnit,
   GanttViewport,
   GanttZoomEvent,
   GanttZoomLevel,
+  NonWorkingBand,
+  NonWorkingCalendar,
   ResolvedGroup,
+  ResolvedNonWorkingBand,
+  ResolvedPeriod,
   ResolvedRow,
   ResolvedSegment,
   ResolvedTask,

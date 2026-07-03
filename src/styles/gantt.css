@@ -116,6 +116,17 @@
   /* Invisible click/tap width of a dependency line (wider than the drawn stroke). */
   --gantt-dependency-hit-width: 8px;
 
+  /* Timeline period bands (sprints) */
+  --gantt-period-band-bg: rgb(99 102 241 / 4%);
+  --gantt-period-band-alt-bg: transparent;
+  --gantt-period-border: 1px dashed var(--gantt-grid-color, #e5e7eb);
+  --gantt-period-color: inherit;
+  --gantt-period-font-weight: 600;
+  --gantt-period-font-size: var(--gantt-header-font-size, 0.8em);
+
+  /* Non-working shading (weekends / holidays / off periods) */
+  --gantt-nonworking-bg: rgb(100 116 139 / 8%);
+
   /* Today marker */
   --gantt-today-color: #ef4444;
   --gantt-today-border: 2px solid var(--gantt-today-color);

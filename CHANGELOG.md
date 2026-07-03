@@ -116,8 +116,62 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Changed
+
+- **Performance: viewport-culled dependency arrows + O(rows) group rollups.**
+  `GanttDependencies` now only draws links whose endpoint rows intersect the visible
+  window (window-straddling links kept), so dense dependency graphs stay light on large
+  datasets; the `dependencies` slot receives the same culled links. `layoutGroups` rolls
+  up group summaries in a single bucketed pass (O(rows) instead of O(groups × rows)),
+  measured ~2.6× faster at 10k tasks / 400 groups. No API/behavior changes.
+
 ### Added
 
+- **Non-working calendar shading.** New `nonWorking` prop (`boolean |
+  NonWorkingCalendar`) shades non-working time — weekends, holidays and arbitrary off
+  periods — as a faint background band on the axis. `true` shades Sat/Sun; a
+  `NonWorkingCalendar` (`weekends`/`holidays`/`periods`) gives full control. Purely
+  decorative: it never extends the axis or adds a header row. Ships the `GanttNonWorking`
+  overlay component, a `non-working` section slot (`{ bands }`) forwarded through
+  `<Gantt>`, the `--gantt-nonworking-bg` theme token, and a pure `nonWorkingBands(calendar,
+  range)` helper (with `NonWorkingCalendar`/`NonWorkingBand`/`ResolvedNonWorkingBand`
+  types) exported from the package root.
+- **CSV export.** New pure, zero-dependency `toCSV(rows, options?)` serializer (RFC 4180 —
+  one line per task, owning row's id/name as leading columns) and a `downloadCSV(rows,
+  filename?, options?)` browser helper. Default columns cover id/name/type/start/end/
+  progress/dependencies/deadline; override via `columns`, plus `delimiter`/`dateFormat`/
+  `locale`/`header`/`eol` options. Exported from the package root (`CSVColumn`/`CSVOptions`
+  types included).
+- **Timeline range control + infinite scroll.** New `timelineMode` prop (`'fixed' |
+  'infinite'`, default `'fixed'`): in `infinite` mode, scrolling to either horizontal
+  edge auto-extends the axis by one screen of dates so the chart can be panned
+  indefinitely, with the scroll position anchored when dates are prepended on the left
+  (column virtualization keeps the DOM bounded). A new `range-change` event
+  (`GanttRangeChangeEvent`) fires on every edge reach in **both** modes — the applied
+  bounds in `infinite`, or a suggestion to widen `startDate`/`endDate` and lazy-load data
+  in `fixed`. Explicit `startDate`/`endDate` remain reactive as before.
+- **Per-variant item slots.** Tasks and milestones accept a free-form `variant` tag,
+  and the prop-driven `<Gantt>` render routes each item to a `task-${variant}` (bars) or
+  `milestone-${variant}` (markers) slot, falling back to the generic `bar`/`milestone`
+  slot and then the built-in default — so it's purely additive. New `variant` field on
+  `GanttTask`/`ResolvedTask`; new `TypedItemSlots` story.
+- **Docs: full Storybook/README coverage audit.** New `Guides/Localization` (ru/de +
+  `labelFormat`) and `Guides/Row grouping` (default/collapsed/custom `group`/`groupBar`
+  slots) stories; new cases for the period slots (`period`, `period-bands`, hand-authored
+  uneven periods), dependency viewport-culling and a 1k baseline (Performance), isolated
+  tap-tooltip / long-press-edit (Mobile), a draggable multi-segment split task and an
+  isolated critical-path story. README now catalogues `GanttPeriods`, `sprintPeriods` and
+  the `period`/`period-bands` slots in its reference tables. No code changes.
+- **Date localization (i18n).** New `locale` prop (a date-fns `Locale`) translates every
+  date label — timeline column headers, drag labels and tooltips. Import the locale
+  yourself (`import { ru } from 'date-fns/locale'`) so only the ones you use are bundled;
+  it composes with `labelFormat`/`dragLabelFormat`. (RTL layout is not part of this.)
+- **Timeline period bands (sprints).** New `periods` prop (`GanttPeriod[]`) draws custom
+  horizontal time periods — a faint full-height band over the chart body plus a labelled
+  row in the timeline header — for sprints/phases/release windows. Periods also extend the
+  auto date range. New `GanttPeriods` component, `periods`/`period` section slots,
+  `--gantt-period-*` tokens, and an exported `sprintPeriods({ from, every, unit, count })`
+  helper for a regular cadence. Exports `GanttPeriod`/`ResolvedPeriod` types.
 - **Performance tooling for 10k+ tasks.** A `vitest bench` harness
   (`src/__tests__/perf.bench.ts`, run via `bun run bench` — not in CI) measuring
   layout, critical-path, slack and the per-scroll visible-task filter at 1k/10k; a

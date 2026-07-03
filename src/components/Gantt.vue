@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import { computed, ref, useSlots } from 'vue'
 import type {
   GanttCellEvent,
   GanttColumnEvent,
@@ -9,6 +9,7 @@ import type {
   GanttGroupToggleEvent,
   GanttMoveEvent,
   GanttProgressEvent,
+  GanttRangeChangeEvent,
   GanttResizeEvent,
   GanttRootProps,
   GanttRow as GanttRowData,
@@ -38,6 +39,7 @@ const emit = defineEmits<{
   'update:rows': [rows: GanttRowData[]]
   'update:zoom': [id: string]
   'zoom-change': [event: GanttZoomEvent]
+  'range-change': [event: GanttRangeChangeEvent]
   'group-toggle': [event: GanttGroupToggleEvent]
   'dependency-create': [event: GanttDependencyChange]
   'dependency-remove': [event: GanttDependencyChange]
@@ -79,6 +81,9 @@ defineSlots<{
   corner?: (props: { config: unknown }) => unknown
   timeline?: (props: { config: unknown; visibleColumnsFor: unknown }) => unknown
   column?: (props: { column: unknown; tier: unknown }) => unknown
+  'period-bands'?: (props: { periods: unknown }) => unknown
+  period?: (props: { period: unknown }) => unknown
+  'non-working'?: (props: { bands: unknown }) => unknown
   bar?: (props: { task: unknown; progress: number }) => unknown
   milestone?: (props: { task: unknown }) => unknown
   tooltip?: (props: { task: unknown }) => unknown
@@ -90,7 +95,22 @@ defineSlots<{
   dependencies?: (props: { tasks: unknown }) => unknown
   today?: (props: { today: unknown; dateToX: unknown }) => unknown
   'body-extra'?: (props: { contentWidth: number; contentHeight: number }) => unknown
+  /** Per-variant bar slot: used for a task whose `variant` matches (falls back to `bar`). */
+  [name: `task-${string}`]: (props: { task: unknown; progress: number }) => unknown
+  /** Per-variant marker slot: used for a milestone whose `variant` matches (falls back to `milestone`). */
+  [name: `milestone-${string}`]: (props: { task: unknown }) => unknown
 }>()
+
+// Consumer-provided per-variant item slots (`task-*` / `milestone-*`) — forwarded
+// to GanttView by their dynamic names since they can't be enumerated statically.
+const slots = useSlots()
+const dynamicItemSlots = computed(
+  () =>
+    Object.keys(slots).filter(name => /^(?:task|milestone)-/.test(name)) as (
+      | `task-${string}`
+      | `milestone-${string}`
+    )[],
+)
 
 // Everything except `height` is forwarded to GanttRoot.
 const rootProps = computed<GanttRootProps>(() => {
@@ -124,6 +144,7 @@ defineExpose({
     @update:rows="emit('update:rows', $event)"
     @update:zoom="emit('update:zoom', $event)"
     @zoom-change="emit('zoom-change', $event)"
+    @range-change="emit('range-change', $event)"
     @group-toggle="emit('group-toggle', $event)"
     @dependency-create="emit('dependency-create', $event)"
     @dependency-remove="emit('dependency-remove', $event)"
@@ -152,17 +173,29 @@ defineExpose({
       <template v-if="$slots.sidebar" #sidebar="slotProps"
         ><slot name="sidebar" v-bind="slotProps"
       /></template>
+      <template v-if="$slots['non-working']" #non-working="slotProps">
+        <slot name="non-working" v-bind="slotProps" />
+      </template>
       <template v-if="$slots.grid" #grid="slotProps"
         ><slot name="grid" v-bind="slotProps"
       /></template>
       <template v-if="$slots.bars" #bars="slotProps"
         ><slot name="bars" v-bind="slotProps"
       /></template>
+      <template v-for="name in dynamicItemSlots" :key="name" #[name]="slotProps">
+        <slot :name="name" v-bind="slotProps" />
+      </template>
       <template v-if="$slots['group-bars']" #group-bars="slotProps">
         <slot name="group-bars" v-bind="slotProps" />
       </template>
       <template v-if="$slots.baselines" #baselines="slotProps">
         <slot name="baselines" v-bind="slotProps" />
+      </template>
+      <template v-if="$slots['period-bands']" #period-bands="slotProps">
+        <slot name="period-bands" v-bind="slotProps" />
+      </template>
+      <template v-if="$slots.period" #period="slotProps">
+        <slot name="period" v-bind="slotProps" />
       </template>
       <template v-if="$slots.conflicts" #conflicts="slotProps">
         <slot name="conflicts" v-bind="slotProps" />

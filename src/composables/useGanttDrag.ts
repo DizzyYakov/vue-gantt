@@ -13,6 +13,13 @@ export interface DragOptions {
 /** Whether a pointer drag moves the bar, resizes an edge, or edits progress. */
 export type DragMode = 'move' | 'resize-start' | 'resize-end' | 'progress'
 
+/** Collapse the internal drag mode to the coarse kind shown in the drag label. */
+function dragLabelKind(mode: DragMode): 'progress' | 'move' | 'resize' {
+  if (mode === 'progress') return 'progress'
+  if (mode === 'move') return 'move'
+  return 'resize'
+}
+
 /** Where the task would land if the drag ended now. */
 export interface DragPreview {
   start: Date
@@ -65,12 +72,10 @@ export function useGanttDrag(options: DragOptions) {
 
   function onPointerDown(event: PointerEvent, dragMode: DragMode = 'move'): void {
     const cfg = ctx.config.value
-    const allowed =
-      dragMode === 'move'
-        ? enabled.value
-        : dragMode === 'progress'
-          ? cfg.progressDraggable
-          : cfg.resizable
+    // Each drag mode has its own enabling flag; resize is the default (both edges).
+    let allowed = cfg.resizable
+    if (dragMode === 'move') allowed = enabled.value
+    else if (dragMode === 'progress') allowed = cfg.progressDraggable
     if (event.button !== 0 || !allowed) return
     mode.value = dragMode
     moveThreshold = event.pointerType === 'touch' ? TOUCH_MOVE_THRESHOLD : MOVE_THRESHOLD
@@ -199,7 +204,7 @@ export function useGanttDrag(options: DragOptions) {
     const p = preview.value
     if (!p) return ''
     const task = options.resolved.value
-    const kind = mode.value === 'progress' ? 'progress' : mode.value === 'move' ? 'move' : 'resize'
+    const kind = dragLabelKind(mode.value)
     // A consumer-supplied formatter wins for every drag kind.
     const formatter = ctx.config.value.dragLabel
     if (formatter) {
@@ -207,8 +212,9 @@ export function useGanttDrag(options: DragOptions) {
     }
     if (kind === 'progress') return `${p.progress}%`
     const fmt = ctx.config.value.dragLabelFormat
-    if (task.type === 'milestone') return format(p.start, fmt)
-    return `${format(p.start, fmt)} → ${format(p.end, fmt)}`
+    const locale = ctx.config.value.locale
+    if (task.type === 'milestone') return format(p.start, fmt, { locale })
+    return `${format(p.start, fmt, { locale })} → ${format(p.end, fmt, { locale })}`
   })
 
   function commit(): void {

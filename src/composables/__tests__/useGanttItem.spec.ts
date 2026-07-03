@@ -106,4 +106,20 @@ describe('useGanttItem (declarative)', () => {
     const api = run({ task }, { rows: [{ id: 'r1', tasks: [] }] })()
     expect(api.draggable.value).toBe(false)
   })
+
+  it('carries `variant` through to the resolved task (declarative registration)', async () => {
+    // Declarative mode doesn't route slots itself, but `resolved.variant` must
+    // still reach the consumer's own default-slot content.
+    const api = run(
+      { id: 'a', start: '2026-01-01', end: '2026-01-05', rowId: 'r1', variant: 'summary' },
+      { rows: [{ id: 'r1', tasks: [] }], unit: 'day' },
+    )()
+    await nextTick()
+    expect(api.resolved.value.variant).toBe('summary')
+  })
+
+  it('leaves `variant` undefined when not supplied', () => {
+    const api = run({ task }, { rows: [{ id: 'r1', tasks: [] }] })()
+    expect(api.resolved.value.variant).toBeUndefined()
+  })
 })

@@ -1,4 +1,5 @@
 import { flushPromises, mount } from '@vue/test-utils'
+import { de } from 'date-fns/locale'
 import { describe, expect, it } from 'vitest'
 import { h, nextTick } from 'vue'
 import Gantt from '../Gantt.vue'
@@ -79,6 +80,15 @@ describe('hover tooltip (opt-in)', () => {
     expect(wrapper.find('.gantt-tooltip').exists()).toBe(false)
 
     wrapper.unmount()
+  })
+
+  it('localizes the tooltip date via the `locale` prop', async () => {
+    // Jan 2026 in German → "Jan." (date-fns `d MMM yyyy`).
+    const wrapper = mount(Gantt, { props: { rows, tooltip: true, locale: de } })
+    await wrapper.find('.gantt-bar').trigger('pointerenter')
+    await nextTick()
+    const text = wrapper.find('.gantt-task .gantt-tooltip').text()
+    expect(text).toContain('Jan.') // German abbreviation carries a trailing dot
   })
 
   it('the `tooltip` slot overrides content AND enables the tooltip without the prop', async () => {

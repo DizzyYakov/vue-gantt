@@ -40,6 +40,8 @@ const resizable = computed(() => ctx.config.value.resizable)
 const progressDraggable = computed(() => ctx.config.value.progressDraggable)
 const linkable = computed(() => ctx.config.value.linkable)
 const editable = computed(() => ctx.config.value.editable)
+// Tooltip date formatter, localized via the `locale` config.
+const fmtDate = (d: Date): string => format(d, 'd MMM yyyy', { locale: ctx.config.value.locale })
 // Inline rename of the bar label (opt-in via `editable`, on double-click).
 const {
   editing: editingName,
@@ -257,7 +259,7 @@ function onBarUp(event: PointerEvent): void {
       <slot name="tooltip" :task="resolved">
         <span class="gantt-tooltip__name">{{ resolved.name }}</span>
         <span class="gantt-tooltip__dates">
-          {{ format(resolved.start, 'd MMM yyyy') }} – {{ format(resolved.end, 'd MMM yyyy') }}
+          {{ fmtDate(resolved.start) }} – {{ fmtDate(resolved.end) }}
         </span>
         <span class="gantt-tooltip__progress">{{ Math.round(resolved.progress) }}%</span>
       </slot>

@@ -42,6 +42,66 @@ describe('Gantt (prop-driven)', () => {
     expect(dep.attributes('data-to')).toBe('b')
   })
 
+  it('forwards a per-variant `task-${variant}` slot through the public wrapper', () => {
+    const variantRows: GanttRowData[] = [
+      {
+        id: 'r1',
+        tasks: [
+          { id: 'a', start: '2026-01-01', end: '2026-01-05', variant: 'summary' },
+          { id: 'b', start: '2026-01-06', end: '2026-01-10' },
+        ],
+      },
+    ]
+    const wrapper = mount(Gantt, {
+      props: { rows: variantRows, unit: 'day' },
+      slots: {
+        'task-summary': (props: { task: unknown }) =>
+          h('span', { class: 'summary-slot' }, (props.task as { id: string }).id),
+        bar: (props: { task: unknown }) =>
+          h('span', { class: 'generic-bar' }, (props.task as { id: string }).id),
+      },
+    })
+    expect(wrapper.findAll('.summary-slot').map(n => n.text())).toEqual(['a'])
+    expect(wrapper.findAll('.generic-bar').map(n => n.text())).toEqual(['b'])
+  })
+
+  it('forwards a per-variant `milestone-${variant}` slot through the public wrapper', () => {
+    const variantRows: GanttRowData[] = [
+      {
+        id: 'r1',
+        tasks: [
+          { id: 'm', type: 'milestone', start: '2026-01-08', variant: 'release' },
+          { id: 'n', type: 'milestone', start: '2026-01-12' },
+        ],
+      },
+    ]
+    const wrapper = mount(Gantt, {
+      props: { rows: variantRows, unit: 'day' },
+      slots: {
+        'milestone-release': (props: { task: unknown }) =>
+          h('span', { class: 'release-marker' }, (props.task as { id: string }).id),
+      },
+    })
+    expect(wrapper.findAll('.release-marker').map(n => n.text())).toEqual(['m'])
+    // The un-tagged milestone still renders the built-in diamond (no matching slot forwarded).
+    expect(wrapper.findAll('.gantt-milestone__diamond')).toHaveLength(1)
+  })
+
+  it('forwards the `non-working` section slot through the public wrapper', () => {
+    const wrapper = mount(Gantt, {
+      props: { rows, unit: 'day', nonWorking: true },
+      slots: {
+        'non-working': (props: { bands: unknown }) =>
+          h('div', { class: 'custom-nonworking' }, String((props.bands as unknown[]).length)),
+      },
+    })
+    // The custom slot replaces the default GanttNonWorking layer and receives the bands.
+    const custom = wrapper.find('.custom-nonworking')
+    expect(custom.exists()).toBe(true)
+    expect(Number(custom.text())).toBeGreaterThan(0)
+    expect(wrapper.findAll('.gantt-nonworking-band')).toHaveLength(0)
+  })
+
   it('positions a bar using the shared scale', () => {
     const wrapper = mount(Gantt, {
       props: { rows, unit: 'day', columnWidth: 40, today: '2026-01-03' },

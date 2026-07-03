@@ -141,6 +141,8 @@ slots for overriding any part. Every slot is scoped — its props give you the s
 | `timeline`     | `{ config, visibleColumnsFor }`   | `<GanttTimeline>` (the axis header) |
 | `sidebar`      | `{ rows, groups }`                | `<GanttTaskList>` (the row labels)  |
 | `grid`         | `{ columns, rows }`               | `<GanttGrid>` (the body grid)       |
+| `non-working`  | `{ bands }`                       | `<GanttNonWorking>` (calendar shading) |
+| `period-bands` | `{ periods }`                     | `<GanttPeriods>` (sprint bands)     |
 | `bars`         | `{ tasks }`                       | the task bar / milestone layer      |
 | `group-bars`   | `{ groups }`                      | `<GanttGroupBar>` (group rollups)   |
 | `conflicts`    | `{ conflicts }`                   | `<GanttConflicts>`                  |
@@ -154,17 +156,35 @@ slots for overriding any part. Every slot is scoped — its props give you the s
 `visibleColumnsFor` is `(tier: GanttUnit) => GanttColumn[]` (windowed), `dateToX`
 is `(date: Date \| string \| number) => number`, `rows`/`groups` are the visible
 `ResolvedRow[]` / `ResolvedGroup[]`, `columns` are the visible base-unit
-`GanttColumn[]`, `tasks` are `ResolvedTask[]` (all of them for `dependencies`,
-the plotted/visible ones for `bars`, `baselines` and `deadlines`), `today` is the
-configured reference `Date`, `conflicts` is `GanttConflict[]` (empty unless
-`overlap: 'conflict'`), and `slack` is a `Map<string, number>` of free-float days by
-task id (empty unless `slack` is on).
+`GanttColumn[]`, `periods` is the resolved `ResolvedPeriod[]` (empty unless the
+`periods` prop is set), `bands` is the resolved `ResolvedNonWorkingBand[]` (empty
+unless the `nonWorking` prop is set), `tasks` are `ResolvedTask[]` (all of them for
+`dependencies`, the plotted/visible ones for `bars`, `baselines` and `deadlines`),
+`today` is the configured reference `Date`, `conflicts` is `GanttConflict[]` (empty
+unless `overlap: 'conflict'`), and `slack` is a `Map<string, number>` of free-float
+days by task id (empty unless `slack` is on).
 
 **Leaf slots** customize a single repeated item: `row` (`{ row, index }`),
 `group` (`{ group, collapsed, toggle }`), `groupBar` (`{ group }`), `column`
-(`{ column, tier }`), `bar` (`{ task, progress }`), `milestone` (`{ task }`),
+(`{ column, tier }`), `period` (`{ period }`), `bar` (`{ task, progress }`), `milestone` (`{ task }`),
 `tooltip` (`{ task }`), `rowEditor` (`{ row, value, commit, cancel }`) and
 `taskEditor` (`{ task, value, commit, cancel }`).
+
+**Per-variant item slots.** Tag an item with a free-form `variant` and the
+prop-driven render picks a slot by it: a bar looks for `task-${variant}`
+(`{ task, progress }`), a marker for `milestone-${variant}` (`{ task }`). When no
+such slot is provided it falls back to the generic `bar` / `milestone` slot, then
+to the built-in default — so variants are purely additive. Handy for rendering
+categories (design vs. dev bars, release vs. checkpoint markers) differently:
+
+```vue
+<Gantt :rows="rows">
+  <!-- rows include e.g. { id, start, end, variant: 'design' } and a { type: 'milestone', variant: 'release' } -->
+  <template #task-design="{ task }">🎨 {{ task.name }}</template>
+  <template #milestone-release="{ task }">🚀 {{ task.name }}</template>
+  <template #bar="{ task }">{{ task.name }}</template> <!-- fallback for un-tagged / other bars -->
+</Gantt>
+```
 
 The `rowEditor` / `taskEditor` slots replace the built-in inline `<input>` (see
 [Inline editing](#inline-editing)) with your own editor — a `<select>`, a masked
@@ -229,11 +249,13 @@ every [chart event](#events); the rest are the building blocks.
 | `<GanttTask>`         | `GanttItemProps`                                 | `click` · `dblclick` · `contextmenu`             |
 | `<GanttMilestone>`    | `GanttItemProps`                                 | `click` · `dblclick` · `contextmenu`             |
 | `<GanttGrid>`         | `tier?: GanttUnit`                               | `cell-click` · `cell-dblclick`                   |
+| `<GanttNonWorking>`   | — (default slot `{ band }`)                      | —                                                |
 | `<GanttDependencies>` | —                                                | `dependency-click`                               |
 | `<GanttConflicts>`    | —                                                | —                                                |
 | `<GanttSlack>`        | — (default slot `{ taskId, slack }`)             | —                                                |
 | `<GanttDeadlines>`    | — (default slot `{ taskId, deadline }`)          | —                                                |
 | `<GanttBaselines>`    | — (default slot `{ task }`)                      | —                                                |
+| `<GanttPeriods>`      | — (default slot `{ period }`)                    | —                                                |
 | `<GanttToday>`        | `interval?: number` (ms, default `1000`)         | —                                                |
 | `<GanttZoom>`         | — (reads context; default slot for custom UI)    | — (calls `setZoom`/`zoomIn`/`zoomOut` on root)   |
 
@@ -259,6 +281,8 @@ parent collapses to the content height and simply grows to fit (as before).
 | `tiers`                 | `GanttUnit[]`                                     | `[unit]`        | Header rows, coarse → fine, e.g. `['month','week','day']`.                                                                                                                                                                                                    |
 | `columnWidth`           | `number`                                          | `40`            | Width of one base-unit cell, px.                                                                                                                                                                                                                              |
 | `zoomLevels`            | `GanttZoomLevel[]`                                | `DEFAULT_ZOOM_LEVELS` | Named view-mode presets the `zoom` prop / `GanttZoom` switch between; each bundles `tiers` + `columnWidth` (year → hour).                                                                                                                                |
+| `periods`               | `GanttPeriod[]`                                   | —               | Custom timeline periods (sprints): a background band over the body + a labelled header row. Build a cadence with `sprintPeriods` or pass your own list. See [Timeline period bands](#timeline-period-bands-sprints).                                            |
+| `nonWorking`            | `boolean \| NonWorkingCalendar`                   | —               | Working calendar: shade non-working time (weekends/holidays/custom off periods) as a background band. `true` shades Sat/Sun. Purely decorative — never extends the axis or adds a header row. See [Non-working calendar](#non-working-calendar).              |
 | `zoom`                  | `string`                                          | —               | Active zoom level id; supports `v-model:zoom`. When set, the matching level's `tiers`/`columnWidth` override those props. Omit for the classic `tiers`/`columnWidth`/`unit` behavior.                                                                          |
 | `rowHeight`             | `number`                                          | `36`            | Row height, px.                                                                                                                                                                                                                                               |
 | `headerRowHeight`       | `number`                                          | `28`            | Height of one timeline tier row, px.                                                                                                                                                                                                                          |
@@ -282,8 +306,10 @@ parent collapses to the content height and simply grows to fit (as before).
 | `dragLabelFormat`       | `string`                                          | `'d MMM HH:mm'` | date-fns format for the live drag tooltip.                                                                                                                                                                                                                    |
 | `dragLabel`             | `(info: GanttDragLabelInfo) => string`            | —               | Override the drag tooltip text (move/resize/progress).                                                                                                                                                                                                        |
 | `startDate` / `endDate` | `Date \| string \| number`                        | auto            | Explicit axis bounds (auto-derived from tasks otherwise).                                                                                                                                                                                                     |
+| `timelineMode`          | `'fixed' \| 'infinite'`                           | `'fixed'`       | Edge behaviour. `infinite` auto-extends the range by one screen when you scroll to an edge (anchoring the scroll on the left). Both modes emit `range-change` at an edge — see [Timeline range](#timeline-range-infinite-scroll).                              |
 | `today`                 | `Date \| string \| number`                        | now             | The "today" reference.                                                                                                                                                                                                                                        |
 | `labelFormat`           | `GanttLabelFormat`                                | per tier        | Column label formatting. A date-fns `string` (base unit only — other tiers keep defaults), a per-tier map `Partial<Record<GanttUnit, string>>`, or a `(date, tier) => string` function (full control). E.g. `{ month: 'LLLL yyyy', week: "'W'w", day: 'd' }`. |
+| `locale`                | `Locale` (date-fns)                               | English         | date-fns locale for all date labels (headers, drag labels, tooltips). See [Localization](#localization-i18n).                                                                                                                                                  |
 
 ### Item props (`GanttItemProps`, for `<GanttTask>` / `<GanttMilestone>`)
 
@@ -297,6 +323,7 @@ Declarative fields — the item registers into the enclosing `<GanttRow>`:
 | `end`          | `Date \| string \| number` | End date (ignored for milestones).             |
 | `progress`     | `number`                   | Completion 0–100.                              |
 | `dependencies` | `string[]`                 | Ids of predecessors (finish-to-start).         |
+| `variant`      | `string`                   | Free-form category → per-variant slot (above). |
 | `segments`     | `GanttSegment[]`           | Work spans with paused gaps (a "split" task).  |
 | `deadline`     | `Date \| string \| number` | Target date (drawn as a line; flags overdue).  |
 | `constraint`   | `GanttConstraint`          | Scheduling constraint (`{ type, date }`).      |
@@ -415,6 +442,7 @@ your data (the [utilities](#utilities) make this one-liners).
 | `update:rows`                  | `GanttRowData[]`                             | a task/dependency change is applied (`v-model:rows`).  |
 | `update:zoom`                  | `string`                                     | the active zoom level changes (`v-model:zoom`).        |
 | `zoom-change`                  | `GanttZoomEvent`                             | the active zoom level changes (carries the level).     |
+| `range-change`                 | `GanttRangeChangeEvent`                      | a scroll reaches a timeline edge (both `timelineMode`s).  |
 | `group-toggle`                 | `GanttGroupToggleEvent`                      | a group is collapsed/expanded.                         |
 | `dependency-create`            | `GanttDependencyChange`                      | a link is dragged from one task to another.            |
 | `dependency-update`            | `GanttDependencyUpdate`                      | an arrow endpoint is re-routed (carries `previous`).   |
@@ -484,6 +512,11 @@ interface GanttZoomLevel {
 interface GanttZoomEvent {
   id: string
   level: GanttZoomLevel
+}
+interface GanttRangeChangeEvent {
+  side: 'start' | 'end'
+  start: Date
+  end: Date
 }
 ```
 
@@ -672,6 +705,10 @@ import {
   violatesConstraint, // deadline / constraint detectors
   rollupProgress,
   validateRows,
+  sprintPeriods, // build a run of equal-length timeline periods (sprints; see SprintPeriodsOptions)
+  nonWorkingBands, // compute non-working (weekend/holiday/off-period) bands over a range
+  toCSV,
+  downloadCSV, // serialize tasks to CSV / trigger a browser download (see Export)
 } from '@dizzy_yakov/vue-gantt'
 ```
 
@@ -682,6 +719,35 @@ nearest successor (tasks with no successors, or no positive gap, are absent). Th
 back the matching `criticalPath` / `slack` props: the prop visualizes what the
 utility computes, so you can also call the utility directly (e.g. to label or report
 the schedule).
+
+### Export (CSV)
+
+`toCSV(rows, options?)` serializes the tasks of your `rows` to an RFC-4180 CSV
+string — one line per task, with its owning row's id/name as leading columns. It's
+pure and framework-free (accepts raw `GanttRow[]` or the resolved rows from the
+context). `downloadCSV(rows, filename?, options?)` wraps it and triggers a browser
+download (`filename` defaults to `'gantt.csv'`).
+
+```ts
+import { toCSV, downloadCSV } from '@dizzy_yakov/vue-gantt'
+
+downloadCSV(rows, 'schedule.csv')
+
+// Custom columns / delimiter / date format:
+const csv = toCSV(rows, {
+  delimiter: ';',
+  dateFormat: 'dd.MM.yyyy',
+  columns: [
+    { header: 'ID', value: (task) => task.id },
+    { header: 'Owner', value: (task) => String(task.meta?.owner ?? '') },
+    { header: 'Start', value: (task) => (task.start instanceof Date ? task.start.toISOString() : task.start) },
+  ],
+})
+```
+
+Default columns: `Row Id`, `Row`, `Task Id`, `Task`, `Type`, `Start`, `End`,
+`Progress`, `Dependencies`, `Deadline`. Options: `columns`, `delimiter` (`,`),
+`dateFormat` (`yyyy-MM-dd`), `locale`, `header` (`true`), `eol` (`\r\n`).
 
 ## Row grouping
 
@@ -730,6 +796,81 @@ override it via the `baselines` section slot). `<GanttBaselines>` exposes a
 default slot `{ task }` to render each baseline segment yourself. Style the shadow
 bars with the `--gantt-baseline-*` [variables](#css-variables).
 
+## Timeline period bands (sprints)
+
+Custom **periods** group the *time axis* (unlike [row groups](#row-grouping), which
+group rows). Each period renders a faint full-height **band** over the chart body
+plus a **labelled row** in the timeline header — ideal for sprints, phases or
+release windows. Pass a `periods` list (uneven spans + custom labels are fine); the
+`periods` also extend the auto date range so a period before the first task stays
+visible.
+
+```vue
+<script setup>
+import { Gantt, sprintPeriods } from '@dizzy_yakov/vue-gantt'
+
+// A regular cadence…
+const periods = sprintPeriods({ from: '2026-06-01', every: 2, unit: 'week', count: 6 })
+// …or your own: [{ id: 's1', start: '2026-06-01', end: '2026-06-15', label: 'Sprint 1' }, …]
+</script>
+
+<template>
+  <Gantt :rows="rows" :periods="periods" :tiers="['month', 'week', 'day']" />
+</template>
+```
+
+`sprintPeriods({ from, every, unit: 'day' | 'week', count, label?, id? })` builds a
+contiguous run of equal-length periods. The bands are rendered by `<GanttPeriods>`
+(auto-mounted; override via the `period-bands` section slot for the body band, or
+the `period` slot for the header label). Style with the `--gantt-period-*`
+[variables](#css-variables).
+
+## Non-working calendar
+
+A **working calendar** shades non-working time — weekends, holidays, or arbitrary
+off spans — as a faint background band. Unlike [periods](#timeline-period-bands-sprints)
+above, it's purely decorative: it never adds a header row and never extends the
+auto date range, it only tints time already on the chart. Pass `true` to shade
+Saturday/Sunday, or a `NonWorkingCalendar` for full control:
+
+```vue
+<script setup>
+import { Gantt } from '@dizzy_yakov/vue-gantt'
+</script>
+
+<template>
+  <!-- Sat/Sun only -->
+  <Gantt :rows="rows" non-working />
+
+  <!-- weekends + a holiday + a custom off span -->
+  <Gantt
+    :rows="rows"
+    :non-working="{
+      holidays: ['2026-12-25'],
+      periods: [{ id: 'maintenance', start: '2026-06-15', end: '2026-06-17' }],
+    }"
+  />
+</template>
+```
+
+`NonWorkingCalendar` is `{ weekends?: number[]; holidays?: (Date | string | number)[];
+periods?: { id?: string; start; end }[] }`. `weekends` is a list of `getDay()`
+weekday numbers (`0`=Sunday … `6`=Saturday), defaulting to `[0, 6]`; pass `[]` to
+shade only `holidays`/`periods`. Consecutive non-working days are merged into a
+single band. The bands are rendered by `<GanttNonWorking>` (auto-mounted; override
+via the `non-working` section slot, or its own default slot (`{ band }`) for custom
+content inside each band). Style with `--gantt-nonworking-bg`.
+
+The pure `nonWorkingBands(calendar, range)` helper computes the same bands outside
+of Vue (e.g. to report or validate a schedule against the calendar):
+
+```ts
+import { nonWorkingBands } from '@dizzy_yakov/vue-gantt'
+
+nonWorkingBands(true, { start, end }) // Sat/Sun shaded
+nonWorkingBands({ holidays: ['2026-07-04'] }, { start, end }) // + a holiday
+```
+
 ## Zoom / view-mode
 
 A zoom level is a **view-mode preset** — a named bundle of `tiers` + `columnWidth`.
@@ -766,6 +907,33 @@ Its default slot exposes `{ levels, active, setZoom, zoomIn, zoomOut, canZoomIn,
 for a fully custom UI. You can also drive zoom imperatively
 ([`setZoom`/`zoomIn`/`zoomOut`](#imperative-methods) via a ref) or react to the
 `zoom-change` event ([`GanttZoomEvent`](#events)).
+
+## Timeline range (infinite scroll)
+
+By default the axis spans a **fixed** range — the explicit `startDate`/`endDate`
+if you pass them, otherwise a range auto-derived from the tasks (and periods),
+snapped to the coarsest tier. Both bounds are reactive, so binding refs to
+`startDate`/`endDate` lets you drive the window yourself.
+
+Set `timeline-mode="infinite"` to pan the axis indefinitely: scrolling to either edge
+extends the range by one screenful of dates. Prepending dates on the **left**
+would shift every bar right, so the scroll position is corrected automatically —
+the view stays anchored where you were. Column virtualization keeps the DOM
+bounded no matter how far you scroll.
+
+In **both** modes a `range-change` event fires whenever a scroll reaches an edge:
+`range-change` → `GanttRangeChangeEvent { side: 'start' | 'end', start: Date, end: Date }`
+(`start`/`end` are the proposed axis bounds after extending by one screen — see
+[Events](#events)).
+
+- In `infinite` mode the bounds are **already applied** — use the event to
+  lazy-load the data for the newly revealed span.
+- In `fixed` mode it's a **suggestion**: widen your own `startDate`/`endDate`
+  (and fetch data) to implement a fully controlled infinite scroll.
+
+```vue
+<Gantt :rows="rows" :height="480" timeline-mode="infinite" @range-change="onRange" />
+```
 
 ## Critical path & slack
 
@@ -810,6 +978,33 @@ that:
 <!-- Force the larger touch targets everywhere (otherwise auto on coarse pointers). -->
 <Gantt :rows="rows" touch-targets draggable resizable editable tooltip />
 ```
+
+## Localization (i18n)
+
+Date labels — the timeline **column headers**, the live **drag labels** and the
+**tooltips** — are formatted with date-fns. Pass a date-fns `Locale` via the `locale`
+prop to translate month/day names. Import the locale yourself so only the ones you use
+are bundled (date-fns is the library's one runtime dependency; it never imports locale
+data itself):
+
+```vue
+<script setup>
+import { Gantt } from '@dizzy_yakov/vue-gantt'
+import { ru } from 'date-fns/locale'
+</script>
+
+<template>
+  <Gantt :rows="rows" :locale="ru" :tiers="['month', 'week', 'day']" />
+</template>
+```
+
+`locale` composes with [`labelFormat`](#configuration-props-ganttrootprops) (locale-aware
+custom formats) and with `dragLabelFormat`. A `labelFormat` **function** owns its own
+formatting, so it isn't affected by `locale` — call `format(date, fmt, { locale })`
+yourself inside it if needed.
+
+> **RTL** (right-to-left layouts) is not covered yet — `locale` handles date text only,
+> not layout mirroring.
 
 ## Theming
 
@@ -1008,6 +1203,23 @@ hatched look.
 | `--gantt-tooltip-font-size` | drag-label font size       | Hover tooltip font size.     |
 | `--gantt-tooltip-shadow`    | `0 2px 8px rgb(0 0 0/25%)` | Hover tooltip drop shadow.   |
 
+**Timeline period bands (sprints)**
+
+| Variable                      | Default              | Purpose                                        |
+| ----------------------------- | -------------------- | ---------------------------------------------- |
+| `--gantt-period-band-bg`      | `rgb(99 102 241/4%)` | Body band fill (even periods).                 |
+| `--gantt-period-band-alt-bg`  | `transparent`        | Body band fill (odd periods, alternating).     |
+| `--gantt-period-border`       | `1px dashed …grid`   | Divider between periods (body + header).        |
+| `--gantt-period-color`        | `inherit`            | Header period label colour.                     |
+| `--gantt-period-font-weight`  | `600`                | Header period label weight.                     |
+| `--gantt-period-font-size`    | header font size     | Header period label size.                       |
+
+**Non-working calendar**
+
+| Variable                | Default                 | Purpose                                                 |
+| ----------------------- | ------------------------ | -------------------------------------------------------- |
+| `--gantt-nonworking-bg` | `rgb(100 116 139 / 8%)` | Non-working band fill (weekends/holidays/off periods).   |
+
 **Today**
 
 | Variable               | Default            | Purpose              |
@@ -1063,16 +1275,17 @@ The chart is built for large plans (tested at **10 000 tasks** — see the
   window are rendered, so the DOM stays small regardless of dataset size. Column
   generation is windowed; `contentWidth` is computed analytically (O(1), no scan),
   and a `MAX_CELLS` guard bounds a single generation pass.
+- **Dependency arrows are viewport-culled too.** Only links whose endpoint rows
+  intersect the visible window get an SVG path (window-straddling links are kept),
+  so dense dependency graphs don't emit a path per edge. The `dependencies` slot
+  receives the same culled `links`, consistent with the other virtualized slots.
+- **Group rollups are O(rows).** A collapsible group's summary (start/end/progress)
+  is computed in a single bucketed pass, so many groups don't cost O(groups × rows)
+  on each edit/collapse.
 - **Benchmarks.** `bun run bench` (`vitest bench`) runs
   `src/__tests__/perf.bench.ts` — pure-function numbers (layout, critical-path,
   slack, and the per-scroll visible-task filter) at 1k/10k. Benchmarks are not part
   of `vitest run`/CI.
-
-**Known limitation:** dependency arrows are **not** viewport-culled yet — every
-edge renders an SVG path regardless of scroll, so a chart with dense dependencies
-across tens of thousands of tasks pays an O(edges) DOM cost. For the very largest
-datasets, prefer fewer/no `dependencies` (or keep `linkable` off) until per-viewport
-culling lands.
 
 ## Development
 

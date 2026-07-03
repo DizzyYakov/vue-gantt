@@ -18,7 +18,17 @@ import {
   startOfWeek,
   startOfYear,
 } from 'date-fns'
-import { computed, onMounted, onUnmounted, provide, reactive, ref, toRef, watch } from 'vue'
+import {
+  computed,
+  nextTick,
+  onMounted,
+  onUnmounted,
+  provide,
+  reactive,
+  ref,
+  toRef,
+  watch,
+} from 'vue'
 import { useGanttAutoscroll } from '../composables/useGanttAutoscroll'
 import { useGanttLink } from '../composables/useGanttLink'
 import { useGanttScale } from '../composables/useGanttScale'
@@ -32,6 +42,7 @@ import {
   applyMove,
   autoSchedule,
   criticalPath,
+  nonWorkingBands,
   removeDependency,
   slack,
   updateRow,
@@ -54,6 +65,7 @@ import type {
   GanttGroupToggleEvent,
   GanttMoveEvent,
   GanttProgressEvent,
+  GanttRangeChangeEvent,
   GanttResizeEvent,
   GanttRowEditEvent,
   GanttTaskEditEvent,
@@ -66,6 +78,8 @@ import type {
   GanttZoomEvent,
   GanttZoomLevel,
   ResolvedGroup,
+  ResolvedNonWorkingBand,
+  ResolvedPeriod,
   ResolvedRow,
   ResolvedTask,
 } from '../types'
@@ -95,14 +109,18 @@ const props = withDefaults(defineProps<GanttRootProps>(), {
   arrowHead: triangleArrow,
   snapToGrid: GANTT_DEFAULTS.snapToGrid,
   autoSchedule: GANTT_DEFAULTS.autoSchedule,
+  timelineMode: GANTT_DEFAULTS.timelineMode,
   dragLabelFormat: GANTT_DEFAULTS.dragLabelFormat,
   dragLabel: undefined,
   startDate: undefined,
   endDate: undefined,
   today: undefined,
   labelFormat: undefined,
+  locale: undefined,
   zoomLevels: () => DEFAULT_ZOOM_LEVELS,
   zoom: undefined,
+  periods: undefined,
+  nonWorking: undefined,
 })
 
 const emit = defineEmits<{
@@ -116,6 +134,7 @@ const emit = defineEmits<{
   /** `v-model:zoom` — emitted with the active zoom level id when it changes. */
   'update:zoom': [id: string]
   'zoom-change': [event: GanttZoomEvent]
+  'range-change': [event: GanttRangeChangeEvent]
   'group-toggle': [event: GanttGroupToggleEvent]
   'dependency-create': [event: GanttDependencyChange]
   'dependency-remove': [event: GanttDependencyChange]
@@ -340,18 +359,44 @@ const taskOrder = computed(() => {
   return map
 })
 
-const start = computed<Date>(() => {
+// Range derived from the props/data alone (before any infinite-scroll growth).
+const derivedStart = computed<Date>(() => {
   if (props.startDate != null) return toDate(props.startDate)
-  const starts = tasks.value.map(t => t.start)
+  // Periods extend the auto range so a sprint before the first task stays visible.
+  const starts = [
+    ...tasks.value.map(t => t.start),
+    ...(props.periods ?? []).map(p => toDate(p.start)),
+  ]
   const base = starts.length ? minDate(starts) : today.value
   return floorToUnit(base, coarsestUnit.value)
 })
 
-const end = computed<Date>(() => {
+const derivedEnd = computed<Date>(() => {
   if (props.endDate != null) return toDate(props.endDate)
-  const ends = tasks.value.map(t => t.end)
+  const ends = [
+    ...tasks.value.map(t => t.end),
+    ...(props.periods ?? []).map(p => toDate(p.end)),
+  ]
   const base = ends.length ? maxDate(ends) : addDays(today.value, 14)
   return ceilToUnit(base, coarsestUnit.value)
+})
+
+// Infinite-scroll growth beyond the derived range (null until an edge extends
+// it). The effective axis is the derived range widened by these, so `fixed` mode
+// (where they stay null) behaves exactly as the plain derived range.
+const extendedStart = ref<Date | null>(null)
+const extendedEnd = ref<Date | null>(null)
+
+const start = computed<Date>(() => {
+  const grown = extendedStart.value
+  if (grown && grown < derivedStart.value) return grown
+  return derivedStart.value
+})
+
+const end = computed<Date>(() => {
+  const grown = extendedEnd.value
+  if (grown && grown > derivedEnd.value) return grown
+  return derivedEnd.value
 })
 
 const scale = useGanttScale({
@@ -361,6 +406,7 @@ const scale = useGanttScale({
   end,
   today,
   labelFormat: toRef(props, 'labelFormat'),
+  locale: toRef(props, 'locale'),
 })
 
 const config = computed<GanttConfig>(() => ({
@@ -387,10 +433,12 @@ const config = computed<GanttConfig>(() => ({
   snapToGrid: props.snapToGrid,
   autoSchedule: props.autoSchedule,
   dragLabelFormat: props.dragLabelFormat,
+  locale: props.locale,
   dragLabel: props.dragLabel,
   start: start.value,
   end: end.value,
   today: today.value,
+  timelineMode: props.timelineMode,
 }))
 
 // Row lookup by render index (rows are produced in order).
@@ -435,7 +483,39 @@ function setViewport(metrics: Partial<GanttViewport>): void {
   Object.assign(viewport, metrics)
 }
 
-const headerHeight = computed(() => tiers.value.length * props.headerRowHeight)
+// Custom timeline periods (sprints), positioned in pixels via the scale.
+const periods = computed<ResolvedPeriod[]>(() =>
+  (props.periods ?? []).map((p, index) => {
+    const start = toDate(p.start)
+    const end = toDate(p.end)
+    const x = scale.dateToX(start)
+    return {
+      id: p.id,
+      label: p.label ?? p.id,
+      start,
+      end,
+      x,
+      width: scale.widthBetween(start, end),
+      index,
+      meta: p.meta ?? {},
+    }
+  }),
+)
+
+// Non-working bands (weekends/holidays/off periods), positioned in pixels. Unlike
+// `periods` these never extend the axis or add a header row — pure body shading.
+const nonWorking = computed<ResolvedNonWorkingBand[]>(() =>
+  nonWorkingBands(props.nonWorking ?? false, { start: start.value, end: end.value }).map(band => ({
+    ...band,
+    x: scale.dateToX(band.start),
+    width: scale.widthBetween(band.start, band.end),
+  })),
+)
+
+// A non-empty `periods` adds a labelled header row above the tiers.
+const headerHeight = computed(
+  () => (tiers.value.length + (periods.value.length ? 1 : 0)) * props.headerRowHeight,
+)
 
 // --- Imperative scroll API ------------------------------------------------
 // The scroll container (registered by `GanttView`) lives below the frozen
@@ -601,6 +681,68 @@ const { linkDraft, beginLink, endLink, refresh: refreshLink } = useGanttLink({
 // While auto-scrolling reveals new tasks, re-resolve the link target / endpoint.
 watch([() => viewport.scrollLeft, () => viewport.scrollTop], () => refreshLink())
 
+// --- Timeline edges: emit `range-change` and (in `infinite`) grow the range ---
+const EDGE_THRESHOLD = OVERSCAN // px from an edge that counts as "reached"
+// Previous edge-zone snapshot, so a reach fires once per entry into a zone (not
+// every scroll frame). `null` until the first measured frame — the initial
+// position (usually pinned to the left) must not count as a reach.
+let previousEdges: { start: boolean; end: boolean } | null = null
+
+// One growth step spans a screenful (falls back to two weeks when unmeasured).
+function extensionSpanDays(): number {
+  const innerWidth = Math.max(0, viewport.width - props.sidebarWidth)
+  const days = innerWidth / scale.pxPerDay.value
+  if (days > 0) return days
+  return 14
+}
+
+function reachStartEdge(): void {
+  const proposedStart = floorToUnit(addDays(start.value, -extensionSpanDays()), coarsestUnit.value)
+  emit('range-change', { side: 'start', start: proposedStart, end: end.value })
+  if (props.timelineMode !== 'infinite') return
+  const previousStart = start.value
+  extendedStart.value = proposedStart
+  // Prepending dates shifts every content-x right by the added width; once the
+  // DOM has grown, nudge the scroll by that delta so the view stays anchored.
+  nextTick(() => {
+    const delta = scale.widthBetween(proposedStart, previousStart)
+    applyScroll(viewport.scrollLeft + delta, undefined, 'auto')
+  })
+}
+
+function reachEndEdge(): void {
+  const proposedEnd = ceilToUnit(addDays(end.value, extensionSpanDays()), coarsestUnit.value)
+  emit('range-change', { side: 'end', start: start.value, end: proposedEnd })
+  if (props.timelineMode !== 'infinite') return
+  extendedEnd.value = proposedEnd
+}
+
+watch(
+  [() => viewport.scrollLeft, () => viewport.width, () => scale.contentWidth.value],
+  () => {
+    if (viewport.width <= 0) return
+    const innerWidth = viewport.width - props.sidebarWidth
+    const nearStart = viewport.scrollLeft <= EDGE_THRESHOLD
+    const nearEnd = viewport.scrollLeft + innerWidth >= scale.contentWidth.value - EDGE_THRESHOLD
+    if (previousEdges) {
+      if (nearStart && !previousEdges.start) reachStartEdge()
+      if (nearEnd && !previousEdges.end) reachEndEdge()
+    }
+    previousEdges = { start: nearStart, end: nearEnd }
+  },
+)
+
+// Dropping back to `fixed` discards any infinite-scroll growth.
+watch(
+  () => props.timelineMode,
+  (mode) => {
+    if (mode === 'fixed') {
+      extendedStart.value = null
+      extendedEnd.value = null
+    }
+  },
+)
+
 const context: GanttContext = {
   config,
   rows,
@@ -622,6 +764,8 @@ const context: GanttContext = {
   rowOf: taskId => taskOrder.value.get(taskId) ?? -1,
   taskBand,
   conflicts,
+  periods,
+  nonWorking,
   criticalTasks,
   slack: slackMap,
   registerRow,

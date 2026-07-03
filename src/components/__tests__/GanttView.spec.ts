@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { h } from 'vue'
 import GanttView from '../GanttView.vue'
-import type { GanttRow, ResolvedRow } from '../../types'
+import type { GanttRow, ResolvedRow, ResolvedTask } from '../../types'
 import { mountInRoot } from '../../__tests__/helpers'
 
 const rows: GanttRow[] = [
@@ -97,5 +97,69 @@ describe('GanttView', () => {
     })
     expect(wrapper.find('.my-grid').exists()).toBe(true)
     expect(wrapper.find('.gantt-grid').exists()).toBe(false)
+  })
+
+  describe('per-variant item slots', () => {
+    const variantRows: GanttRow[] = [
+      {
+        id: 'r1',
+        tasks: [
+          { id: 'a', start: '2026-01-01', end: '2026-01-05', variant: 'summary' },
+          { id: 'b', start: '2026-01-06', end: '2026-01-10' },
+          { id: 'm', type: 'milestone', start: '2026-01-08', variant: 'release' },
+          { id: 'n', type: 'milestone', start: '2026-01-12' },
+        ],
+      },
+    ]
+
+    it('routes a task to its `task-${variant}` slot, others fall back to `bar`', () => {
+      const { wrapper } = mountInRoot(GanttView, {
+        rootProps: { rows: variantRows, unit: 'day' },
+        slots: {
+          'task-summary': ({ task }: { task: ResolvedTask }) =>
+            h('span', { class: 'summary-slot' }, task.id),
+          bar: ({ task }: { task: ResolvedTask }) => h('span', { class: 'generic-bar' }, task.id),
+        },
+      })
+      // The variant-matched task uses the typed slot…
+      expect(wrapper.findAll('.summary-slot').map(n => n.text())).toEqual(['a'])
+      // …while the un-tagged task falls back to the generic `bar` slot.
+      expect(wrapper.findAll('.generic-bar').map(n => n.text())).toEqual(['b'])
+    })
+
+    it('falls back to `bar` when no matching `task-${variant}` slot is provided', () => {
+      const { wrapper } = mountInRoot(GanttView, {
+        rootProps: { rows: variantRows, unit: 'day' },
+        slots: { bar: ({ task }: { task: ResolvedTask }) => h('span', { class: 'generic-bar' }, task.id) },
+      })
+      // Both tasks (variant + plain) render through the generic slot.
+      expect(wrapper.findAll('.generic-bar').map(n => n.text())).toEqual(['a', 'b'])
+    })
+
+    it('routes a milestone to its `milestone-${variant}` slot, others keep the default diamond', () => {
+      const { wrapper } = mountInRoot(GanttView, {
+        rootProps: { rows: variantRows, unit: 'day' },
+        slots: {
+          'milestone-release': ({ task }: { task: ResolvedTask }) =>
+            h('span', { class: 'release-marker' }, task.id),
+        },
+      })
+      expect(wrapper.findAll('.release-marker').map(n => n.text())).toEqual(['m'])
+      // The un-tagged milestone still renders the built-in diamond.
+      expect(wrapper.findAll('.gantt-milestone__diamond')).toHaveLength(1)
+    })
+
+    it('falls back to the built-in default render when a variant has no matching slot and no generic slot either', () => {
+      // No `task-*`/`milestone-*`/`bar`/`milestone` slots at all — even the
+      // variant-tagged items must still render their default markup.
+      const { wrapper } = mountInRoot(GanttView, {
+        rootProps: { rows: variantRows, unit: 'day' },
+      })
+      expect(wrapper.find('.summary-slot').exists()).toBe(false)
+      expect(wrapper.find('.release-marker').exists()).toBe(false)
+      // All four items still render: two bars (default label markup) and two diamonds.
+      expect(wrapper.findAll('.gantt-bar__label').map(n => n.text())).toEqual(['a', 'b'])
+      expect(wrapper.findAll('.gantt-milestone__diamond')).toHaveLength(2)
+    })
   })
 })

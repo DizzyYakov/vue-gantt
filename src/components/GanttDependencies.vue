@@ -6,6 +6,7 @@ import type { GanttDependencyEvent, ResolvedTask } from '../types'
 
 const {
   tasks,
+  visibleRows,
   config,
   contentWidth,
   contentHeight,
@@ -92,14 +93,26 @@ interface DependencyLink {
 }
 
 // Finish-to-start links: an arrow from each dependency's end to the task's start.
+// Virtualized by the visible row window: a link is drawn only if its endpoints'
+// row range intersects the on-screen rows — so a 10k-task chart doesn't emit an
+// SVG path per edge. `visibleRows` is vertical-only and ascending by `order`, and
+// equals every row when the viewport is unmeasured (→ nothing is culled).
 const links = computed<DependencyLink[]>(() => {
   const byId = new Map<string, ResolvedTask>(tasks.value.map(t => [t.id, t]))
+  const vis = visibleRows.value
+  const loRow = vis.length ? vis[0]!.order : -Infinity
+  const hiRow = vis.length ? vis[vis.length - 1]!.order : Infinity
   const result: DependencyLink[] = []
 
   for (const task of tasks.value) {
     for (const depId of task.dependencies) {
       const from = byId.get(depId)
       if (!from) continue
+
+      // Drop links whose row-span sits entirely above or below the window. The
+      // interval test keeps endpoint-visible and window-straddling links alike.
+      if (Math.max(from.order, task.order) < loRow || Math.min(from.order, task.order) > hiRow)
+        continue
 
       const tail = { x: dateToX(from.end), y: centerY(from) }
       const head = { x: dateToX(task.start), y: centerY(task) }

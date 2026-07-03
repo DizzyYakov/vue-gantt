@@ -1,3 +1,4 @@
+import type { Locale } from 'date-fns'
 import type { ComputedRef } from 'vue'
 import type { ArrowHeadBuilder } from './arrowHeads'
 import type { DependencyPathBuilder } from './dependencyPaths'
@@ -81,6 +82,18 @@ export interface GanttConstraint {
 export type GanttOverlapMode = 'lanes' | 'overlap' | 'cascade' | 'conflict'
 
 /**
+ * How the timeline axis reacts at its horizontal edges:
+ * - `fixed` (default): the axis spans the derived (or explicit) range and never
+ *   grows on its own.
+ * - `infinite`: scrolling to either edge auto-extends the range by one screen so
+ *   the timeline can be panned indefinitely; the scroll position is preserved
+ *   when dates are prepended on the left. The `range-change` event fires on every
+ *   edge reach in both modes, so a consumer can lazy-load data (or drive its own
+ *   `startDate`/`endDate` in `fixed` mode).
+ */
+export type GanttTimelineMode = 'fixed' | 'infinite'
+
+/**
  * Task shape accepted from the consumer. A task is a single bar/marker; it lives
  * inside a row. Dates may be `Date` or any string/number that the `Date`
  * constructor understands (e.g. ISO `2026-01-15`).
@@ -98,6 +111,14 @@ export interface GanttTask {
   /** Ids of tasks that must finish before this one (drawn as arrows). */
   dependencies?: string[]
   type?: GanttItemType
+  /**
+   * Free-form category tag. In the prop-driven `<Gantt>` render it selects a
+   * per-variant slot — `task-${variant}` for bars, `milestone-${variant}` for
+   * markers — falling back to the generic `bar`/`milestone` slot when no such
+   * slot is provided. Independent of `type` (which stays the bar/marker
+   * discriminator).
+   */
+  variant?: string
   /**
    * Work segments — when set, the bar is drawn as these spans with paused gaps
    * between them (a "split" task). `start`/`end` still define the overall extent.
@@ -151,6 +172,74 @@ export interface GanttGroup {
   meta?: Record<string, unknown>
 }
 
+/**
+ * A custom timeline period (e.g. a sprint): a horizontal time span drawn as a
+ * band over the chart body + a labelled row in the timeline header. Unlike row
+ * groups (`GanttGroup`), periods group the *time axis*, not the rows. Build a
+ * regular cadence with the `sprintPeriods` helper, or pass your own list.
+ */
+export interface GanttPeriod {
+  /** Stable unique identifier. */
+  id: string
+  /** Span start (inclusive). */
+  start: Date | string | number
+  /** Span end (exclusive). */
+  end: Date | string | number
+  /** Header label. Falls back to `id`. */
+  label?: string
+  /** Arbitrary extra data forwarded to slots untouched. */
+  meta?: Record<string, unknown>
+}
+
+/** A period after its dates are coerced and positioned in pixels. */
+export interface ResolvedPeriod {
+  id: string
+  label: string
+  start: Date
+  end: Date
+  /** Left offset in pixels. */
+  x: number
+  /** Width in pixels. */
+  width: number
+  /** Zero-based index in order (drives the alternating band fill). */
+  index: number
+  /** Arbitrary extra data forwarded to slots untouched. */
+  meta: Record<string, unknown>
+}
+
+/**
+ * A working calendar: which weekdays / dates / spans count as non-working. Passed
+ * to the `nonWorking` prop to shade weekends, holidays and custom off periods as a
+ * faint background band. Unlike `periods`, it never adds a header row or extends
+ * the axis — it only tints time already on the chart.
+ */
+export interface NonWorkingCalendar {
+  /** Weekday numbers (`getDay()`, 0=Sun … 6=Sat) shaded as non-working. Defaults
+   *  to `[0, 6]` (Sat/Sun) when the calendar is enabled; pass `[]` to keep only
+   *  holidays/periods. */
+  weekends?: number[]
+  /** Individual non-working dates (holidays). A bare `YYYY-MM-DD` shades that
+   *  whole local day. */
+  holidays?: (Date | string | number)[]
+  /** Arbitrary explicit non-working spans (`end` exclusive). */
+  periods?: { id?: string; start: Date | string | number; end: Date | string | number }[]
+}
+
+/** A non-working span after its dates are coerced (before pixel positioning). */
+export interface NonWorkingBand {
+  id: string
+  start: Date
+  end: Date
+}
+
+/** A non-working band positioned in pixels for rendering over the body. */
+export interface ResolvedNonWorkingBand extends NonWorkingBand {
+  /** Left offset in pixels. */
+  x: number
+  /** Width in pixels. */
+  width: number
+}
+
 /** A task after defaults are applied and dates are coerced to `Date`. */
 export interface ResolvedTask {
   id: string
@@ -160,6 +249,8 @@ export interface ResolvedTask {
   progress: number
   dependencies: string[]
   type: GanttItemType
+  /** Free-form category tag selecting a per-variant slot (absent when not set). */
+  variant?: string
   /** Work segments coerced to `Date`s (absent when the task isn't split). */
   segments?: ResolvedSegment[]
   /** Deadline target, coerced to a `Date` (absent when not set). */
@@ -340,16 +431,40 @@ export interface GanttRootProps {
   endDate?: Date | string | number
   today?: Date | string | number
   /**
+   * Timeline edge behaviour (default `'fixed'`). `'infinite'` auto-extends the
+   * range by one screen when scrolled to an edge. See `GanttTimelineMode`.
+   */
+  timelineMode?: GanttTimelineMode
+  /**
    * Column label formatting. A date-fns string (base unit only), a per-tier map
    * of format strings, or a `(date, tier) => string` function. See `GanttLabelFormat`.
    */
   labelFormat?: GanttLabelFormat
+  /**
+   * date-fns `Locale` for date labels (column headers, drag labels, tooltips).
+   * Import the locale yourself, e.g. `import { ru } from 'date-fns/locale'`, and
+   * pass it here — locales are not bundled by the library.
+   */
+  locale?: Locale
   /**
    * Named zoom levels (view-mode presets) the `zoom` prop / `GanttZoom` control
    * switch between; each bundles `tiers` + `columnWidth`. Defaults to
    * `DEFAULT_ZOOM_LEVELS` (year → hour).
    */
   zoomLevels?: GanttZoomLevel[]
+  /**
+   * Custom timeline periods (e.g. sprints): each renders a background band over the
+   * chart body + a labelled row in the timeline header. Build a regular cadence with
+   * the `sprintPeriods` helper, or pass your own list.
+   */
+  periods?: GanttPeriod[]
+  /**
+   * Working calendar: shade non-working time (weekends / holidays / custom off
+   * periods) as a faint background band. `true` shades Sat/Sun; pass a
+   * `NonWorkingCalendar` for full control. Purely decorative — it never extends
+   * the axis or adds a header row.
+   */
+  nonWorking?: boolean | NonWorkingCalendar
   /**
    * Active zoom level id; supports `v-model:zoom`. When set, the matching level's
    * `tiers`/`columnWidth` override those props. Omit for the classic
@@ -403,11 +518,15 @@ export interface GanttConfig {
   autoSchedule: boolean
   /** date-fns format for the live drag date label. */
   dragLabelFormat: string
+  /** date-fns `Locale` applied to all date labels (undefined = English default). */
+  locale?: Locale
   /** Optional override for the drag tooltip text (move / resize / progress). */
   dragLabel?: (info: GanttDragLabelInfo) => string
   start: Date
   end: Date
   today: Date
+  /** Timeline edge behaviour: `fixed` (never grows) or `infinite` (auto-extend). */
+  timelineMode: GanttTimelineMode
 }
 
 /** Payload emitted when a task is moved via drag & drop. */
@@ -510,6 +629,21 @@ export interface GanttZoomEvent {
   id: string
   /** The full level definition that was activated. */
   level: GanttZoomLevel
+}
+
+/**
+ * Payload emitted when scrolling reaches a timeline edge. `start`/`end` are the
+ * proposed bounds after extending by one screen — already applied when
+ * `timelineMode: 'infinite'`, or a suggestion to act on in `fixed` mode (e.g. widen
+ * `startDate`/`endDate` and lazy-load data for the newly revealed span).
+ */
+export interface GanttRangeChangeEvent {
+  /** Which edge was reached. */
+  side: 'start' | 'end'
+  /** Proposed axis start after the extension. */
+  start: Date
+  /** Proposed axis end after the extension. */
+  end: Date
 }
 
 /** Payload for pointer interactions on a task bar or milestone marker. */
@@ -677,6 +811,10 @@ export interface GanttContext {
   taskBand: (task: ResolvedTask) => GanttBand
   /** Overlap spans per row (non-empty only in `conflict` mode). */
   conflicts: ComputedRef<GanttConflict[]>
+  /** Positioned custom timeline periods (empty unless `periods` is set). */
+  periods: ComputedRef<ResolvedPeriod[]>
+  /** Positioned non-working bands (empty unless `nonWorking` is set). */
+  nonWorking: ComputedRef<ResolvedNonWorkingBand[]>
   /** Ids of the critical-path tasks (empty unless `criticalPath` is on). */
   criticalTasks: ComputedRef<Set<string>>
   /** Free-float slack (days) by task id (empty unless `slack` is on). */
