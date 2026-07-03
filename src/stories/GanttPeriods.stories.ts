@@ -7,6 +7,7 @@ import GanttRow from '../components/GanttRow.vue'
 import GanttTask from '../components/GanttTask.vue'
 import GanttTaskList from '../components/GanttTaskList.vue'
 import GanttTimeline from '../components/GanttTimeline.vue'
+import type { GanttPeriod } from '../types'
 import { sprintPeriods } from '../utils'
 
 /**
@@ -54,12 +55,16 @@ const components = {
 }
 
 // Three back-to-back two-week sprints from Jun 1; the header shows the labels, the
-// body shows the alternating bands behind the bars.
-function periodsChart(slot = '') {
+// body shows the alternating bands behind the bars. Pass your own `periods` for
+// uneven, hand-authored spans.
+function periodsChart(
+  slot = '',
+  periods: GanttPeriod[] = sprintPeriods({ from: '2026-06-01', every: 2, unit: 'week', count: 3 }),
+) {
   return () => ({
     components,
     setup() {
-      return { periods: sprintPeriods({ from: '2026-06-01', every: 2, unit: 'week', count: 3 }) }
+      return { periods }
     },
     template: /* html */ `
       <GanttRoot :periods="periods" :tiers="['month','week','day']" :column-width="36">
@@ -104,4 +109,18 @@ export const CustomBand: Story = {
       <span style="position:absolute;top:4px;left:50%;transform:translateX(-50%);padding:0 6px;font-size:.62em;font-weight:600;color:#6366f1;white-space:nowrap">{{ period.label }}</span>
     </template>`,
   ),
+}
+
+/**
+ * Periods don't have to be a regular cadence — pass your own `GanttPeriod[]` with
+ * **uneven spans and custom labels** (here a short kickoff, a longer build phase and
+ * a hardening window). Only `id`, `start` and `end` are required; `label` falls back
+ * to `id`.
+ */
+export const UnevenBands: Story = {
+  render: periodsChart('', [
+    { id: 'kickoff', start: '2026-06-01', end: '2026-06-05', label: 'Kickoff' },
+    { id: 'build', start: '2026-06-05', end: '2026-06-24', label: 'Build phase' },
+    { id: 'hardening', start: '2026-06-24', end: '2026-07-02', label: 'Hardening' },
+  ]),
 }

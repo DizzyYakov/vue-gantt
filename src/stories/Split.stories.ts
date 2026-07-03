@@ -59,3 +59,37 @@ type Story = StoryObj<typeof Gantt>
 
 /** Three work spans with paused gaps; the fill flows across them (55% overall). */
 export const Basic: Story = {}
+
+/**
+ * A split task stays **one draggable unit** — with `draggable` you move the whole
+ * task (all its segments together, preserving the gaps), you don't drag a single
+ * span. Here a five-span task with finer pauses shows the connecting line across
+ * every gap; grab the bar to reschedule it.
+ */
+export const DraggableManySegments: Story = {
+  args: {
+    draggable: true,
+    rows: [
+      {
+        id: 'build',
+        name: 'Build',
+        tasks: [
+          {
+            id: 'impl',
+            name: 'Implementation',
+            start: '2026-06-01',
+            end: '2026-06-30',
+            progress: 40,
+            segments: [
+              { start: '2026-06-01', end: '2026-06-05' },
+              { start: '2026-06-08', end: '2026-06-11' },
+              { start: '2026-06-15', end: '2026-06-18' },
+              { start: '2026-06-22', end: '2026-06-25' },
+              { start: '2026-06-27', end: '2026-06-30' },
+            ],
+          },
+        ],
+      },
+    ],
+  },
+}

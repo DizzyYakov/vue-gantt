@@ -376,12 +376,66 @@ export const Grouping: Story = {
  * `period-bands` / `period` slots and the `--gantt-period-*` tokens — see
  * `Components/GanttPeriods` for the full API.
  */
+const sprintArgs: Story['args'] = {
+  periods: sprintPeriods({ from: '2026-06-01', every: 2, unit: 'week', count: 4 }),
+  tiers: ['month', 'week', 'day'],
+  height: 300,
+}
+
 export const Sprints: Story = {
-  args: {
-    periods: sprintPeriods({ from: '2026-06-01', every: 2, unit: 'week', count: 4 }),
-    tiers: ['month', 'week', 'day'],
-    height: 300,
-  },
+  args: { ...sprintArgs },
+}
+
+/**
+ * Replace each period's **header label** with the `period` slot (`{ period }`).
+ * You get the resolved period (`id`, `label`, `start`/`end`, `meta`); here it renders
+ * a runner icon before the sprint name. The background bands are untouched.
+ */
+export const SprintsHeaderSlot: Story = {
+  args: { ...sprintArgs },
+  render: args => ({
+    components: { Gantt },
+    setup: () => ({ args }),
+    template: `
+      <Gantt v-bind="args">
+        <template #period="{ period }">
+          <span style="display:inline-flex;align-items:center;gap:4px;font-weight:700;color:#6366f1">
+            🏃 {{ period.label }}
+          </span>
+        </template>
+      </Gantt>`,
+  }),
+}
+
+/**
+ * Replace the whole body **band layer** with the `period-bands` slot (`{ periods }`).
+ * Each `ResolvedPeriod` carries pixel geometry (`x` / `width`) and an `index` for the
+ * alternating fill, so you can paint the bands yourself — here as tinted, alternating
+ * full-height columns behind the bars.
+ */
+export const SprintsBandSlot: Story = {
+  args: { ...sprintArgs },
+  render: args => ({
+    components: { Gantt },
+    setup: () => ({ args }),
+    template: `
+      <Gantt v-bind="args">
+        <template #period-bands="{ periods }">
+          <div style="position:absolute;inset:0;pointer-events:none">
+            <div
+              v-for="p in periods"
+              :key="p.id"
+              :style="{
+                position: 'absolute', top: 0, bottom: 0,
+                left: p.x + 'px', width: p.width + 'px',
+                background: p.index % 2 ? 'rgba(16,185,129,.10)' : 'rgba(99,102,241,.10)',
+                borderLeft: '1px dashed #cbd5e1',
+              }"
+            />
+          </div>
+        </template>
+      </Gantt>`,
+  }),
 }
 
 /**
@@ -580,5 +634,19 @@ export const CriticalPathAndSlack: Story = {
         ],
       },
     ],
+  },
+}
+
+/**
+ * `critical-path` on its own: only the longest finish-to-start chain
+ * (`spec → design → build → review`) is highlighted via `data-critical` (styled with
+ * `--gantt-critical-*`); no slack overlay. The `criticalPath(rows)` utility returns
+ * the same ids headless.
+ */
+export const CriticalPath: Story = {
+  args: {
+    criticalPath: true,
+    tiers: ['month', 'week', 'day'],
+    height: 260,
   },
 }
