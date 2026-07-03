@@ -83,6 +83,7 @@ defineSlots<{
   column?: (props: { column: unknown; tier: unknown }) => unknown
   'period-bands'?: (props: { periods: unknown }) => unknown
   period?: (props: { period: unknown }) => unknown
+  'non-working'?: (props: { bands: unknown }) => unknown
   bar?: (props: { task: unknown; progress: number }) => unknown
   milestone?: (props: { task: unknown }) => unknown
   tooltip?: (props: { task: unknown }) => unknown
@@ -172,6 +173,9 @@ defineExpose({
       <template v-if="$slots.sidebar" #sidebar="slotProps"
         ><slot name="sidebar" v-bind="slotProps"
       /></template>
+      <template v-if="$slots['non-working']" #non-working="slotProps">
+        <slot name="non-working" v-bind="slotProps" />
+      </template>
       <template v-if="$slots.grid" #grid="slotProps"
         ><slot name="grid" v-bind="slotProps"
       /></template>

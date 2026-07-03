@@ -10,6 +10,7 @@ import GanttDependencies from './GanttDependencies.vue'
 import GanttGrid from './GanttGrid.vue'
 import GanttGroupBar from './GanttGroupBar.vue'
 import GanttMilestone from './GanttMilestone.vue'
+import GanttNonWorking from './GanttNonWorking.vue'
 import GanttPeriods from './GanttPeriods.vue'
 import GanttSlack from './GanttSlack.vue'
 import GanttTask from './GanttTask.vue'
@@ -34,6 +35,7 @@ const {
   config,
   conflicts,
   periods,
+  nonWorking,
   slack,
   visibleColumnsFor,
   dateToX,
@@ -128,6 +130,10 @@ const scrollStyle = computed(() => {
       </div>
 
       <div class="gantt__body">
+        <slot name="non-working" :bands="nonWorking">
+          <GanttNonWorking />
+        </slot>
+
         <slot name="grid" :columns="gridColumns" :rows="visibleRows">
           <GanttGrid />
         </slot>

@@ -124,6 +124,9 @@
   --gantt-period-font-weight: 600;
   --gantt-period-font-size: var(--gantt-header-font-size, 0.8em);
 
+  /* Non-working shading (weekends / holidays / off periods) */
+  --gantt-nonworking-bg: rgb(100 116 139 / 8%);
+
   /* Today marker */
   --gantt-today-color: #ef4444;
   --gantt-today-border: 2px solid var(--gantt-today-color);

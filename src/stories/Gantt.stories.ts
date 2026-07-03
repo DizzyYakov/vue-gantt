@@ -33,6 +33,16 @@ const meta: Meta<typeof Gantt> = {
         '`period-bands` / `period` slots; theme with `--gantt-period-*`. See ' +
         'Components/GanttPeriods.',
     },
+    nonWorking: {
+      control: 'object',
+      description:
+        'Working calendar: shade non-working time (weekends/holidays/custom off periods) ' +
+        'as a faint background band. `true` shades Sat/Sun; pass a `NonWorkingCalendar` ' +
+        '(`{ weekends?, holidays?, periods? }`) for full control. Unlike `periods`, purely ' +
+        'decorative — never extends the axis or adds a header row. Override via the ' +
+        '`non-working` / default slots; theme with `--gantt-nonworking-bg`. See ' +
+        'Components/GanttNonWorking.',
+    },
     unit: {
       control: 'select',
       options: ['year', 'quarter', 'month', 'week', 'day', 'hour', 'minute'],
@@ -443,6 +453,24 @@ export const SprintsBandSlot: Story = {
         </template>
       </Gantt>`,
   }),
+}
+
+/**
+ * A **working calendar**: shade non-working time (weekends, holidays, custom off
+ * spans) as a faint background band. `true` shades Saturday/Sunday; pass a
+ * `NonWorkingCalendar` (`weekends`, `holidays`, `periods`) for full control. Unlike
+ * `periods` above, it's purely decorative — it never adds a header row and never
+ * extends the auto date range, it only tints time already on the chart. Here the
+ * default weekends are shaded plus a single holiday (Jun 19). Override via the
+ * `non-working` slot; theme with `--gantt-nonworking-bg` — see
+ * `Components/GanttNonWorking` for the full API.
+ */
+export const NonWorkingCalendar: Story = {
+  args: {
+    nonWorking: { holidays: ['2026-06-19'] },
+    tiers: ['month', 'week', 'day'],
+    height: 300,
+  },
 }
 
 /**

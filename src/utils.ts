@@ -8,7 +8,7 @@
  * All edit helpers are immutable: they return a new `rows` array (cloning only
  * the rows/tasks that change) and never mutate the input.
  */
-import { addDays, addWeeks } from 'date-fns'
+import { addDays, addWeeks, getDay, startOfDay } from 'date-fns'
 import { toDate } from './context'
 import type {
   GanttConstraint,
@@ -18,6 +18,8 @@ import type {
   GanttPeriod,
   GanttRow,
   GanttTask,
+  NonWorkingBand,
+  NonWorkingCalendar,
   ResolvedTask,
 } from './types'
 
@@ -573,4 +575,75 @@ export function sprintPeriods(options: SprintPeriodsOptions): GanttPeriod[] {
     start = end
   }
   return periods
+}
+
+// --- Working calendar -------------------------------------------------------
+
+/** Weekdays shaded by default when a calendar is enabled: Sunday + Saturday. */
+const DEFAULT_WEEKENDS = [0, 6] // date-fns getDay(): 0=Sun … 6=Sat
+/** Guard so a pathologically long axis can't freeze the day-walk. */
+const MAX_CALENDAR_DAYS = 10000
+
+/** Push a band clipped to `range`, dropping it if the clip leaves nothing. */
+function pushClippedBand(
+  bands: NonWorkingBand[],
+  id: string,
+  start: Date,
+  end: Date,
+  range: { start: Date; end: Date },
+): void {
+  const clippedStart = start < range.start ? range.start : start
+  const clippedEnd = end > range.end ? range.end : end
+  if (clippedStart < clippedEnd) bands.push({ id, start: clippedStart, end: clippedEnd })
+}
+
+/**
+ * Compute the non-working bands to shade over the chart body, within `range`
+ * (weekends/holidays never extend the axis). Consecutive non-working days are
+ * merged into one band. Pure — positioning to pixels happens in `GanttRoot`.
+ *
+ * ```ts
+ * nonWorkingBands(true, { start, end })                 // Sat/Sun shaded
+ * nonWorkingBands({ holidays: ['2026-07-04'] }, range)  // + a holiday
+ * ```
+ */
+export function nonWorkingBands(
+  calendar: boolean | NonWorkingCalendar,
+  range: { start: Date; end: Date },
+): NonWorkingBand[] {
+  if (!calendar) return []
+  const config = calendar === true ? {} : calendar
+  const weekends = config.weekends ?? DEFAULT_WEEKENDS
+  const holidays = new Set((config.holidays ?? []).map(date => startOfDay(toDate(date)).getTime()))
+
+  const bands: NonWorkingBand[] = []
+
+  // Walk day cells across the axis, coalescing a run of non-working days into one
+  // band. `runStart` holds the open run's first day (null while the last day worked).
+  let runStart: Date | null = null
+  let day = startOfDay(range.start)
+  for (let guard = 0; day < range.end && guard < MAX_CALENDAR_DAYS; guard++) {
+    const isNonWorking = weekends.includes(getDay(day)) || holidays.has(day.getTime())
+    if (isNonWorking) {
+      if (!runStart) runStart = day
+    } else if (runStart) {
+      pushClippedBand(bands, `nonworking-${runStart.getTime()}`, runStart, day, range)
+      runStart = null
+    }
+    day = addDays(day, 1)
+  }
+  if (runStart) pushClippedBand(bands, `nonworking-${runStart.getTime()}`, runStart, day, range)
+
+  // Explicit non-working spans, clipped to the visible range.
+  ;(config.periods ?? []).forEach((period, index) => {
+    pushClippedBand(
+      bands,
+      period.id ?? `nonworking-period-${index}`,
+      toDate(period.start),
+      toDate(period.end),
+      range,
+    )
+  })
+
+  return bands
 }

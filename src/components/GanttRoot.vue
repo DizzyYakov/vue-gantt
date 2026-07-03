@@ -42,6 +42,7 @@ import {
   applyMove,
   autoSchedule,
   criticalPath,
+  nonWorkingBands,
   removeDependency,
   slack,
   updateRow,
@@ -77,6 +78,7 @@ import type {
   GanttZoomEvent,
   GanttZoomLevel,
   ResolvedGroup,
+  ResolvedNonWorkingBand,
   ResolvedPeriod,
   ResolvedRow,
   ResolvedTask,
@@ -118,6 +120,7 @@ const props = withDefaults(defineProps<GanttRootProps>(), {
   zoomLevels: () => DEFAULT_ZOOM_LEVELS,
   zoom: undefined,
   periods: undefined,
+  nonWorking: undefined,
 })
 
 const emit = defineEmits<{
@@ -499,6 +502,16 @@ const periods = computed<ResolvedPeriod[]>(() =>
   }),
 )
 
+// Non-working bands (weekends/holidays/off periods), positioned in pixels. Unlike
+// `periods` these never extend the axis or add a header row — pure body shading.
+const nonWorking = computed<ResolvedNonWorkingBand[]>(() =>
+  nonWorkingBands(props.nonWorking ?? false, { start: start.value, end: end.value }).map(band => ({
+    ...band,
+    x: scale.dateToX(band.start),
+    width: scale.widthBetween(band.start, band.end),
+  })),
+)
+
 // A non-empty `periods` adds a labelled header row above the tiers.
 const headerHeight = computed(
   () => (tiers.value.length + (periods.value.length ? 1 : 0)) * props.headerRowHeight,
@@ -752,6 +765,7 @@ const context: GanttContext = {
   taskBand,
   conflicts,
   periods,
+  nonWorking,
   criticalTasks,
   slack: slackMap,
   registerRow,

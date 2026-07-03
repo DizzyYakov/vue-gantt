@@ -207,6 +207,39 @@ export interface ResolvedPeriod {
   meta: Record<string, unknown>
 }
 
+/**
+ * A working calendar: which weekdays / dates / spans count as non-working. Passed
+ * to the `nonWorking` prop to shade weekends, holidays and custom off periods as a
+ * faint background band. Unlike `periods`, it never adds a header row or extends
+ * the axis — it only tints time already on the chart.
+ */
+export interface NonWorkingCalendar {
+  /** Weekday numbers (`getDay()`, 0=Sun … 6=Sat) shaded as non-working. Defaults
+   *  to `[0, 6]` (Sat/Sun) when the calendar is enabled; pass `[]` to keep only
+   *  holidays/periods. */
+  weekends?: number[]
+  /** Individual non-working dates (holidays). A bare `YYYY-MM-DD` shades that
+   *  whole local day. */
+  holidays?: (Date | string | number)[]
+  /** Arbitrary explicit non-working spans (`end` exclusive). */
+  periods?: { id?: string; start: Date | string | number; end: Date | string | number }[]
+}
+
+/** A non-working span after its dates are coerced (before pixel positioning). */
+export interface NonWorkingBand {
+  id: string
+  start: Date
+  end: Date
+}
+
+/** A non-working band positioned in pixels for rendering over the body. */
+export interface ResolvedNonWorkingBand extends NonWorkingBand {
+  /** Left offset in pixels. */
+  x: number
+  /** Width in pixels. */
+  width: number
+}
+
 /** A task after defaults are applied and dates are coerced to `Date`. */
 export interface ResolvedTask {
   id: string
@@ -425,6 +458,13 @@ export interface GanttRootProps {
    * the `sprintPeriods` helper, or pass your own list.
    */
   periods?: GanttPeriod[]
+  /**
+   * Working calendar: shade non-working time (weekends / holidays / custom off
+   * periods) as a faint background band. `true` shades Sat/Sun; pass a
+   * `NonWorkingCalendar` for full control. Purely decorative — it never extends
+   * the axis or adds a header row.
+   */
+  nonWorking?: boolean | NonWorkingCalendar
   /**
    * Active zoom level id; supports `v-model:zoom`. When set, the matching level's
    * `tiers`/`columnWidth` override those props. Omit for the classic
@@ -773,6 +813,8 @@ export interface GanttContext {
   conflicts: ComputedRef<GanttConflict[]>
   /** Positioned custom timeline periods (empty unless `periods` is set). */
   periods: ComputedRef<ResolvedPeriod[]>
+  /** Positioned non-working bands (empty unless `nonWorking` is set). */
+  nonWorking: ComputedRef<ResolvedNonWorkingBand[]>
   /** Ids of the critical-path tasks (empty unless `criticalPath` is on). */
   criticalTasks: ComputedRef<Set<string>>
   /** Free-float slack (days) by task id (empty unless `slack` is on). */
