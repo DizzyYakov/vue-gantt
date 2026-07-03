@@ -4,6 +4,30 @@ All notable changes to this project are documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [1.6.0](https://github.com/LavaYasha/vue-gantt/compare/vue-gantt-v1.5.0...vue-gantt-v1.6.0) (2026-07-03)
+
+
+### Features
+
+* CSV export (toCSV / downloadCSV) ([ed797b7](https://github.com/LavaYasha/vue-gantt/commit/ed797b7026ec3d29856a6a85c540739dada41446))
+* CSV export (toCSV / downloadCSV) ([af99dc1](https://github.com/LavaYasha/vue-gantt/commit/af99dc15819a15b27ccfc67faf9baafe8ea2aa7d))
+* custom timeline period bands (sprints) ([cbdbd6a](https://github.com/LavaYasha/vue-gantt/commit/cbdbd6af10584e9603a9c3e6fbd1a02f07005870))
+* custom timeline period bands (sprints) ([2462135](https://github.com/LavaYasha/vue-gantt/commit/24621353af5180ff2ff57e7b9ada9da2d1f5a5b9))
+* date localization via a date-fns locale prop ([f58cee0](https://github.com/LavaYasha/vue-gantt/commit/f58cee0a8b376323a34457c9668e70a53e9cc2d4))
+* date localization via a date-fns locale prop ([a738633](https://github.com/LavaYasha/vue-gantt/commit/a738633c44778973cbd1059f4e62afd02015a0fd))
+* non-working calendar shading (weekends/holidays/off periods) ([58d271a](https://github.com/LavaYasha/vue-gantt/commit/58d271ad8fd383b1daca4208d4f68ce0aae4dccd))
+* non-working calendar shading (weekends/holidays/off periods) ([6e9dbb7](https://github.com/LavaYasha/vue-gantt/commit/6e9dbb70da2ab0a25e75ff1fdb22c98f9c2096c1))
+* **slots:** per-variant task/milestone item slots ([77aa0cd](https://github.com/LavaYasha/vue-gantt/commit/77aa0cd7e32972115fd6bfb6db9c3d3749ef3e9f))
+* **slots:** per-variant task/milestone item slots ([1041852](https://github.com/LavaYasha/vue-gantt/commit/1041852ee3bef758e9b939e0bb93d30bedfc7752))
+* timeline range control with infinite scroll ([e25dcf6](https://github.com/LavaYasha/vue-gantt/commit/e25dcf6435dd5212f3ae3c75af714df02e654f77))
+* timeline range control with infinite scroll ([b0fe576](https://github.com/LavaYasha/vue-gantt/commit/b0fe576bc3eea1f9415b4c564bfd8c4b70038ad8))
+
+
+### Performance Improvements
+
+* viewport-cull dependency arrows and O(rows) group rollups ([28ea760](https://github.com/LavaYasha/vue-gantt/commit/28ea76025be30b34896e3c2fd7a1a4fbdfa4fb96))
+* viewport-cull dependency arrows and O(rows) group rollups ([fd61265](https://github.com/LavaYasha/vue-gantt/commit/fd6126517898dd244d378bfcf7993868d9c1290b))
+
 ## [1.5.0](https://github.com/LavaYasha/vue-gantt/compare/vue-gantt-v1.4.0...vue-gantt-v1.5.0) (2026-07-02)
 
 
