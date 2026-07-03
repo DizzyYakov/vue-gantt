@@ -3,6 +3,7 @@ import { de } from 'date-fns/locale'
 import { ref } from 'vue'
 import Gantt from '../components/Gantt.vue'
 import GanttZoom from '../components/GanttZoom.vue'
+import { downloadCSV } from '../export'
 import type { GanttMoveEvent, GanttRow } from '../types'
 import { sprintPeriods } from '../utils'
 import { sampleRows } from './_shared'
@@ -723,4 +724,22 @@ export const InfiniteTimeline: Story = {
     columnWidth: 36,
     height: 260,
   },
+}
+
+/**
+ * `downloadCSV(rows)` serializes the tasks to an RFC-4180 CSV file and triggers a
+ * browser download (one line per task, with its row's id/name as leading columns).
+ * `toCSV(rows, options)` returns the string for custom handling — override the
+ * `columns`, `delimiter`, `dateFormat`, etc.
+ */
+export const ExportCsv: Story = {
+  render: (args) => ({
+    components: { Gantt },
+    setup: () => ({ args, exportCsv: () => downloadCSV(args.rows ?? [], 'gantt.csv') }),
+    template: `
+      <div>
+        <button type="button" style="margin-bottom:8px" @click="exportCsv">Export CSV</button>
+        <Gantt v-bind="args" />
+      </div>`,
+  }),
 }

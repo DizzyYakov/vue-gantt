@@ -39,6 +39,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Added
 
+- **CSV export.** New pure, zero-dependency `toCSV(rows, options?)` serializer (RFC 4180 —
+  one line per task, owning row's id/name as leading columns) and a `downloadCSV(rows,
+  filename?, options?)` browser helper. Default columns cover id/name/type/start/end/
+  progress/dependencies/deadline; override via `columns`, plus `delimiter`/`dateFormat`/
+  `locale`/`header`/`eol` options. Exported from the package root (`CSVColumn`/`CSVOptions`
+  types included).
 - **Timeline range control + infinite scroll.** New `timelineMode` prop (`'fixed' |
   'infinite'`, default `'fixed'`): in `infinite` mode, scrolling to either horizontal
   edge auto-extends the axis by one screen of dates so the chart can be panned

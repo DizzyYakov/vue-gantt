@@ -702,6 +702,8 @@ import {
   rollupProgress,
   validateRows,
   sprintPeriods, // build a run of equal-length timeline periods (sprints; see SprintPeriodsOptions)
+  toCSV,
+  downloadCSV, // serialize tasks to CSV / trigger a browser download (see Export)
 } from '@dizzy_yakov/vue-gantt'
 ```
 
@@ -712,6 +714,35 @@ nearest successor (tasks with no successors, or no positive gap, are absent). Th
 back the matching `criticalPath` / `slack` props: the prop visualizes what the
 utility computes, so you can also call the utility directly (e.g. to label or report
 the schedule).
+
+### Export (CSV)
+
+`toCSV(rows, options?)` serializes the tasks of your `rows` to an RFC-4180 CSV
+string — one line per task, with its owning row's id/name as leading columns. It's
+pure and framework-free (accepts raw `GanttRow[]` or the resolved rows from the
+context). `downloadCSV(rows, filename?, options?)` wraps it and triggers a browser
+download (`filename` defaults to `'gantt.csv'`).
+
+```ts
+import { toCSV, downloadCSV } from '@dizzy_yakov/vue-gantt'
+
+downloadCSV(rows, 'schedule.csv')
+
+// Custom columns / delimiter / date format:
+const csv = toCSV(rows, {
+  delimiter: ';',
+  dateFormat: 'dd.MM.yyyy',
+  columns: [
+    { header: 'ID', value: (task) => task.id },
+    { header: 'Owner', value: (task) => String(task.meta?.owner ?? '') },
+    { header: 'Start', value: (task) => (task.start instanceof Date ? task.start.toISOString() : task.start) },
+  ],
+})
+```
+
+Default columns: `Row Id`, `Row`, `Task Id`, `Task`, `Type`, `Start`, `End`,
+`Progress`, `Dependencies`, `Deadline`. Options: `columns`, `delimiter` (`,`),
+`dateFormat` (`yyyy-MM-dd`), `locale`, `header` (`true`), `eol` (`\r\n`).
 
 ## Row grouping
 

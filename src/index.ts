@@ -93,6 +93,9 @@ export {
   type SprintPeriodsOptions,
 } from './utils'
 
+// Data export (pure serializers + browser download helpers)
+export { toCSV, downloadCSV, type CSVColumn, type CSVOptions } from './export'
+
 // Types
 export type {
   GanttBand,
