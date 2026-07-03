@@ -141,6 +141,7 @@ slots for overriding any part. Every slot is scoped — its props give you the s
 | `timeline`     | `{ config, visibleColumnsFor }`   | `<GanttTimeline>` (the axis header) |
 | `sidebar`      | `{ rows, groups }`                | `<GanttTaskList>` (the row labels)  |
 | `grid`         | `{ columns, rows }`               | `<GanttGrid>` (the body grid)       |
+| `period-bands` | `{ periods }`                     | `<GanttPeriods>` (sprint bands)     |
 | `bars`         | `{ tasks }`                       | the task bar / milestone layer      |
 | `group-bars`   | `{ groups }`                      | `<GanttGroupBar>` (group rollups)   |
 | `conflicts`    | `{ conflicts }`                   | `<GanttConflicts>`                  |
@@ -154,7 +155,8 @@ slots for overriding any part. Every slot is scoped — its props give you the s
 `visibleColumnsFor` is `(tier: GanttUnit) => GanttColumn[]` (windowed), `dateToX`
 is `(date: Date \| string \| number) => number`, `rows`/`groups` are the visible
 `ResolvedRow[]` / `ResolvedGroup[]`, `columns` are the visible base-unit
-`GanttColumn[]`, `tasks` are `ResolvedTask[]` (all of them for `dependencies`,
+`GanttColumn[]`, `periods` is the resolved `ResolvedPeriod[]` (empty unless the
+`periods` prop is set), `tasks` are `ResolvedTask[]` (all of them for `dependencies`,
 the plotted/visible ones for `bars`, `baselines` and `deadlines`), `today` is the
 configured reference `Date`, `conflicts` is `GanttConflict[]` (empty unless
 `overlap: 'conflict'`), and `slack` is a `Map<string, number>` of free-float days by
@@ -162,7 +164,7 @@ task id (empty unless `slack` is on).
 
 **Leaf slots** customize a single repeated item: `row` (`{ row, index }`),
 `group` (`{ group, collapsed, toggle }`), `groupBar` (`{ group }`), `column`
-(`{ column, tier }`), `bar` (`{ task, progress }`), `milestone` (`{ task }`),
+(`{ column, tier }`), `period` (`{ period }`), `bar` (`{ task, progress }`), `milestone` (`{ task }`),
 `tooltip` (`{ task }`), `rowEditor` (`{ row, value, commit, cancel }`) and
 `taskEditor` (`{ task, value, commit, cancel }`).
 
@@ -234,6 +236,7 @@ every [chart event](#events); the rest are the building blocks.
 | `<GanttSlack>`        | — (default slot `{ taskId, slack }`)             | —                                                |
 | `<GanttDeadlines>`    | — (default slot `{ taskId, deadline }`)          | —                                                |
 | `<GanttBaselines>`    | — (default slot `{ task }`)                      | —                                                |
+| `<GanttPeriods>`      | — (default slot `{ period }`)                    | —                                                |
 | `<GanttToday>`        | `interval?: number` (ms, default `1000`)         | —                                                |
 | `<GanttZoom>`         | — (reads context; default slot for custom UI)    | — (calls `setZoom`/`zoomIn`/`zoomOut` on root)   |
 
@@ -674,6 +677,7 @@ import {
   violatesConstraint, // deadline / constraint detectors
   rollupProgress,
   validateRows,
+  sprintPeriods, // build a run of equal-length timeline periods (sprints; see SprintPeriodsOptions)
 } from '@dizzy_yakov/vue-gantt'
 ```
 

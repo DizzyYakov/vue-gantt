@@ -42,6 +42,13 @@ export default meta
 
 type Story = StoryObj<typeof Gantt>
 
+/** Each touch story owns a deep copy of `sampleRows` so drags/edits are live. */
+const withModelRows = (args: Parameters<NonNullable<Story['render']>>[0]) => ({
+  components: { Gantt },
+  setup: () => ({ args, rows: ref<GanttRow[]>(JSON.parse(JSON.stringify(sampleRows))) }),
+  template: `<Gantt v-bind="args" v-model:rows="rows" />`,
+})
+
 /**
  * Enlarged hit areas via `touchTargets`, with every interaction on. Try dragging a
  * bar, dragging an edge to resize, tapping a bar for its tooltip, and long-pressing
@@ -59,14 +66,7 @@ export const TouchOptimized: Story = {
     tooltip: true,
     height: 320,
   },
-  render: args => ({
-    components: { Gantt },
-    setup() {
-      const rows = ref<GanttRow[]>(JSON.parse(JSON.stringify(sampleRows)))
-      return { args, rows }
-    },
-    template: `<Gantt v-bind="args" v-model:rows="rows" />`,
-  }),
+  render: withModelRows,
 }
 
 /**
@@ -83,12 +83,34 @@ export const AutoOnCoarsePointer: Story = {
     tooltip: true,
     height: 320,
   },
-  render: args => ({
-    components: { Gantt },
-    setup() {
-      const rows = ref<GanttRow[]>(JSON.parse(JSON.stringify(sampleRows)))
-      return { args, rows }
-    },
-    template: `<Gantt v-bind="args" v-model:rows="rows" />`,
-  }),
+  render: withModelRows,
+}
+
+/**
+ * **Tap for the tooltip.** Touch has no hover, so with `tooltip` on a tap on a bar
+ * or milestone toggles its floating summary; a tap elsewhere dismisses it. (On a
+ * mouse the same `tooltip` shows on hover.)
+ */
+export const TapTooltip: Story = {
+  args: {
+    touchTargets: true,
+    tooltip: true,
+    height: 320,
+  },
+  render: withModelRows,
+}
+
+/**
+ * **Long-press to edit.** `dblclick` is unreliable on touch, so with `editable` a
+ * ~500ms long-press on a row name (sidebar) or a task label (bar) opens the inline
+ * editor; Enter/blur commits, Esc cancels (`v-model:rows` applies the edit).
+ * `dblclick` still works on desktop.
+ */
+export const LongPressEdit: Story = {
+  args: {
+    touchTargets: true,
+    editable: true,
+    height: 320,
+  },
+  render: withModelRows,
 }

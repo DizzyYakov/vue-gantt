@@ -13,8 +13,8 @@ import { makeStressRows } from './_shared'
  *
  * Dependency arrows are viewport-culled too: only links whose endpoint rows
  * intersect the visible window get an SVG path (window-straddling links are kept),
- * so dense dependency graphs don't emit a path per edge. Group rollups
- * (start/end/progress) are computed in a single O(rows) bucketed pass.
+ * so dense dependency graphs don't emit a path per edge (see `DenseDependencies`).
+ * Group rollups (start/end/progress) are computed in a single O(rows) bucketed pass.
  *
  * Run `bun run bench` (`vitest bench`) for the pure-function numbers (layout,
  * critical-path, slack, per-scroll filter) at 1k/10k in `src/__tests__/perf.bench.ts`.
@@ -45,6 +45,30 @@ export const TenThousandTasks: Story = {
 export const TenThousandGrouped: Story = {
   args: {
     rows: makeStressRows(2000, { groups: 200 }),
+    tiers: ['year', 'month', 'week'],
+    columnWidth: 24,
+    height: 480,
+  },
+}
+
+/**
+ * 10k tasks where every task depends on the previous one in its row (~8k links).
+ * Only the arrows whose rows intersect the scroll window get an SVG path, so the
+ * dependency DOM stays bounded as you scroll instead of drawing a path per edge.
+ */
+export const DenseDependencies: Story = {
+  args: {
+    rows: makeStressRows(2000, { deps: true }),
+    tiers: ['year', 'month', 'week'],
+    columnWidth: 24,
+    height: 480,
+  },
+}
+
+/** A smaller 1k-task dataset (200 rows × 5) for comparison against the 10k stories. */
+export const OneThousandTasks: Story = {
+  args: {
+    rows: makeStressRows(200),
     tiers: ['year', 'month', 'week'],
     columnWidth: 24,
     height: 480,

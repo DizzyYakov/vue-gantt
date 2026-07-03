@@ -39,6 +39,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Added
 
+- **Docs: full Storybook/README coverage audit.** New `Guides/Localization` (ru/de +
+  `labelFormat`) and `Guides/Row grouping` (default/collapsed/custom `group`/`groupBar`
+  slots) stories; new cases for the period slots (`period`, `period-bands`, hand-authored
+  uneven periods), dependency viewport-culling and a 1k baseline (Performance), isolated
+  tap-tooltip / long-press-edit (Mobile), a draggable multi-segment split task and an
+  isolated critical-path story. README now catalogues `GanttPeriods`, `sprintPeriods` and
+  the `period`/`period-bands` slots in its reference tables. No code changes.
 - **Date localization (i18n).** New `locale` prop (a date-fns `Locale`) translates every
   date label — timeline column headers, drag labels and tooltips. Import the locale
   yourself (`import { ru } from 'date-fns/locale'`) so only the ones you use are bundled;
