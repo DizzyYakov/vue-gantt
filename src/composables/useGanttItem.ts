@@ -1,6 +1,6 @@
 import { computed, inject } from 'vue'
 import { GANTT_ROW, normalizeTask } from '../context'
-import type { GanttConstraint, GanttSegment, GanttTask, ResolvedTask } from '../types'
+import type { GanttConstraint, GanttDependency, GanttSegment, GanttTask, ResolvedTask } from '../types'
 import { useGanttContext } from './useGanttContext'
 import { useGanttDrag } from './useGanttDrag'
 import { useRegisteredTask } from './useTaskRegistry'
@@ -15,7 +15,7 @@ export interface GanttItemProps {
   start?: Date | string | number
   end?: Date | string | number
   progress?: number
-  dependencies?: string[]
+  dependencies?: (string | GanttDependency)[]
   segments?: GanttSegment[]
   deadline?: Date | string | number
   constraint?: GanttConstraint

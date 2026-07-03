@@ -159,7 +159,9 @@ function dispatch<K extends keyof GanttEventMap>(name: K, payload: GanttEventMap
   // Mirror dependency edits into `v-model:rows`.
   if (name === 'dependency-create') {
     const p = payload as GanttDependencyChange
-    emitModelUpdate(rows => maybeAutoSchedule(addDependency(rows, p.from, p.to), p.from))
+    emitModelUpdate(rows =>
+      maybeAutoSchedule(addDependency(rows, p.from, p.to, { type: p.type, lag: p.lag }), p.from),
+    )
   } else if (name === 'dependency-remove') {
     const p = payload as GanttDependencyChange
     emitModelUpdate(rows => removeDependency(rows, p.from, p.to))
@@ -167,7 +169,10 @@ function dispatch<K extends keyof GanttEventMap>(name: K, payload: GanttEventMap
     const p = payload as GanttDependencyUpdate
     emitModelUpdate(rows =>
       maybeAutoSchedule(
-        addDependency(removeDependency(rows, p.previous.from, p.previous.to), p.from, p.to),
+        addDependency(removeDependency(rows, p.previous.from, p.previous.to), p.from, p.to, {
+          type: p.type,
+          lag: p.lag,
+        }),
         p.from,
       ),
     )

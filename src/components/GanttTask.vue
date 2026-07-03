@@ -62,11 +62,13 @@ const linkTarget = computed(() => ctx.linkDraft.value?.over === resolved.value.i
 // Whether this task is on the critical path (only when `criticalPath` is on).
 const critical = computed(() => ctx.criticalTasks.value.has(resolved.value.id))
 
-// Start dragging a new finish-to-start dependency from this task's finish edge.
-function onConnectorDown(event: PointerEvent): void {
+// Start dragging a new dependency from one of this task's edges. The edge picks
+// the tail letter of the link type (finish → F*, start → S*); the drop half of
+// the target picks the head letter.
+function onConnectorDown(event: PointerEvent, edge: 'finish' | 'start'): void {
   ctx.beginLink({
     anchorId: resolved.value.id,
-    anchorEdge: 'finish',
+    anchorEdge: edge,
     mode: 'create',
     pointer: { x: event.clientX, y: event.clientY },
   })
@@ -157,6 +159,7 @@ function onBarUp(event: PointerEvent): void {
       :data-id="resolved.id"
       :data-draggable="draggable || undefined"
       :data-link-target="linkTarget || undefined"
+      :data-linkable="linkable || undefined"
       :data-critical="critical || undefined"
       :data-overdue="overdue || undefined"
       :data-constraint-violation="constraintViolation || undefined"
@@ -236,12 +239,18 @@ function onBarUp(event: PointerEvent): void {
         @pointerdown.stop.prevent="startProgress"
       />
 
-      <!-- Connector to drag a new dependency from this task's finish. -->
+      <!-- Connectors to drag a new dependency from either of this task's edges. -->
       <div
         v-if="linkable"
-        class="gantt-bar__connector"
+        class="gantt-bar__connector gantt-bar__connector--start"
+        title="Drag to link (from start)"
+        @pointerdown.stop.prevent="onConnectorDown($event, 'start')"
+      />
+      <div
+        v-if="linkable"
+        class="gantt-bar__connector gantt-bar__connector--end"
         title="Drag to link"
-        @pointerdown.stop.prevent="onConnectorDown"
+        @pointerdown.stop.prevent="onConnectorDown($event, 'finish')"
       />
     </div>
 
@@ -341,11 +350,10 @@ function onBarUp(event: PointerEvent): void {
   box-shadow: 0 0 0 1px rgb(0 0 0 / 15%);
 }
 
-/* Connector dot to drag out a new dependency from the bar's finish. */
+/* Connector dots to drag out a new dependency from either bar edge. */
 .gantt-bar__connector {
   position: absolute;
   top: 50%;
-  right: 2px;
   width: var(--gantt-connector-size, 8px);
   height: var(--gantt-connector-size, 8px);
   transform: translateY(-50%);
@@ -355,6 +363,14 @@ function onBarUp(event: PointerEvent): void {
   cursor: crosshair;
   touch-action: none;
   z-index: 2;
+}
+
+.gantt-bar__connector--start {
+  left: 2px;
+}
+
+.gantt-bar__connector--end {
+  right: 2px;
 }
 
 /* Drop-target affordance while a dependency is being dragged onto this bar. */
@@ -462,6 +478,11 @@ function onBarUp(event: PointerEvent): void {
      set a contrasting halo here so the text stays legible over both. */
   text-shadow: var(--gantt-bar-text-shadow, none);
   font-size: var(--gantt-bar-font-size, 0.8em);
+}
+
+/* When connectors are shown, inset the label so text clears the edge dots. */
+.gantt-bar[data-linkable] .gantt-bar__label {
+  padding-inline: calc(var(--gantt-connector-size, 8px) + 6px);
 }
 
 /* Inline editor: an input over the bar label (opt-in via `editable`). */

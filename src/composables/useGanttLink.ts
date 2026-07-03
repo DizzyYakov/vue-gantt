@@ -1,5 +1,24 @@
 import { computed, ref, type ComputedRef } from 'vue'
-import type { GanttBeginLinkArgs, GanttEventMap, GanttLinkDraft, ResolvedTask } from '../types'
+import type {
+  GanttBeginLinkArgs,
+  GanttDependencyType,
+  GanttEventMap,
+  GanttLinkDraft,
+  ResolvedTask,
+} from '../types'
+
+/** A resolved drop target: the task id + which half of its bar was hit. */
+interface TargetHit {
+  id: string
+  edge: 'start' | 'finish'
+}
+
+/** Compose a link type from the anchor (tail) edge and the drop (head) edge. */
+const linkType = (
+  anchorEdge: 'finish' | 'start',
+  targetEdge: 'start' | 'finish',
+): GanttDependencyType =>
+  `${anchorEdge === 'finish' ? 'F' : 'S'}${targetEdge === 'start' ? 'S' : 'F'}` as GanttDependencyType
 
 export interface LinkOptions {
   /** Emit a chart event (the context `dispatch`). */
@@ -20,11 +39,13 @@ export interface GanttLinkApi {
 }
 
 /**
- * Drives the interactive creation / re-routing of finish-to-start dependencies.
- * A connector handle (on a task) or an arrow endpoint starts a drag; the live
+ * Drives the interactive creation / re-routing of dependency links. A connector
+ * handle (on either bar edge) or an arrow endpoint starts a drag; the live
  * draft drives a temporary line in `GanttDependencies`; on release the drop
- * target is resolved from the DOM and the matching intent event is emitted
- * (the consumer applies the change to its data — the library stays controlled).
+ * target — and which half of it was hit — is resolved from the DOM, the link
+ * type is derived from the two edges (anchor edge → tail letter, drop half →
+ * head letter), and the matching intent event is emitted (the consumer applies
+ * the change to its data — the library stays controlled).
  */
 export function useGanttLink(options: LinkOptions): GanttLinkApi {
   const draft = ref<GanttLinkDraft | null>(null)
@@ -33,11 +54,16 @@ export function useGanttLink(options: LinkOptions): GanttLinkApi {
   // Resolve the draft's drop target + endpoint from a client pointer.
   function resolveAt(pointer: { x: number; y: number }): void {
     if (!draft.value) return
-    const hit = taskIdAt(pointer)
+    const hit = targetAt(pointer)
     // Highlight the hovered task as a drop target (never the anchor itself).
-    const over = hit && hit !== draft.value.anchorId ? hit : null
+    const valid = hit && hit.id !== draft.value.anchorId ? hit : null
     // Reassign so `draftPath` recomputes against the live (possibly scrolled) rect.
-    draft.value = { ...draft.value, pointer, over }
+    draft.value = {
+      ...draft.value,
+      pointer,
+      over: valid?.id ?? null,
+      overEdge: valid?.edge ?? null,
+    }
   }
 
   function onPointerMove(event: PointerEvent): void {
@@ -76,11 +102,18 @@ export function useGanttLink(options: LinkOptions): GanttLinkApi {
     if (draft.value && lastPointer) resolveAt(lastPointer)
   }
 
-  /** Task id under a client point, or `null` over empty space. */
-  function taskIdAt(pointer: { x: number; y: number }): string | null {
+  /**
+   * Task under a client point (or `null` over empty space), plus which half of
+   * its bar the pointer is on — the drop half picks the target edge and thereby
+   * the second letter of the created link's type (`start` → `*S`, `finish` → `*F`).
+   */
+  function targetAt(pointer: { x: number; y: number }): TargetHit | null {
     const el = document.elementFromPoint(pointer.x, pointer.y)
     const host = (el?.closest('[data-id]') as HTMLElement | null) ?? null
-    return host?.dataset.id ?? null
+    const id = host?.dataset.id
+    if (!host || !id) return null
+    const rect = host.getBoundingClientRect()
+    return { id, edge: pointer.x < rect.left + rect.width / 2 ? 'start' : 'finish' }
   }
 
   function hasDependency(toId: string, fromId: string): boolean {
@@ -91,27 +124,52 @@ export function useGanttLink(options: LinkOptions): GanttLinkApi {
   function endLink(explicit?: string | null): void {
     const d = draft.value
     if (!d) return
-    const target = explicit !== undefined ? explicit : taskIdAt(d.pointer)
+    // An explicit target id defaults to the start edge (the classic head drop).
+    const target =
+      explicit !== undefined
+        ? explicit != null
+          ? { id: explicit, edge: 'start' as const }
+          : null
+        : targetAt(d.pointer)
     if (target) emitChange(d, target)
     teardown()
   }
 
-  function emitChange(d: GanttLinkDraft, target: string): void {
+  function emitChange(d: GanttLinkDraft, target: TargetHit): void {
     if (d.mode === 'create') {
-      // anchor is the predecessor (finish); target is the successor.
-      if (target === d.anchorId || hasDependency(target, d.anchorId)) return
-      options.dispatch('dependency-create', { from: d.anchorId, to: target })
+      // The anchor is the predecessor; its edge + the drop edge pick the type.
+      if (target.id === d.anchorId || hasDependency(target.id, d.anchorId)) return
+      options.dispatch('dependency-create', {
+        from: d.anchorId,
+        to: target.id,
+        type: linkType(d.anchorEdge, target.edge),
+      })
       return
     }
     if (!d.link) return
+    const prevType = d.link.type ?? 'FS'
     if (d.mode === 'reroute-head') {
-      // Move the arrowhead: keep the predecessor, retarget the successor.
-      if (target === d.link.to || target === d.link.from) return
-      options.dispatch('dependency-update', { from: d.link.from, to: target, previous: d.link })
+      // Move the arrowhead: keep the predecessor (and the tail letter), retarget
+      // the successor — the drop half picks the new head letter.
+      if (target.id === d.link.to || target.id === d.link.from) return
+      options.dispatch('dependency-update', {
+        from: d.link.from,
+        to: target.id,
+        type: `${prevType[0]}${target.edge === 'start' ? 'S' : 'F'}` as GanttDependencyType,
+        lag: d.link.lag,
+        previous: d.link,
+      })
     } else {
-      // reroute-tail: keep the successor, re-source the predecessor.
-      if (target === d.link.from || target === d.link.to) return
-      options.dispatch('dependency-update', { from: target, to: d.link.to, previous: d.link })
+      // reroute-tail: keep the successor (and the head letter), re-source the
+      // predecessor — the drop half picks the new tail letter.
+      if (target.id === d.link.from || target.id === d.link.to) return
+      options.dispatch('dependency-update', {
+        from: target.id,
+        to: d.link.to,
+        type: `${target.edge === 'start' ? 'S' : 'F'}${prevType[1]}` as GanttDependencyType,
+        lag: d.link.lag,
+        previous: d.link,
+      })
     }
   }
 

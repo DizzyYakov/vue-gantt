@@ -5,6 +5,8 @@ import { toDate } from '../context'
 import type { GanttRow } from '../types'
 import { autoSchedule, updateTask } from '../utils'
 
+const DAY = 86_400_000
+
 /**
  * With the `autoSchedule` prop, moving or resizing a task — or creating /
  * re-routing a dependency — pushes every finish-to-start successor forward so
@@ -52,12 +54,47 @@ const chain = (): GanttRow[] => [
   },
 ]
 
-const DAY = 86_400_000
+// SS+lag chain: B starts 2 days after A starts (SS + lag=2), C is FS after B.
+const ssChain = (): GanttRow[] => [
+  {
+    id: 'a',
+    name: 'A',
+    tasks: [{ id: 'a', name: 'A', start: '2026-06-01', end: '2026-06-10', progress: 50 }],
+  },
+  {
+    id: 'b',
+    name: 'B (SS + 2d lag)',
+    tasks: [
+      {
+        id: 'b',
+        name: 'B',
+        start: '2026-06-03',
+        end: '2026-06-14',
+        progress: 20,
+        dependencies: [{ id: 'a', type: 'SS', lag: 2 }],
+      },
+    ],
+  },
+  {
+    id: 'c',
+    name: 'C (FS)',
+    tasks: [
+      {
+        id: 'c',
+        name: 'C',
+        start: '2026-06-14',
+        end: '2026-06-22',
+        progress: 0,
+        dependencies: ['b'],
+      },
+    ],
+  },
+]
 
 /**
  * Click **Delay A by 3 days** to shift task A and watch B and C cascade to keep
- * the dependencies valid (durations preserved). Dragging or resizing any bar does
- * the same thing live.
+ * the FS dependencies valid (durations preserved). Dragging or resizing any bar
+ * does the same thing live.
  */
 export const DelayAndCascade: Story = {
   args: {
@@ -84,6 +121,51 @@ export const DelayAndCascade: Story = {
       }
       function reset(): void {
         rows.value = chain()
+      }
+
+      return { args, rows, delayA, reset }
+    },
+    template: /* html */ `
+      <div>
+        <div style="display:flex; gap:8px; margin-bottom:10px;">
+          <button type="button" @click="delayA">Delay A by 3 days</button>
+          <button type="button" @click="reset">Reset</button>
+        </div>
+        <Gantt v-bind="args" v-model:rows="rows" />
+      </div>
+    `,
+  }),
+}
+
+/**
+ * Demonstrates **SS + lag** scheduling. Task B has a Start-to-Start dependency on
+ * A with a 2-day lag: `{ id: 'a', type: 'SS', lag: 2 }`. This means B's start
+ * must be at least `A.start + 2 days`. Task C is a plain FS successor of B.
+ *
+ * Click **Delay A** to shift A by 3 days and watch B reschedule to `A.start + 2`
+ * (preserving its duration), which in turn cascades C forward via the FS link.
+ */
+export const SSWithLag: Story = {
+  args: {
+    autoSchedule: true,
+    draggable: true,
+    resizable: true,
+    startDate: '2026-05-25',
+    endDate: '2026-07-20',
+  },
+  render: args => ({
+    components: { Gantt },
+    setup() {
+      const rows = ref<GanttRow[]>(ssChain())
+
+      function delayA(): void {
+        const a = rows.value[0]!.tasks![0]!
+        const start = new Date(toDate(a.start).getTime() + 3 * DAY)
+        const end = new Date(toDate(a.end!).getTime() + 3 * DAY)
+        rows.value = autoSchedule(updateTask(rows.value, 'a', { start, end }), 'a')
+      }
+      function reset(): void {
+        rows.value = ssChain()
       }
 
       return { args, rows, delayA, reset }

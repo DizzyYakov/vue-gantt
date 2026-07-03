@@ -2,7 +2,7 @@
 import { computed, nextTick, onMounted, onUnmounted, ref, useId, useTemplateRef, watch } from 'vue'
 import { useGanttContext } from '../composables/useGanttContext'
 import type { DependencyPoint } from '../dependencyPaths'
-import type { GanttDependencyEvent, ResolvedTask } from '../types'
+import type { GanttDependencyEvent, GanttDependencyType, ResolvedTask } from '../types'
 
 const {
   tasks,
@@ -65,13 +65,13 @@ watch(
 )
 
 function onEndpointDown(link: DependencyLink, event: PointerEvent): void {
-  // Re-route the arrowhead: keep the predecessor (anchor = its finish),
+  // Re-route the arrowhead: keep the predecessor (anchor = its typed tail edge),
   // retarget the successor on drop.
   beginLink({
     anchorId: link.from,
-    anchorEdge: 'finish',
+    anchorEdge: link.type[0] === 'S' ? 'start' : 'finish',
     mode: 'reroute-head',
-    link: { from: link.from, to: link.to },
+    link: { from: link.from, to: link.to, type: link.type, lag: link.lag },
     pointer: { x: event.clientX, y: event.clientY },
   })
 }
@@ -86,13 +86,19 @@ interface DependencyLink {
   key: string
   from: string
   to: string
+  /** Link type; picks which edges the tail/head anchor to. */
+  type: GanttDependencyType
+  /** Lag in days (informational — geometry always uses the real edges). */
+  lag: number
   d: string
-  /** Arrow tail (predecessor finish) and head (successor start) points. */
+  /** Arrow tail (predecessor edge) and head (successor edge) points. */
   tail: DependencyPoint
   head: DependencyPoint
 }
 
-// Finish-to-start links: an arrow from each dependency's end to the task's start.
+// Typed links: an arrow from the predecessor's edge to the successor's edge —
+// FS: end→start, SS: start→start, FF: end→end, SF: start→end (`S*` anchors the
+// tail at the start edge, `*S` the head at the start edge).
 // Virtualized by the visible row window: a link is drawn only if its endpoints'
 // row range intersects the on-screen rows — so a 10k-task chart doesn't emit an
 // SVG path per edge. `visibleRows` is vertical-only and ascending by `order`, and
@@ -105,8 +111,8 @@ const links = computed<DependencyLink[]>(() => {
   const result: DependencyLink[] = []
 
   for (const task of tasks.value) {
-    for (const depId of task.dependencies) {
-      const from = byId.get(depId)
+    for (const link of task.links) {
+      const from = byId.get(link.id)
       if (!from) continue
 
       // Drop links whose row-span sits entirely above or below the window. The
@@ -114,14 +120,21 @@ const links = computed<DependencyLink[]>(() => {
       if (Math.max(from.order, task.order) < loRow || Math.min(from.order, task.order) > hiRow)
         continue
 
-      const tail = { x: dateToX(from.end), y: centerY(from) }
-      const head = { x: dateToX(task.start), y: centerY(task) }
+      const tailAtStart = link.type[0] === 'S' // SS, SF
+      const headAtStart = link.type[1] === 'S' // FS, SS
+      const tail = { x: dateToX(tailAtStart ? from.start : from.end), y: centerY(from) }
+      const head = { x: dateToX(headAtStart ? task.start : task.end), y: centerY(task) }
 
       result.push({
-        key: `${depId}->${task.id}`,
-        from: depId,
+        key: `${link.id}->${task.id}`,
+        from: link.id,
         to: task.id,
-        d: buildPath.value(tail, head),
+        type: link.type,
+        lag: link.lag,
+        d: buildPath.value(tail, head, {
+          tailDir: tailAtStart ? -1 : 1,
+          headDir: headAtStart ? 1 : -1,
+        }),
         tail,
         head,
       })
@@ -132,7 +145,8 @@ const links = computed<DependencyLink[]>(() => {
 })
 
 // Temporary arrow shown while dragging a new/re-routed dependency — same connector
-// shape + arrowhead as a real link, so you drag the actual arrow.
+// shape + arrowhead as a real link, so you drag the actual arrow. The hovered
+// target half (`overEdge`) live-previews the pending link type.
 const draftPath = computed<string | null>(() => {
   const d = linkDraft.value
   if (!d) return null
@@ -143,11 +157,27 @@ const draftPath = computed<string | null>(() => {
   const rect = svg.value?.getBoundingClientRect()
   const px = rect ? d.pointer.x - rect.left : ax
   const py = rect ? d.pointer.y - rect.top : ay
-  // The anchor is the tail on a finish edge, otherwise the head.
-  return d.anchorEdge === 'finish'
-    ? buildPath.value({ x: ax, y: ay }, { x: px, y: py })
-    : buildPath.value({ x: px, y: py }, { x: ax, y: ay })
+  if (d.mode === 'reroute-tail') {
+    // The anchor is the head (successor); the pointer drags the tail.
+    return buildPath.value(
+      { x: px, y: py },
+      { x: ax, y: ay },
+      { tailDir: edgeTailDir(d.overEdge), headDir: edgeHeadDir(d.anchorEdge) },
+    )
+  }
+  // create / reroute-head: the anchor is the tail; the pointer drags the head.
+  return buildPath.value(
+    { x: ax, y: ay },
+    { x: px, y: py },
+    { tailDir: edgeTailDir(d.anchorEdge), headDir: edgeHeadDir(d.overEdge) },
+  )
 })
+
+// A tail leaves rightward from a finish edge, leftward from a start edge; a head
+// is entered rightward into a start edge, leftward into an end edge. `null`
+// (pointer over empty space) defaults to the rightward FS orientation.
+const edgeTailDir = (edge?: 'start' | 'finish' | null): 1 | -1 => (edge === 'start' ? -1 : 1)
+const edgeHeadDir = (edge?: 'start' | 'finish' | null): 1 | -1 => (edge === 'finish' ? -1 : 1)
 </script>
 
 <template>

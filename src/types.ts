@@ -82,6 +82,35 @@ export interface GanttConstraint {
 export type GanttOverlapMode = 'lanes' | 'overlap' | 'cascade' | 'conflict'
 
 /**
+ * Dependency link type (MS-Project style):
+ * - `FS` — finish-to-start (default): the successor starts after the predecessor ends.
+ * - `SS` — start-to-start: the successor starts after the predecessor starts.
+ * - `FF` — finish-to-finish: the successor ends after the predecessor ends.
+ * - `SF` — start-to-finish: the successor ends after the predecessor starts.
+ */
+export type GanttDependencyType = 'FS' | 'SS' | 'FF' | 'SF'
+
+/**
+ * A typed dependency link. A bare string in `dependencies` is shorthand for
+ * `{ id, type: 'FS', lag: 0 }`, so plain id arrays keep working unchanged.
+ */
+export interface GanttDependency {
+  /** Predecessor task id. */
+  id: string
+  /** Link type. Defaults to `'FS'`. */
+  type?: GanttDependencyType
+  /** Offset in days added to the constraint (negative = lead, fractions allowed). Defaults to `0`. */
+  lag?: number
+}
+
+/** A dependency link after defaults are applied (see `normalizeDependency`). */
+export interface ResolvedDependency {
+  id: string
+  type: GanttDependencyType
+  lag: number
+}
+
+/**
  * Task shape accepted from the consumer. A task is a single bar/marker; it lives
  * inside a row. Dates may be `Date` or any string/number that the `Date`
  * constructor understands (e.g. ISO `2026-01-15`).
@@ -96,8 +125,11 @@ export interface GanttTask {
   end?: Date | string | number
   /** Completion percentage, 0–100. */
   progress?: number
-  /** Ids of tasks that must finish before this one (drawn as arrows). */
-  dependencies?: string[]
+  /**
+   * Predecessor links (drawn as arrows). A bare id string means finish-to-start
+   * with no lag; pass a `GanttDependency` object for SS/FF/SF and lag/lead.
+   */
+  dependencies?: (string | GanttDependency)[]
   type?: GanttItemType
   /**
    * Work segments — when set, the bar is drawn as these spans with paused gaps
@@ -194,7 +226,10 @@ export interface ResolvedTask {
   start: Date
   end: Date
   progress: number
+  /** Predecessor ids (mirrors `links` — kept for cheap membership checks). */
   dependencies: string[]
+  /** Resolved dependency links with their type and lag (source of truth). */
+  links: ResolvedDependency[]
   type: GanttItemType
   /** Work segments coerced to `Date`s (absent when the task isn't split). */
   segments?: ResolvedSegment[]
@@ -532,12 +567,16 @@ export interface GanttDragLabelInfo {
   progress: number
 }
 
-/** Payload for creating or removing a finish-to-start dependency. */
+/** Payload for creating or removing a dependency link. */
 export interface GanttDependencyChange {
   /** Predecessor task id (arrow tail). */
   from: string
   /** Successor task id (arrow head; `to.dependencies` holds `from`). */
   to: string
+  /** Link type (defaults to `'FS'`). */
+  type?: GanttDependencyType
+  /** Lag in days (negative = lead; defaults to `0`). */
+  lag?: number
 }
 
 /** Payload for re-routing an existing dependency to a new endpoint. */
@@ -664,7 +703,12 @@ export type GanttLinkMode = 'create' | 'reroute-head' | 'reroute-tail'
 export interface GanttBeginLinkArgs {
   /** The fixed endpoint task id (the anchor that stays put). */
   anchorId: string
-  /** Which edge of the anchor the link attaches to. */
+  /**
+   * Which edge of the anchor the link attaches to. In `create` mode the anchor
+   * is the predecessor and its edge picks the first letter of the link type
+   * (`finish` → `F*`, `start` → `S*`); in `reroute-head` the anchor is still the
+   * predecessor, in `reroute-tail` it is the successor (head endpoint).
+   */
   anchorEdge: 'finish' | 'start'
   mode: GanttLinkMode
   /** The existing dependency being re-routed (for reroute modes). */
@@ -677,6 +721,8 @@ export interface GanttBeginLinkArgs {
 export interface GanttLinkDraft extends GanttBeginLinkArgs {
   /** Task id under the pointer (a candidate drop target), or `null`. */
   over?: string | null
+  /** Which half of the hovered target the pointer is over (picks the drop edge). */
+  overEdge?: 'start' | 'finish' | null
 }
 
 /**

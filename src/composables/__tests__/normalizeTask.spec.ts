@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
-import { normalizeRow, normalizeTask, toDate } from '../../context'
+import { normalizeDependency, normalizeRow, normalizeTask, toDate } from '../../context'
+import type { GanttDependency } from '../../types'
 
 describe('normalizeTask', () => {
   it('applies defaults, row id and order', () => {
@@ -130,6 +131,50 @@ describe('normalizeTask', () => {
   it('leaves segments undefined when absent', () => {
     const task = normalizeTask({ id: 'a', start: '2026-01-01', end: '2026-01-05' }, 'r1', 0)
     expect(task.segments).toBeUndefined()
+  })
+
+  it('resolves mixed string/object dependencies into uniform links', () => {
+    const task = normalizeTask(
+      {
+        id: 'c',
+        start: '2026-01-01',
+        end: '2026-01-05',
+        dependencies: ['a', { id: 'b', type: 'SS', lag: 2 }],
+      },
+      'r',
+      0,
+    )
+    expect(task.links).toEqual([
+      { id: 'a', type: 'FS', lag: 0 },
+      { id: 'b', type: 'SS', lag: 2 },
+    ])
+    // `dependencies` mirrors just the link ids (cheap membership checks).
+    expect(task.dependencies).toEqual(['a', 'b'])
+  })
+})
+
+describe('normalizeDependency', () => {
+  it('expands a bare id string to an FS link with no lag', () => {
+    expect(normalizeDependency('a')).toEqual({ id: 'a', type: 'FS', lag: 0 })
+  })
+
+  it('fills in defaults on a partial object', () => {
+    expect(normalizeDependency({ id: 'a' })).toEqual({ id: 'a', type: 'FS', lag: 0 })
+    expect(normalizeDependency({ id: 'a', type: 'FF' })).toEqual({ id: 'a', type: 'FF', lag: 0 })
+    expect(normalizeDependency({ id: 'a', lag: -1.5 })).toEqual({ id: 'a', type: 'FS', lag: -1.5 })
+  })
+
+  it('coerces an unknown type and a non-finite lag to the defaults', () => {
+    expect(normalizeDependency({ id: 'a', type: 'XX' } as unknown as GanttDependency)).toEqual({
+      id: 'a',
+      type: 'FS',
+      lag: 0,
+    })
+    expect(normalizeDependency({ id: 'a', lag: Number.NaN })).toEqual({
+      id: 'a',
+      type: 'FS',
+      lag: 0,
+    })
   })
 })
 

@@ -124,4 +124,120 @@ describe('useGanttLink', () => {
     expect(autoScroll).toHaveBeenLastCalledWith(null)
     expect(api.linkDraft.value).toBeNull()
   })
+
+  describe('typed links (drop halves)', () => {
+    /** A target bar at left=100, width=60 → midpoint x=130. */
+    function rectEl(id: string): HTMLElement {
+      const el = taskEl(id)
+      el.getBoundingClientRect = () =>
+        ({ left: 100, width: 60, top: 0, height: 20, right: 160, bottom: 20, x: 100, y: 0 }) as DOMRect
+      return el
+    }
+
+    it.each([
+      ['finish', 110, 'start', 'FS'],
+      ['finish', 150, 'finish', 'FF'],
+      ['start', 110, 'start', 'SS'],
+      ['start', 150, 'finish', 'SF'],
+    ] as const)(
+      '%s-edge anchor dropped on the %s half creates a %s link',
+      (anchorEdge, x, half, type) => {
+        const { api, dispatch } = makeLink()
+        api.beginLink({ ...begin, anchorEdge })
+
+        efp.mockReturnValue(rectEl('b'))
+        pointerMove(x, 10)
+        // The hovered half live-previews the pending head letter.
+        expect(api.linkDraft.value?.overEdge).toBe(half)
+
+        api.endLink()
+        expect(dispatch).toHaveBeenCalledWith('dependency-create', { from: 'a', to: 'b', type })
+      },
+    )
+
+    it('reroute-head keeps the tail letter + lag; the drop half picks the head letter', () => {
+      const { api, dispatch } = makeLink()
+      api.beginLink({
+        anchorId: 'a',
+        anchorEdge: 'start',
+        mode: 'reroute-head',
+        link: { from: 'a', to: 'b', type: 'SS', lag: 2 },
+        pointer: { x: 10, y: 10 },
+      })
+
+      efp.mockReturnValue(rectEl('c'))
+      pointerMove(150, 10) // finish half → head letter F
+
+      api.endLink()
+      expect(dispatch).toHaveBeenCalledWith('dependency-update', {
+        from: 'a',
+        to: 'c',
+        type: 'SF',
+        lag: 2,
+        previous: { from: 'a', to: 'b', type: 'SS', lag: 2 },
+      })
+    })
+
+    it('reroute-tail keeps the head letter + lag; the drop half picks the new tail letter', () => {
+      const { api, dispatch } = makeLink()
+      api.beginLink({
+        anchorId: 'b',
+        anchorEdge: 'finish',
+        mode: 'reroute-tail',
+        link: { from: 'a', to: 'b', type: 'FF', lag: 3 },
+        pointer: { x: 10, y: 10 },
+      })
+
+      efp.mockReturnValue(rectEl('c'))
+      pointerMove(110, 10) // start half → new tail letter S
+
+      api.endLink()
+      expect(dispatch).toHaveBeenCalledWith('dependency-update', {
+        from: 'c',
+        to: 'b',
+        type: 'SF',
+        lag: 3,
+        previous: { from: 'a', to: 'b', type: 'FF', lag: 3 },
+      })
+    })
+
+    it('reroute-tail ignores a drop back onto the current predecessor or the successor itself', () => {
+      const { api, dispatch } = makeLink()
+      const beginArgs = {
+        anchorId: 'b',
+        anchorEdge: 'finish' as const,
+        mode: 'reroute-tail' as const,
+        link: { from: 'a', to: 'b' },
+        pointer: { x: 10, y: 10 },
+      }
+
+      api.beginLink(beginArgs)
+      efp.mockReturnValue(rectEl('a')) // same predecessor
+      pointerMove(110, 10)
+      api.endLink()
+      expect(dispatch).not.toHaveBeenCalled()
+
+      api.beginLink(beginArgs)
+      efp.mockReturnValue(rectEl('b')) // the successor itself (self-link)
+      pointerMove(110, 10)
+      api.endLink()
+      expect(dispatch).not.toHaveBeenCalled()
+    })
+
+    it('the duplicate guard blocks a second link to the same pair regardless of type', () => {
+      const existing = {
+        id: 'b',
+        dependencies: ['a'],
+        links: [{ id: 'a', type: 'SS', lag: 0 }],
+      } as unknown as ResolvedTask
+      const { api, dispatch } = makeLink({ tasks: () => [existing] })
+      api.beginLink(begin)
+
+      efp.mockReturnValue(rectEl('b'))
+      pointerMove(150, 10)
+
+      api.endLink()
+      expect(dispatch).not.toHaveBeenCalled()
+    })
+  })
 })

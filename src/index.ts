@@ -46,6 +46,7 @@ export {
   GANTT_ROW,
   GANTT_GROUP,
   GANTT_DEFAULTS,
+  normalizeDependency,
   normalizeRow,
   normalizeTask,
   toDate,
@@ -58,7 +59,7 @@ export { DEFAULT_ZOOM_LEVELS } from './zoom'
 
 // Dependency connector path builders — pass one (or your own) to `dependencyShape`
 export { elbowPath, straightPath, bezierPath, STUB } from './dependencyPaths'
-export type { DependencyPoint, DependencyPathBuilder } from './dependencyPaths'
+export type { DependencyPoint, DependencyPathBuilder, DependencyPathHints } from './dependencyPaths'
 
 // Dependency arrowhead builders — pass one (or your own) to `arrowHead`
 export { triangleArrow, openArrow, noArrow } from './arrowHeads'
@@ -104,8 +105,10 @@ export type {
   GanttConstraint,
   GanttConstraintType,
   GanttContext,
+  GanttDependency,
   GanttDependencyChange,
   GanttDependencyEvent,
+  GanttDependencyType,
   GanttDependencyUpdate,
   GanttDragLabelInfo,
   GanttEventMap,
@@ -136,6 +139,7 @@ export type {
   GanttViewport,
   GanttZoomEvent,
   GanttZoomLevel,
+  ResolvedDependency,
   ResolvedGroup,
   ResolvedPeriod,
   ResolvedRow,

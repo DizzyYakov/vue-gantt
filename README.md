@@ -231,7 +231,7 @@ every [chart event](#events); the rest are the building blocks.
 | `<GanttTask>`         | `GanttItemProps`                                 | `click` · `dblclick` · `contextmenu`             |
 | `<GanttMilestone>`    | `GanttItemProps`                                 | `click` · `dblclick` · `contextmenu`             |
 | `<GanttGrid>`         | `tier?: GanttUnit`                               | `cell-click` · `cell-dblclick`                   |
-| `<GanttDependencies>` | —                                                | `dependency-click`                               |
+| `<GanttDependencies>` | — (default slot `{ links }`)                     | `dependency-click`                               |
 | `<GanttConflicts>`    | —                                                | —                                                |
 | `<GanttSlack>`        | — (default slot `{ taskId, slack }`)             | —                                                |
 | `<GanttDeadlines>`    | — (default slot `{ taskId, deadline }`)          | —                                                |
@@ -278,11 +278,11 @@ parent collapses to the content height and simply grows to fit (as before).
 | `touchTargets`          | `boolean`                                         | `false`         | Enlarge interactive hit areas (resize/progress/connector handles, milestones, dependency handles) for touch. Coarse pointers get the larger targets automatically via `@media (pointer: coarse)`; this forces them on regardless (adds `data-touch` to the root). Sizes stay overridable via the `--gantt-*` tokens. |
 | `criticalPath`          | `boolean`                                         | `false`         | Highlight the tasks on the critical path (`data-critical` on their bars/markers; styled via `--gantt-critical-*`).                                                                                                                                            |
 | `slack`                 | `boolean`                                         | `false`         | Draw each task's free-float slack as a translucent bar after its end (the `<GanttSlack>` overlay; styled via `--gantt-slack-*`).                                                                                                                               |
-| `linkable`              | `boolean`                                         | `false`         | Create/edit dependencies by dragging between tasks.                                                                                                                                                                                                           |
-| `dependencyShape`       | `(tail, head) => string`                          | `elbowPath`     | Connector path builder. Pass `elbowPath`/`straightPath`/`bezierPath` or your own.                                                                                                                                                                             |
+| `linkable`              | `boolean`                                         | `false`         | Create/edit dependencies by dragging between tasks. Each bar has two connector handles — one on the start edge (`.gantt-bar__connector--start`) and one on the end edge (`--end`). The drag origin × drop-target half determine the link type: end→start-half = FS, start→start-half = SS, end→end-half = FF, start→end-half = SF. |
+| `dependencyShape`       | `DependencyPathBuilder`                           | `elbowPath`     | Connector path builder `(tail, head, hints?) => string`. `hints` carries `tailDir`/`headDir` (±1) so the path orients correctly for FS/SS/FF/SF links. Pass `elbowPath`/`straightPath`/`bezierPath` or your own; two-parameter builders remain valid (hints default to FS orientation). |
 | `arrowHead`             | `() => ArrowHeadShape \| null`                    | `triangleArrow` | Arrowhead builder. Pass `triangleArrow`/`openArrow`/`noArrow` or your own (`null` = no head).                                                                                                                                                                 |
 | `snapToGrid`            | `boolean`                                         | `false`         | Snap dragged dates to the base unit (off = full precision).                                                                                                                                                                                                   |
-| `autoSchedule`          | `boolean`                                         | `false`         | On a move/resize or a dependency create/update, push finish-to-start successors forward so none starts before a predecessor ends (MS-Project style), preserving each task's duration. Effective only with `v-model:rows` (or prop-driven `rows`).             |
+| `autoSchedule`          | `boolean`                                         | `false`         | On a move/resize or a dependency create/update, push successors forward to satisfy their dependency link type and lag (FS: `pred.end + lag`; SS: `pred.start + lag`; FF/SF: finish-relative), preserving each task's duration (MS-Project style). Effective only with `v-model:rows` (or prop-driven `rows`). |
 | `dragLabelFormat`       | `string`                                          | `'d MMM HH:mm'` | date-fns format for the live drag tooltip.                                                                                                                                                                                                                    |
 | `dragLabel`             | `(info: GanttDragLabelInfo) => string`            | —               | Override the drag tooltip text (move/resize/progress).                                                                                                                                                                                                        |
 | `startDate` / `endDate` | `Date \| string \| number`                        | auto            | Explicit axis bounds (auto-derived from tasks otherwise).                                                                                                                                                                                                     |
@@ -301,7 +301,7 @@ Declarative fields — the item registers into the enclosing `<GanttRow>`:
 | `start`        | `Date \| string \| number` | Start date (`YYYY-MM-DD` is parsed local).     |
 | `end`          | `Date \| string \| number` | End date (ignored for milestones).             |
 | `progress`     | `number`                   | Completion 0–100.                              |
-| `dependencies` | `string[]`                 | Ids of predecessors (finish-to-start).         |
+| `dependencies` | `(string \| GanttDependency)[]` | Predecessor links. A bare id is shorthand for FS/lag 0; pass `{ id, type?, lag? }` for SS/FF/SF or a lag offset in days (negative = lead). |
 | `segments`     | `GanttSegment[]`           | Work spans with paused gaps (a "split" task).  |
 | `deadline`     | `Date \| string \| number` | Target date (drawn as a line; flags overdue).  |
 | `constraint`   | `GanttConstraint`          | Scheduling constraint (`{ type, date }`).      |
@@ -469,6 +469,8 @@ interface GanttGroupToggleEvent {
 interface GanttDependencyChange {
   from: string
   to: string
+  type?: GanttDependencyType // 'FS' | 'SS' | 'FF' | 'SF' (defaults to 'FS')
+  lag?: number               // offset in days; negative = lead (defaults to 0)
 }
 interface GanttDependencyUpdate extends GanttDependencyChange {
   previous: GanttDependencyChange
@@ -558,10 +560,12 @@ Ctrl+Shift+Z to `undo` / `redo`.
 ### Auto-scheduling
 
 The `autoSchedule` prop turns the chart into an MS-Project-style scheduler: when
-you move or resize a task, or create / re-route a dependency, every finish-to-start
-successor is pushed forward so none starts before its predecessor ends — each
-task's duration is preserved. It cascades transitively (a → b → c), so dragging
-`a` later also shifts `b` and `c`.
+you move or resize a task, or create / re-route a dependency, every successor is
+rescheduled so its dependency link is satisfied — FS: successor starts after
+predecessor ends + lag; SS: after predecessor starts + lag; FF/SF: finish-relative
+— each task's duration preserved. It cascades transitively (a → b → c), so
+dragging `a` later also shifts `b` and `c`. Negative lag (lead) is honored too:
+it merely relaxes the floor, never pushes a successor earlier than it already is.
 
 ```vue
 <Gantt v-model:rows="rows" auto-schedule draggable resizable linkable />
@@ -659,8 +663,9 @@ import {
   updateRow, // patch a task / row by id (immutable; use with row-edit / task-edit)
   addTask,
   removeTask, // edits (immutable)
-  addDependency,
+  addDependency,    // addDependency(rows, from, to, options?: { type?, lag? })
   removeDependency, // dependency edits
+  normalizeDependency, // (string | GanttDependency) → ResolvedDependency
   flattenTasks,
   findTask,
   findRow,
@@ -989,14 +994,20 @@ import {
   noArrow, // arrowhead builders
 } from '@dizzy_yakov/vue-gantt'
 import type {
+  GanttDependency,
+  GanttDependencyType,
+  ResolvedDependency,
   DependencyPoint,
   DependencyPathBuilder,
+  DependencyPathHints,
   ArrowHeadShape,
   ArrowHeadBuilder,
 } from '@dizzy_yakov/vue-gantt'
 
 // e.g. <Gantt :dependency-shape="bezierPath" :arrow-head="noArrow" />
-const stepped: DependencyPathBuilder = (tail, head) =>
+// `hints` carries tailDir/headDir (±1) for the link type; omitting it is fine —
+// a two-parameter builder renders every link in the classic FS orientation.
+const stepped: DependencyPathBuilder = (tail, head, hints) =>
   `M ${tail.x} ${tail.y} H ${head.x} V ${head.y}`
 const diamond: ArrowHeadBuilder = () => ({
   d: 'M0,3 L3,0 L6,3 L3,6 Z',

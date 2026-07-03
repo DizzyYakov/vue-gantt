@@ -39,6 +39,20 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Added
 
+- **Dependency types (FS / SS / FF / SF) with lag/lead.** A dependency entry can now
+  be a `GanttDependency` object (`{ id, type?, lag? }`) alongside the bare id string,
+  which stays shorthand for finish-to-start with no lag — existing `dependencies: string[]`
+  data is unchanged. `type` picks which edges the arrow connects (FS end→start, SS
+  start→start, FF end→end, SF start→end) and `lag` shifts the constraint by a number of
+  days (negative = lead, fractions allowed). The whole graph is type-aware: `autoSchedule`,
+  `slack` and `criticalPath` honour each link's type + lag; typed links render from the
+  correct bar edges; and with `linkable` each bar now exposes a connector on **both** edges
+  so every type can be drawn by dragging (the drop half of the target picks the head edge).
+  Custom `dependencyShape` builders receive an optional `DependencyPathHints` third argument
+  (existing two-argument builders keep working). New exported `GanttDependencyType` /
+  `GanttDependency` / `ResolvedDependency` / `DependencyPathHints` types, `normalizeDependency`
+  helper, and a `type`/`lag` option on `addDependency`; `ResolvedTask` gains a resolved
+  `links` array (`dependencies` still mirrors the predecessor ids).
 - **Docs: full Storybook/README coverage audit.** New `Guides/Localization` (ru/de +
   `labelFormat`) and `Guides/Row grouping` (default/collapsed/custom `group`/`groupBar`
   slots) stories; new cases for the period slots (`period`, `period-bands`, hand-authored

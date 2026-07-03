@@ -9,15 +9,18 @@
  * the rows/tasks that change) and never mutate the input.
  */
 import { addDays, addWeeks } from 'date-fns'
-import { toDate } from './context'
+import { normalizeDependency, toDate } from './context'
 import type {
   GanttConstraint,
+  GanttDependency,
+  GanttDependencyType,
   GanttGroup,
   GanttIssue,
   GanttMoveEvent,
   GanttPeriod,
   GanttRow,
   GanttTask,
+  ResolvedDependency,
   ResolvedTask,
 } from './types'
 
@@ -159,30 +162,69 @@ export function rollupProgress(tasks: GanttTask[]): number {
 
 // --- Dependencies -----------------------------------------------------------
 
+const MS_PER_DAY = 86_400_000
+
+/** Predecessor id of a dependency entry (bare string or `GanttDependency`). */
+const depId = (d: string | GanttDependency): string => (typeof d === 'string' ? d : d.id)
+
+/** A task's dependencies as uniform resolved links (type + lag defaulted). */
+const depLinks = (t: GanttTask): ResolvedDependency[] =>
+  (t.dependencies ?? []).map(normalizeDependency)
+
+/**
+ * The epoch-ms floor a link imposes on its successor's **start**, given the
+ * predecessor's (possibly already shifted) start/end and the successor's
+ * duration. FS/SS constrain the start directly; FF/SF constrain the finish, so
+ * the duration is subtracted to express them as a start floor.
+ */
+function linkFloor(link: ResolvedDependency, ps: number, pe: number, durMs: number): number {
+  // First letter picks the predecessor's reference edge (S=start, F=finish);
+  // second letter is the successor's constrained edge — a finish constraint (`*F`)
+  // subtracts the duration to express it as a start floor.
+  const refMs = (link.type[0] === 'S' ? ps : pe) + link.lag * MS_PER_DAY
+  return link.type[1] === 'F' ? refMs - durMs : refMs
+}
+
 /** Ids of tasks that declare `id` in their `dependencies` (reverse links). */
 export function getDependents(rows: GanttRow[], id: string): string[] {
   return flattenTasks(rows)
-    .filter(t => (t.dependencies ?? []).includes(id))
+    .filter(t => (t.dependencies ?? []).some(d => depId(d) === id))
     .map(t => t.id)
 }
 
 /**
- * Add a finish-to-start dependency (`to.dependencies` gains `from`). Immutable;
- * a no-op for a self-link, an unknown successor, or an existing duplicate.
+ * Add a dependency (`to.dependencies` gains `from`). Immutable; a no-op for a
+ * self-link, an unknown successor, or an existing duplicate (one link per
+ * `from → to` pair — its type/lag are properties of that link). A plain FS link
+ * with no lag is stored as a bare id string (the compact legacy shape); pass
+ * `options` to store a typed link object.
  */
-export function addDependency(rows: GanttRow[], from: string, to: string): GanttRow[] {
+export function addDependency(
+  rows: GanttRow[],
+  from: string,
+  to: string,
+  options?: { type?: GanttDependencyType; lag?: number },
+): GanttRow[] {
   if (from === to) return rows
   const target = findTask(rows, to)
-  if (!target || (target.task.dependencies ?? []).includes(from)) return rows
-  return updateTask(rows, to, { dependencies: [...(target.task.dependencies ?? []), from] })
+  if (!target || (target.task.dependencies ?? []).some(d => depId(d) === from)) return rows
+  const plainFS = (!options?.type || options.type === 'FS') && !options?.lag
+  const entry: string | GanttDependency = plainFS
+    ? from
+    : {
+        id: from,
+        ...(options?.type && options.type !== 'FS' ? { type: options.type } : {}),
+        ...(options?.lag ? { lag: options.lag } : {}),
+      }
+  return updateTask(rows, to, { dependencies: [...(target.task.dependencies ?? []), entry] })
 }
 
-/** Remove the finish-to-start dependency `from → to`. Immutable; no-op if absent. */
+/** Remove the dependency `from → to` (any type). Immutable; no-op if absent. */
 export function removeDependency(rows: GanttRow[], from: string, to: string): GanttRow[] {
   const target = findTask(rows, to)
-  if (!target || !(target.task.dependencies ?? []).includes(from)) return rows
+  if (!target || !(target.task.dependencies ?? []).some(d => depId(d) === from)) return rows
   return updateTask(rows, to, {
-    dependencies: (target.task.dependencies ?? []).filter(d => d !== from),
+    dependencies: (target.task.dependencies ?? []).filter(d => depId(d) !== from),
   })
 }
 
@@ -192,7 +234,7 @@ export function removeDependency(rows: GanttRow[], from: string, to: string): Ga
  */
 export function detectCycles(rows: GanttRow[]): string[][] {
   const tasks = flattenTasks(rows)
-  const deps = new Map(tasks.map(t => [t.id, t.dependencies ?? []]))
+  const deps = new Map(tasks.map(t => [t.id, (t.dependencies ?? []).map(depId)]))
   const WHITE = 0
   const GRAY = 1
   const BLACK = 2
@@ -225,7 +267,9 @@ export function detectCycles(rows: GanttRow[]): string[][] {
 /**
  * Tasks in dependency order (predecessors before successors, Kahn's algorithm).
  * Tasks caught in a cycle are appended in declaration order (best effort) — use
- * {@link detectCycles} to surface those.
+ * {@link detectCycles} to surface those. Structural order is valid for all four
+ * link types: a forward-only scheduler only ever reads a predecessor's (final)
+ * start/end, regardless of the link's type or a negative lag.
  */
 export function topologicalOrder(rows: GanttRow[]): string[] {
   const tasks = flattenTasks(rows)
@@ -234,7 +278,7 @@ export function topologicalOrder(rows: GanttRow[]): string[] {
   const adjacency = new Map<string, string[]>(tasks.map(t => [t.id, []]))
 
   for (const t of tasks) {
-    for (const dep of t.dependencies ?? []) {
+    for (const dep of (t.dependencies ?? []).map(depId)) {
       if (!ids.has(dep)) continue
       adjacency.get(dep)!.push(t.id)
       indegree.set(t.id, (indegree.get(t.id) ?? 0) + 1)
@@ -261,13 +305,19 @@ export function topologicalOrder(rows: GanttRow[]): string[] {
 }
 
 /**
- * The critical path: the longest finish-to-start chain by total duration.
- * Returns the ids on that chain (empty if the graph has a cycle or no tasks).
+ * The critical path: the longest dependency chain by scheduled length (a
+ * relative CPM pass — durations plus each link's type/lag constraint, floored
+ * at 0). With plain finish-to-start links this is the longest chain by total
+ * duration, as before. Each node records its *binding* link (the predecessor
+ * whose constraint decided its start; first-seen wins on ties), and the chain
+ * is read back through those. Returns the ids on that chain (empty if the
+ * graph has a cycle or no tasks).
  */
 export function criticalPath(rows: GanttRow[]): string[] {
   if (detectCycles(rows).length) return []
   const byId = new Map(flattenTasks(rows).map(t => [t.id, t]))
-  const finish = new Map<string, number>()
+  const startT = new Map<string, number>()
+  const finishT = new Map<string, number>()
   const prev = new Map<string, string | null>()
   let bestId: string | null = null
   let bestVal = -1
@@ -276,20 +326,24 @@ export function criticalPath(rows: GanttRow[]): string[] {
     const t = byId.get(id)
     if (!t) continue
     const dur = duration(t)
-    let depFinish = 0
-    let depId: string | null = null
-    for (const dep of t.dependencies ?? []) {
-      const f = finish.get(dep)
-      if (f != null && f > depFinish) {
-        depFinish = f
-        depId = dep
+    let s = 0
+    let binding: string | null = null
+    for (const link of depLinks(t)) {
+      const ps = startT.get(link.id)
+      const pe = finishT.get(link.id)
+      if (ps == null || pe == null) continue
+      const floor = linkFloor(link, ps, pe, dur)
+      if (floor > s) {
+        s = floor
+        binding = link.id
       }
     }
-    const total = depFinish + dur
-    finish.set(id, total)
-    prev.set(id, depId)
-    if (total > bestVal) {
-      bestVal = total
+    const f = s + dur
+    startT.set(id, s)
+    finishT.set(id, f)
+    prev.set(id, binding)
+    if (f > bestVal) {
+      bestVal = f
       bestId = id
     }
   }
@@ -299,45 +353,64 @@ export function criticalPath(rows: GanttRow[]): string[] {
   return path
 }
 
-const MS_PER_DAY = 86_400_000
-
 /**
- * Free float per task, in **days**: how far a task's finish can slip before it
- * collides with its nearest finish-to-start successor's start — i.e. the gap
- * `min(successor.start − task.end)`, clamped to ≥ 0. Tasks with no successors,
- * or with no positive gap (back-to-back / on the critical path), are absent from
- * the map. Date-based, so it lines up with where bars actually sit.
+ * Free float per task, in **days**: how far a task can slip to the right before
+ * it violates its tightest successor link. Per link the allowance compares the
+ * successor's constrained side against the predecessor's reference side plus
+ * lag (FS: `succ.start − (pred.end + lag)`; SS: `succ.start − (pred.start + lag)`;
+ * FF: `succ.end − (pred.end + lag)`; SF: `succ.end − (pred.start + lag)`) — with
+ * plain finish-to-start links this is the classic `min(successor.start − task.end)`
+ * gap, as before. Tasks with no successors, or with no positive gap
+ * (back-to-back / on the critical path), are absent from the map. Date-based, so
+ * it lines up with where bars actually sit.
  */
 export function slack(rows: GanttRow[]): Map<string, number> {
   const tasks = flattenTasks(rows)
-  // Reverse links: predecessor id → its successors' start times.
-  const successorStarts = new Map<string, number[]>()
+  // Reverse links: predecessor id → the successor links constraining it.
+  const successorLinks = new Map<
+    string,
+    { link: ResolvedDependency; succStart: number; succEnd: number }[]
+  >()
   for (const t of tasks) {
     if (!t.dependencies?.length) continue
-    const start = toDate(t.start).getTime()
-    for (const dep of t.dependencies) {
-      const list = successorStarts.get(dep)
-      if (list) list.push(start)
-      else successorStarts.set(dep, [start])
+    const succStart = toDate(t.start).getTime()
+    const succEnd = toDate(t.end ?? t.start).getTime()
+    for (const link of depLinks(t)) {
+      const entry = { link, succStart, succEnd }
+      const list = successorLinks.get(link.id)
+      if (list) list.push(entry)
+      else successorLinks.set(link.id, [entry])
     }
   }
 
   const result = new Map<string, number>()
   for (const t of tasks) {
-    const starts = successorStarts.get(t.id)
-    if (!starts) continue
+    const entries = successorLinks.get(t.id)
+    if (!entries) continue
+    const start = toDate(t.start).getTime()
     const end = toDate(t.end ?? t.start).getTime()
-    const gap = Math.min(...starts) - end
-    if (gap > 0) result.set(t.id, gap / MS_PER_DAY)
+    let gap = Infinity
+    for (const { link, succStart, succEnd } of entries) {
+      // First letter = the predecessor's reference edge, second = the successor's
+      // constrained edge (the same FS/SS/FF/SF decomposition as `linkFloor`).
+      const refMs = (link.type[0] === 'S' ? start : end) + link.lag * MS_PER_DAY
+      const allowance = (link.type[1] === 'S' ? succStart : succEnd) - refMs
+      if (allowance < gap) gap = allowance
+    }
+    if (gap > 0 && gap < Infinity) result.set(t.id, gap / MS_PER_DAY)
   }
   return result
 }
 
 /**
- * Push finish-to-start successors forward so none starts before a predecessor
- * ends, preserving each task's duration. Pass `changedId` to cascade only that
- * task's (transitive) successors; omit it to enforce the constraint everywhere.
- * Returns a new `rows` (the input unchanged when nothing needs shifting).
+ * Push successors forward so every dependency link is satisfied, preserving each
+ * task's duration. Each link imposes a start floor per its type + lag (FS:
+ * `pred.end + lag`; SS: `pred.start + lag`; FF/SF: the finish constraint minus
+ * the duration). The scheduler is forward-only: a negative lag (lead) merely
+ * lowers the floor — tasks are never pulled earlier. Pass `changedId` to cascade
+ * only that task's (transitive) successors; omit it to enforce the constraint
+ * everywhere. Returns a new `rows` (the input unchanged when nothing needs
+ * shifting).
  */
 export function autoSchedule(rows: GanttRow[], changedId?: string): GanttRow[] {
   const tasks = flattenTasks(rows)
@@ -358,9 +431,12 @@ export function autoSchedule(rows: GanttRow[], changedId?: string): GanttRow[] {
     const s = start.get(id)!
     const dur = end.get(id)! - s
     let required = -Infinity
-    for (const dep of t.dependencies ?? []) {
-      const e = end.get(dep)
-      if (e != null && e > required) required = e
+    for (const link of depLinks(t)) {
+      const ps = start.get(link.id)
+      const pe = end.get(link.id)
+      if (ps == null || pe == null) continue
+      const floor = linkFloor(link, ps, pe, dur)
+      if (floor > required) required = floor
     }
     // A lower-bound constraint raises the start floor alongside dependencies.
     const floor = constraintFloor(t.constraint, dur)
@@ -473,7 +549,7 @@ export function validateRows(rows: GanttRow[], groups?: GanttGroup[]): GanttIssu
         message: `Task "${t.id}" ends before it starts.`,
       })
     }
-    for (const dep of t.dependencies ?? []) {
+    for (const dep of (t.dependencies ?? []).map(depId)) {
       if (!taskIds.has(dep)) {
         issues.push({
           type: 'missing-dependency',
@@ -511,11 +587,11 @@ function duration(task: GanttTask): number {
   return Math.max(0, toDate(task.end ?? task.start).getTime() - toDate(task.start).getTime())
 }
 
-/** Transitive finish-to-start successors of `id` (excludes `id` itself). */
+/** Transitive dependency successors of `id` (excludes `id` itself). */
 function descendants(tasks: GanttTask[], id: string): Set<string> {
   const dependents = new Map<string, string[]>()
   for (const t of tasks) {
-    for (const dep of t.dependencies ?? []) {
+    for (const dep of (t.dependencies ?? []).map(depId)) {
       const list = dependents.get(dep)
       if (list) list.push(t.id)
       else dependents.set(dep, [t.id])

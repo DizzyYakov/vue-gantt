@@ -25,7 +25,7 @@ import {
   validateRows,
   violatesConstraint,
 } from '../utils'
-import type { GanttMoveEvent, GanttRow } from '../types'
+import type { GanttDependency, GanttMoveEvent, GanttRow } from '../types'
 
 const sample = (): GanttRow[] => [
   { id: 'r1', tasks: [{ id: 'a', start: '2026-01-01', end: '2026-01-05' }] },
@@ -203,6 +203,79 @@ describe('dependencies', () => {
     ]
     expect(criticalPath(rows)).toEqual(['a', 'b'])
   })
+
+  it('structural utilities read object deps by id', () => {
+    const rows: GanttRow[] = [
+      { id: 'r1', tasks: [{ id: 'a', start: '2026-01-01', end: '2026-01-05' }] },
+      {
+        id: 'r2',
+        tasks: [
+          {
+            id: 'b',
+            start: '2026-01-06',
+            end: '2026-01-10',
+            dependencies: [{ id: 'a', type: 'SS', lag: 1 }],
+          },
+        ],
+      },
+    ]
+    expect(getDependents(rows, 'a')).toEqual(['b'])
+    expect(topologicalOrder(rows).indexOf('a')).toBeLessThan(topologicalOrder(rows).indexOf('b'))
+    expect(detectCycles(rows)).toEqual([])
+    expect(validateRows(rows)).toEqual([])
+    // Unknown id inside an object dep is still flagged.
+    const broken = addDependency(rows, 'b', 'a', { type: 'FF' })
+    expect(
+      validateRows([
+        { id: 'r', tasks: [{ id: 'x', start: 0, dependencies: [{ id: 'ghost' }] }] },
+      ]).map(i => i.type),
+    ).toContain('missing-dependency')
+    expect(detectCycles(broken).length).toBe(1) // a↔b via mixed shapes
+  })
+
+  it('addDependency stores a bare id for plain FS and an object for typed links', () => {
+    const rows = sample()
+    // Plain FS (explicit or implicit, no lag) → compact legacy string.
+    expect(findTask(addDependency(rows, 'b', 'a'), 'a')?.task.dependencies).toEqual(['b'])
+    expect(
+      findTask(addDependency(rows, 'b', 'a', { type: 'FS' }), 'a')?.task.dependencies,
+    ).toEqual(['b'])
+    // Typed / lagged → object with only the non-default fields.
+    expect(
+      findTask(addDependency(rows, 'b', 'a', { type: 'SS', lag: 2 }), 'a')?.task.dependencies,
+    ).toEqual([{ id: 'b', type: 'SS', lag: 2 }])
+    expect(
+      findTask(addDependency(rows, 'b', 'a', { lag: -1 }), 'a')?.task.dependencies,
+    ).toEqual([{ id: 'b', lag: -1 }])
+    // One link per pair: a typed add over an existing string dep is a no-op.
+    expect(addDependency(rows, 'a', 'b', { type: 'SS' })).toBe(rows)
+    // removeDependency matches object deps by id.
+    const typed = addDependency(rows, 'b', 'a', { type: 'FF', lag: 1 })
+    expect(findTask(removeDependency(typed, 'b', 'a'), 'a')?.task.dependencies).toEqual([])
+  })
+})
+
+describe('typed links (criticalPath)', () => {
+  it('follows an SS+lag link when it is the longest constraint', () => {
+    const rows: GanttRow[] = [
+      {
+        id: 'r',
+        tasks: [
+          { id: 'a', start: '2026-01-01', end: '2026-01-03' }, // dur 2
+          // SS+5d: starts 5 days after a starts → finishes at relative day 6.
+          {
+            id: 'b',
+            start: '2026-01-06',
+            end: '2026-01-07',
+            dependencies: [{ id: 'a', type: 'SS', lag: 5 }],
+          },
+          // FS chain off a: finishes at relative day 2+3 = 5 — shorter.
+          { id: 'c', start: '2026-01-03', end: '2026-01-06', dependencies: ['a'] },
+        ],
+      },
+    ]
+    expect(criticalPath(rows)).toEqual(['a', 'b'])
+  })
 })
 
 describe('slack (free float)', () => {
@@ -253,6 +326,66 @@ describe('slack (free float)', () => {
       { id: 'r2', tasks: [{ id: 'b', start: '2026-01-06', end: '2026-01-10' }] },
     ]
     expect(slack(rows).size).toBe(0)
+  })
+
+  it('computes the allowance per link type', () => {
+    const pred = { id: 'a', start: '2026-01-05', end: '2026-01-08' }
+    const succ = (dep: string | GanttDependency) => ({
+      id: 'b',
+      start: '2026-01-10',
+      end: '2026-01-12',
+      dependencies: [dep],
+    })
+    const rowsWith = (dep: string | GanttDependency): GanttRow[] => [
+      { id: 'r1', tasks: [pred] },
+      { id: 'r2', tasks: [succ(dep)] },
+    ]
+    // SS: succ.start − pred.start = Jan-10 − Jan-05 = 5 days.
+    expect(slack(rowsWith({ id: 'a', type: 'SS' })).get('a')).toBeCloseTo(5)
+    // FF: succ.end − pred.end = Jan-12 − Jan-08 = 4 days.
+    expect(slack(rowsWith({ id: 'a', type: 'FF' })).get('a')).toBeCloseTo(4)
+    // SF: succ.end − pred.start = Jan-12 − Jan-05 = 7 days.
+    expect(slack(rowsWith({ id: 'a', type: 'SF' })).get('a')).toBeCloseTo(7)
+    // FS with lag 1: succ.start − (pred.end + 1d) = 2 − 1 = 1 day.
+    expect(slack(rowsWith({ id: 'a', lag: 1 })).get('a')).toBeCloseTo(1)
+  })
+
+  it('takes the minimum across mixed-type links and clamps at zero', () => {
+    const rows: GanttRow[] = [
+      { id: 'r1', tasks: [{ id: 'a', start: '2026-01-01', end: '2026-01-03' }] },
+      {
+        id: 'r2',
+        tasks: [
+          // FS gap: Jan-06 − Jan-03 = 3 days.
+          { id: 'b', start: '2026-01-06', end: '2026-01-08', dependencies: ['a'] },
+          // FF gap: Jan-04 − Jan-03 = 1 day (the binding minimum).
+          {
+            id: 'c',
+            start: '2026-01-02',
+            end: '2026-01-04',
+            dependencies: [{ id: 'a', type: 'FF' }],
+          },
+        ],
+      },
+    ]
+    expect(slack(rows).get('a')).toBeCloseTo(1)
+    // A violated link (negative allowance) clamps the task out of the map.
+    const violated: GanttRow[] = [
+      { id: 'r1', tasks: [{ id: 'a', start: '2026-01-05', end: '2026-01-08' }] },
+      {
+        id: 'r2',
+        tasks: [
+          // SF: succ.end (Jan-03) − pred.start (Jan-05) = −2 → no positive float.
+          {
+            id: 'b',
+            start: '2026-01-01',
+            end: '2026-01-03',
+            dependencies: [{ id: 'a', type: 'SF' }],
+          },
+        ],
+      },
+    ]
+    expect(slack(violated).has('a')).toBe(false)
   })
 })
 
@@ -314,6 +447,91 @@ describe('autoSchedule', () => {
       const input = rows(type)
       expect(autoSchedule(input)).toBe(input) // unchanged (no shift → same reference)
     }
+  })
+
+  // Predecessor a: Jan-01 → Jan-05; successor b keeps its 2-day duration.
+  const typedRows = (dep: string | GanttDependency, b = { start: '2026-01-01', end: '2026-01-03' }): GanttRow[] => [
+    { id: 'r1', tasks: [{ id: 'a', start: '2026-01-01', end: '2026-01-05' }] },
+    { id: 'r2', tasks: [{ id: 'b', ...b, dependencies: [dep] }] },
+  ]
+
+  it('SS: pushes the successor start to the predecessor start + lag', () => {
+    const b = findTask(autoSchedule(typedRows({ id: 'a', type: 'SS', lag: 2 })), 'b')!.task
+    expect(b.start).toEqual(new Date(2026, 0, 3)) // a.start + 2d
+    expect(b.end).toEqual(new Date(2026, 0, 5)) // duration preserved
+  })
+
+  it('FF: aligns the successor finish to the predecessor finish + lag', () => {
+    const b = findTask(autoSchedule(typedRows({ id: 'a', type: 'FF' })), 'b')!.task
+    expect(b.end).toEqual(new Date(2026, 0, 5)) // = a.end
+    expect(b.start).toEqual(new Date(2026, 0, 3)) // finish − duration
+  })
+
+  it('SF: pushes the successor finish to the predecessor start + lag', () => {
+    const b = findTask(
+      autoSchedule(typedRows({ id: 'a', type: 'SF', lag: 1 }, { start: '2025-12-30', end: '2025-12-31' })),
+      'b',
+    )!.task
+    expect(b.end).toEqual(new Date(2026, 0, 2)) // a.start + 1d
+    expect(b.start).toEqual(new Date(2026, 0, 1)) // finish − duration (1 day)
+  })
+
+  it('FS with a fractional lag lands mid-day; a lead (negative lag) lowers the floor', () => {
+    const half = findTask(autoSchedule(typedRows({ id: 'a', lag: 0.5 })), 'b')!.task
+    expect(half.start).toEqual(new Date(2026, 0, 5, 12)) // a.end + 12h
+    const lead = findTask(autoSchedule(typedRows({ id: 'a', lag: -2 })), 'b')!.task
+    expect(lead.start).toEqual(new Date(2026, 0, 3)) // a.end − 2d
+  })
+
+  it('is forward-only: a lead never pulls an already-later task earlier', () => {
+    const input = typedRows({ id: 'a', lag: -2 }, { start: '2026-01-10', end: '2026-01-12' })
+    expect(autoSchedule(input)).toBe(input) // b already past the floor → untouched
+  })
+
+  it('takes the max floor across mixed-type predecessors', () => {
+    const rows: GanttRow[] = [
+      {
+        id: 'r1',
+        tasks: [
+          { id: 'a1', start: '2026-01-01', end: '2026-01-04' }, // FS floor: Jan-04
+          { id: 'a2', start: '2026-01-05', end: '2026-01-09' }, // SS+1 floor: Jan-06 (binding)
+        ],
+      },
+      {
+        id: 'r2',
+        tasks: [
+          {
+            id: 'b',
+            start: '2026-01-01',
+            end: '2026-01-03',
+            dependencies: ['a1', { id: 'a2', type: 'SS', lag: 1 }],
+          },
+        ],
+      },
+    ]
+    expect(findTask(autoSchedule(rows), 'b')!.task.start).toEqual(new Date(2026, 0, 6))
+  })
+
+  it('cascades through typed links from changedId', () => {
+    const rows: GanttRow[] = [
+      { id: 'r1', tasks: [{ id: 'a', start: '2026-01-01', end: '2026-01-05' }] },
+      {
+        id: 'r2',
+        tasks: [
+          {
+            id: 'b',
+            start: '2026-01-01',
+            end: '2026-01-03',
+            dependencies: [{ id: 'a', type: 'SS', lag: 2 }],
+          },
+        ],
+      },
+      // c is unrelated and violates nothing scoped to a's descendants.
+      { id: 'r3', tasks: [{ id: 'c', start: '2026-01-01', end: '2026-01-02' }] },
+    ]
+    const out = autoSchedule(rows, 'a')
+    expect(findTask(out, 'b')!.task.start).toEqual(new Date(2026, 0, 3))
+    expect(findTask(out, 'c')!.task).toBe(findTask(rows, 'c')!.task) // untouched
   })
 })
 

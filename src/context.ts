@@ -1,9 +1,11 @@
 import type { ComputedRef, InjectionKey } from 'vue'
 import type {
   GanttContext,
+  GanttDependency,
   GanttItemType,
   GanttRow,
   GanttTask,
+  ResolvedDependency,
   ResolvedRow,
   ResolvedTask,
 } from './types'
@@ -57,6 +59,21 @@ export function toDate(value: Date | string | number): Date {
   return new Date(value)
 }
 
+const DEP_TYPES = new Set(['FS', 'SS', 'FF', 'SF'])
+
+/**
+ * Resolve one dependency entry: a bare id string means finish-to-start with no
+ * lag; unknown types and non-finite lags are coerced to the same defaults.
+ */
+export function normalizeDependency(dep: string | GanttDependency): ResolvedDependency {
+  if (typeof dep === 'string') return { id: dep, type: 'FS', lag: 0 }
+  return {
+    id: dep.id,
+    type: dep.type != null && DEP_TYPES.has(dep.type) ? dep.type : 'FS',
+    lag: typeof dep.lag === 'number' && Number.isFinite(dep.lag) ? dep.lag : 0,
+  }
+}
+
 /** Apply defaults and coerce dates so downstream code sees a uniform shape. */
 export function normalizeTask(task: GanttTask, rowId: string, order: number): ResolvedTask {
   const type: GanttItemType = task.type ?? 'task'
@@ -64,6 +81,7 @@ export function normalizeTask(task: GanttTask, rowId: string, order: number): Re
   // A milestone is a single point in time; collapse its end onto its start.
   // A task with no end also falls back to its start (zero-length).
   const end = type === 'milestone' || task.end == null ? start : toDate(task.end)
+  const links = (task.dependencies ?? []).map(normalizeDependency)
 
   return {
     id: task.id,
@@ -71,7 +89,8 @@ export function normalizeTask(task: GanttTask, rowId: string, order: number): Re
     start,
     end,
     progress: clampProgress(task.progress),
-    dependencies: task.dependencies ?? [],
+    dependencies: links.map(l => l.id),
+    links,
     type,
     segments: task.segments?.map(s => ({ start: toDate(s.start), end: toDate(s.end) })),
     deadline: task.deadline != null ? toDate(task.deadline) : undefined,

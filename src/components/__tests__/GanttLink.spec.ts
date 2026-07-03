@@ -49,7 +49,8 @@ describe('dependency create / re-route (link drag)', () => {
       pointer: { x: 0, y: 0 },
     })
     ctx().endLink('c')
-    expect(wrapper.emitted('dependency-create')![0]![0]).toEqual({ from: 'a', to: 'c' })
+    // An explicit target defaults to the start edge → finish→start = FS.
+    expect(wrapper.emitted('dependency-create')![0]![0]).toEqual({ from: 'a', to: 'c', type: 'FS' })
   })
 
   it('ignores a duplicate / self create', () => {
@@ -86,7 +87,14 @@ describe('dependency create / re-route (link drag)', () => {
     })
     ctx().endLink('c')
     const update = wrapper.emitted('dependency-update')![0]![0] as GanttDependencyUpdate
-    expect(update).toEqual({ from: 'a', to: 'c', previous: { from: 'a', to: 'b' } })
+    // Tail letter kept from the previous link (FS), head letter from the drop edge.
+    expect(update).toEqual({
+      from: 'a',
+      to: 'c',
+      type: 'FS',
+      lag: undefined,
+      previous: { from: 'a', to: 'b' },
+    })
   })
 
   it('endLink(null) cancels without emitting', () => {
@@ -101,5 +109,42 @@ describe('dependency create / re-route (link drag)', () => {
     })
     ctx().endLink(null)
     expect(wrapper.emitted('dependency-create')).toBeUndefined()
+  })
+
+  it('a start-edge anchor drop (start half) creates a start-to-start link', () => {
+    const { wrapper, ctx } = mountInRoot(GanttDependencies, {
+      rootProps: { rows, unit: 'day', linkable: true },
+    })
+    ctx().beginLink({
+      anchorId: 'a',
+      anchorEdge: 'start',
+      mode: 'create',
+      pointer: { x: 0, y: 0 },
+    })
+    ctx().endLink('c') // explicit target defaults to the start edge → S + S = SS
+    expect(wrapper.emitted('dependency-create')![0]![0]).toEqual({ from: 'a', to: 'c', type: 'SS' })
+  })
+})
+
+describe('link connectors (both bar edges)', () => {
+  it('renders a start and an end connector on each bar when linkable', () => {
+    const wrapper = mount(Gantt, { props: { rows, unit: 'day', columnWidth: 40, linkable: true } })
+    expect(wrapper.findAll('.gantt-bar__connector--start').length).toBeGreaterThan(0)
+    expect(wrapper.findAll('.gantt-bar__connector--end').length).toBe(
+      wrapper.findAll('.gantt-bar__connector--start').length,
+    )
+  })
+
+  it('renders no connectors when not linkable', () => {
+    const wrapper = mount(Gantt, { props: { rows, unit: 'day', columnWidth: 40 } })
+    expect(wrapper.findAll('.gantt-bar__connector')).toHaveLength(0)
+  })
+
+  it('flags a linkable bar with data-linkable (drives the label edge inset)', () => {
+    const linkable = mount(Gantt, { props: { rows, unit: 'day', columnWidth: 40, linkable: true } })
+    expect(linkable.find('.gantt-bar').attributes('data-linkable')).toBe('true')
+
+    const notLinkable = mount(Gantt, { props: { rows, unit: 'day', columnWidth: 40 } })
+    expect(notLinkable.find('.gantt-bar').attributes('data-linkable')).toBeUndefined()
   })
 })

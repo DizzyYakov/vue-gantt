@@ -192,6 +192,21 @@ describe('v-model:rows on GanttRoot (prop-driven)', () => {
     expect(wrapper.emitted('dependency-update')).toHaveLength(1)
   })
 
+  it('dependency-create: forwards the link type/lag into addDependency', () => {
+    const rows = makeRows()
+    const { wrapper, ctx } = mountInRoot(Noop, { rootProps: { rows, unit: 'day' } })
+
+    ctx().dispatch('dependency-create', { from: 'b', to: 'a', type: 'SS', lag: 2 })
+
+    expect(lastModelRows(wrapper)).toStrictEqual(
+      addDependency(rows, 'b', 'a', { type: 'SS', lag: 2 }),
+    )
+    // The stored dep is the typed object shape.
+    expect(findTask(lastModelRows(wrapper) as GanttRowType[], 'a')?.task.dependencies).toEqual([
+      { id: 'b', type: 'SS', lag: 2 },
+    ])
+  })
+
   it('is immutable: the emitted array is not the same reference as the input rows', () => {
     const rows = makeRows()
     const { wrapper, ctx } = mountInRoot(Noop, { rootProps: { rows, unit: 'day' } })
