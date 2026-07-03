@@ -82,6 +82,18 @@ export interface GanttConstraint {
 export type GanttOverlapMode = 'lanes' | 'overlap' | 'cascade' | 'conflict'
 
 /**
+ * How the timeline axis reacts at its horizontal edges:
+ * - `fixed` (default): the axis spans the derived (or explicit) range and never
+ *   grows on its own.
+ * - `infinite`: scrolling to either edge auto-extends the range by one screen so
+ *   the timeline can be panned indefinitely; the scroll position is preserved
+ *   when dates are prepended on the left. The `range-change` event fires on every
+ *   edge reach in both modes, so a consumer can lazy-load data (or drive its own
+ *   `startDate`/`endDate` in `fixed` mode).
+ */
+export type GanttTimelineMode = 'fixed' | 'infinite'
+
+/**
  * Task shape accepted from the consumer. A task is a single bar/marker; it lives
  * inside a row. Dates may be `Date` or any string/number that the `Date`
  * constructor understands (e.g. ISO `2026-01-15`).
@@ -386,6 +398,11 @@ export interface GanttRootProps {
   endDate?: Date | string | number
   today?: Date | string | number
   /**
+   * Timeline edge behaviour (default `'fixed'`). `'infinite'` auto-extends the
+   * range by one screen when scrolled to an edge. See `GanttTimelineMode`.
+   */
+  timelineMode?: GanttTimelineMode
+  /**
    * Column label formatting. A date-fns string (base unit only), a per-tier map
    * of format strings, or a `(date, tier) => string` function. See `GanttLabelFormat`.
    */
@@ -468,6 +485,8 @@ export interface GanttConfig {
   start: Date
   end: Date
   today: Date
+  /** Timeline edge behaviour: `fixed` (never grows) or `infinite` (auto-extend). */
+  timelineMode: GanttTimelineMode
 }
 
 /** Payload emitted when a task is moved via drag & drop. */
@@ -570,6 +589,21 @@ export interface GanttZoomEvent {
   id: string
   /** The full level definition that was activated. */
   level: GanttZoomLevel
+}
+
+/**
+ * Payload emitted when scrolling reaches a timeline edge. `start`/`end` are the
+ * proposed bounds after extending by one screen — already applied when
+ * `timelineMode: 'infinite'`, or a suggestion to act on in `fixed` mode (e.g. widen
+ * `startDate`/`endDate` and lazy-load data for the newly revealed span).
+ */
+export interface GanttRangeChangeEvent {
+  /** Which edge was reached. */
+  side: 'start' | 'end'
+  /** Proposed axis start after the extension. */
+  start: Date
+  /** Proposed axis end after the extension. */
+  end: Date
 }
 
 /** Payload for pointer interactions on a task bar or milestone marker. */
