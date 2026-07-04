@@ -30,6 +30,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Changed
 
+- **Internal: `GanttRoot` readability cleanup.** Non-deeply-reactive refs (`now`,
+  the infinite-scroll extents, the scroll-container element) use `shallowRef`, cryptic
+  local names were spelled out, and a redundant `rowByOrder` computed alias was dropped.
+  Purely internal — no API/behavior changes.
+
 - **Performance: viewport-culled dependency arrows + O(rows) group rollups.**
   `GanttDependencies` now only draws links whose endpoint rows intersect the visible
   window (window-straddling links kept), so dense dependency graphs stay light on large

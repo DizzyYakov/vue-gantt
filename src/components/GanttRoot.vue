@@ -26,6 +26,7 @@ import {
   provide,
   reactive,
   ref,
+  shallowRef,
   toRef,
   watch,
 } from 'vue'
@@ -174,17 +175,21 @@ function dispatch<K extends keyof GanttEventMap>(name: K, payload: GanttEventMap
   ;(emit as (n: string, p: unknown) => void)(name, payload)
   // Mirror dependency edits into `v-model:rows`.
   if (name === 'dependency-create') {
-    const p = payload as GanttDependencyChange
-    emitModelUpdate(rows => maybeAutoSchedule(addDependency(rows, p.from, p.to), p.from))
+    const change = payload as GanttDependencyChange
+    emitModelUpdate(rows => maybeAutoSchedule(addDependency(rows, change.from, change.to), change.from))
   } else if (name === 'dependency-remove') {
-    const p = payload as GanttDependencyChange
-    emitModelUpdate(rows => removeDependency(rows, p.from, p.to))
+    const change = payload as GanttDependencyChange
+    emitModelUpdate(rows => removeDependency(rows, change.from, change.to))
   } else if (name === 'dependency-update') {
-    const p = payload as GanttDependencyUpdate
+    const update = payload as GanttDependencyUpdate
     emitModelUpdate(rows =>
       maybeAutoSchedule(
-        addDependency(removeDependency(rows, p.previous.from, p.previous.to), p.from, p.to),
-        p.from,
+        addDependency(
+          removeDependency(rows, update.previous.from, update.previous.to),
+          update.from,
+          update.to,
+        ),
+        update.from,
       ),
     )
   }
@@ -222,13 +227,13 @@ const zoomLevels = computed<GanttZoomLevel[]>(() => props.zoomLevels)
 const zoomState = ref<string | undefined>(props.zoom)
 watch(
   () => props.zoom,
-  v => {
-    if (v != null) zoomState.value = v
+  zoomId => {
+    if (zoomId != null) zoomState.value = zoomId
   },
 )
 const activeZoom = computed<string | undefined>(() => zoomState.value)
 const activeIndex = computed<number>(() =>
-  zoomLevels.value.findIndex(l => l.id === activeZoom.value),
+  zoomLevels.value.findIndex(level => level.id === activeZoom.value),
 )
 const activeLevel = computed<GanttZoomLevel | undefined>(() => zoomLevels.value[activeIndex.value])
 
@@ -238,7 +243,9 @@ const activeLevel = computed<GanttZoomLevel | undefined>(() => zoomLevels.value[
 // state always matches whether a click would move.
 const effectiveIndex = computed<number>(() => {
   if (activeIndex.value >= 0) return activeIndex.value
-  const byUnit = zoomLevels.value.findIndex(l => l.tiers[l.tiers.length - 1] === baseUnit.value)
+  const byUnit = zoomLevels.value.findIndex(
+    level => level.tiers[level.tiers.length - 1] === baseUnit.value,
+  )
   return byUnit < 0 ? 0 : byUnit
 })
 const canZoomIn = computed(() => effectiveIndex.value < zoomLevels.value.length - 1)
@@ -248,7 +255,7 @@ function setZoom(id: string): void {
   // Idempotent: re-selecting the active level (e.g. a clamped edge step) is a
   // no-op and emits nothing.
   if (id === zoomState.value) return
-  const level = zoomLevels.value.find(l => l.id === id)
+  const level = zoomLevels.value.find(candidate => candidate.id === id)
   if (!level) return
   zoomState.value = id
   emit('update:zoom', id)
@@ -283,7 +290,7 @@ const coarsestUnit = computed<GanttUnit>(() => tiers.value[0] ?? props.unit)
 // Live "now" so the today-column highlight stays on the column containing the
 // current time — including hours/minutes at fine tiers. Ticks once a minute
 // (the finest tier is minute); the red today line keeps its own per-second clock.
-const now = ref(new Date())
+const now = shallowRef(new Date())
 let nowTimer: ReturnType<typeof setInterval> | undefined
 onMounted(() => {
   nowTimer = setInterval(() => {
@@ -384,8 +391,8 @@ const derivedEnd = computed<Date>(() => {
 // Infinite-scroll growth beyond the derived range (null until an edge extends
 // it). The effective axis is the derived range widened by these, so `fixed` mode
 // (where they stay null) behaves exactly as the plain derived range.
-const extendedStart = ref<Date | null>(null)
-const extendedEnd = ref<Date | null>(null)
+const extendedStart = shallowRef<Date | null>(null)
+const extendedEnd = shallowRef<Date | null>(null)
 
 const start = computed<Date>(() => {
   const grown = extendedStart.value
@@ -441,28 +448,26 @@ const config = computed<GanttConfig>(() => ({
   timelineMode: props.timelineMode,
 }))
 
-// Row lookup by render index (rows are produced in order).
-const rowByOrder = computed(() => rows.value)
-
 const contentHeight = computed(() => layout.value.contentHeight)
 
 const CASCADE_OFFSET = 8 // px vertical step between cascaded lanes
 
 // Vertical band a task's bar occupies, depending on the overlap mode.
 function taskBand(task: ResolvedTask): GanttBand {
-  const row = rowByOrder.value[task.order]
+  // Row array is indexed by order (rows are produced in order).
+  const row = rows.value[task.order]
   const top = row ? row.top : task.order * props.rowHeight
-  const h = props.rowHeight
+  const height = props.rowHeight
   if (props.overlap === 'lanes') {
-    return { top: top + task.lane * h, height: h }
+    return { top: top + task.lane * height, height }
   }
   if (props.overlap === 'cascade') {
     const lanes = row ? row.laneCount : 1
-    const step = Math.min(CASCADE_OFFSET, lanes > 1 ? (h * 0.4) / (lanes - 1) : 0)
-    return { top: top + task.lane * step, height: h - (lanes - 1) * step }
+    const cascadeStep = Math.min(CASCADE_OFFSET, lanes > 1 ? (height * 0.4) / (lanes - 1) : 0)
+    return { top: top + task.lane * cascadeStep, height: height - (lanes - 1) * cascadeStep }
   }
   // overlap / conflict: one shared band.
-  return { top, height: h }
+  return { top, height }
 }
 
 // --- Viewport + virtualization -------------------------------------------
@@ -485,19 +490,19 @@ function setViewport(metrics: Partial<GanttViewport>): void {
 
 // Custom timeline periods (sprints), positioned in pixels via the scale.
 const periods = computed<ResolvedPeriod[]>(() =>
-  (props.periods ?? []).map((p, index) => {
-    const start = toDate(p.start)
-    const end = toDate(p.end)
+  (props.periods ?? []).map((period, index) => {
+    const start = toDate(period.start)
+    const end = toDate(period.end)
     const x = scale.dateToX(start)
     return {
-      id: p.id,
-      label: p.label ?? p.id,
+      id: period.id,
+      label: period.label ?? period.id,
       start,
       end,
       x,
       width: scale.widthBetween(start, end),
       index,
-      meta: p.meta ?? {},
+      meta: period.meta ?? {},
     }
   }),
 )
@@ -521,12 +526,11 @@ const headerHeight = computed(
 // The scroll container (registered by `GanttView`) lives below the frozen
 // sidebar/header in the scroll flow, so a content-x maps to scrollLeft directly
 // (the sidebar occupies the first `sidebarWidth` px of the scrollable row).
-const scrollerEl = ref<HTMLElement | null>(null)
+const scrollerEl = shallowRef<HTMLElement | null>(null)
 
 function setScroller(el: HTMLElement | null): void {
   scrollerEl.value = el
 }
-
 
 // Edge auto-scroll during a drag (move/resize/link): scrolls the viewport toward
 // whichever edge the pointer approaches so off-screen destinations are reachable.
@@ -579,7 +583,7 @@ function scrollToTask(
 ): void {
   const task = tasks.value.find(t => t.id === id)
   if (!task) return
-  const row = rowByOrder.value[task.order]
+  const row = rows.value[task.order]
   const top = row ? row.top : task.order * props.rowHeight
   applyScroll(leftForDate(task.start, options.align ?? 'start'), top, options.behavior ?? 'smooth')
 }
@@ -607,7 +611,7 @@ const verticalWindow = computed(() => {
 function rowInWindow(order: number): boolean {
   const win = verticalWindow.value
   if (!win) return true
-  const row = rowByOrder.value[order]
+  const row = rows.value[order]
   if (!row) return true
   return row.top + row.height >= win.min && row.top <= win.max
 }
@@ -624,15 +628,15 @@ const visibleRows = computed<ResolvedRow[]>(() =>
 )
 
 const visibleTasks = computed<ResolvedTask[]>(() => {
-  const h = horizontalWindow.value
+  const horizontal = horizontalWindow.value
   return tasks.value.filter(t => {
-    const row = rowByOrder.value[t.order]
+    const row = rows.value[t.order]
     if (row?.hidden) return false
     if (!rowInWindow(t.order)) return false
-    if (!h) return true
+    if (!horizontal) return true
     const x = scale.dateToX(t.start)
-    const w = scale.widthBetween(t.start, t.end)
-    return x + w >= h.min - MARKER_PAD && x <= h.max + MARKER_PAD
+    const width = scale.widthBetween(t.start, t.end)
+    return x + width >= horizontal.min - MARKER_PAD && x <= horizontal.max + MARKER_PAD
   })
 })
 
@@ -653,9 +657,9 @@ const conflicts = computed<GanttConflict[]>(() => {
   if (props.overlap !== 'conflict') return []
   const out: GanttConflict[] = []
   for (const row of rows.value) {
-    for (const seg of conflictSegments(row.tasks)) {
-      const x = scale.dateToX(seg.start)
-      out.push({ rowId: row.id, order: row.order, x, width: scale.dateToX(seg.end) - x })
+    for (const segment of conflictSegments(row.tasks)) {
+      const x = scale.dateToX(segment.start)
+      out.push({ rowId: row.id, order: row.order, x, width: scale.dateToX(segment.end) - x })
     }
   }
   return out
