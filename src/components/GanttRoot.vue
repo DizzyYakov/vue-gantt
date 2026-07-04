@@ -1,43 +1,19 @@
 <script setup lang="ts">
-import {
-  addDays,
-  endOfDay,
-  endOfHour,
-  endOfMinute,
-  endOfMonth,
-  endOfQuarter,
-  endOfWeek,
-  endOfYear,
-  max as maxDate,
-  min as minDate,
-  startOfDay,
-  startOfHour,
-  startOfMinute,
-  startOfMonth,
-  startOfQuarter,
-  startOfWeek,
-  startOfYear,
-} from 'date-fns'
-import {
-  computed,
-  nextTick,
-  onMounted,
-  onUnmounted,
-  provide,
-  reactive,
-  ref,
-  shallowRef,
-  toRef,
-  watch,
-} from 'vue'
+import { addDays, max as maxDate, min as minDate } from 'date-fns'
+import { computed, onMounted, onUnmounted, provide, reactive, shallowRef, toRef, watch } from 'vue'
 import { useGanttAutoscroll } from '../composables/useGanttAutoscroll'
+import { useGanttGroups } from '../composables/useGanttGroups'
 import { useGanttLink } from '../composables/useGanttLink'
 import { useGanttScale } from '../composables/useGanttScale'
+import { useGanttScrollApi } from '../composables/useGanttScrollApi'
+import { useGanttTimelineEdges } from '../composables/useGanttTimelineEdges'
+import { useGanttZoom } from '../composables/useGanttZoom'
 import { useGanttRegistry } from '../composables/useTaskRegistry'
 import { triangleArrow } from '../arrowHeads'
 import { GANTT_CONTEXT, GANTT_DEFAULTS, normalizeRow, toDate } from '../context'
+import { ceilToUnit, floorToUnit } from '../dateUnits'
 import { elbowPath } from '../dependencyPaths'
-import { conflictSegments, layoutGroups, type GroupMeta } from '../layout'
+import { conflictSegments, layoutGroups } from '../layout'
 import {
   addDependency,
   applyMove,
@@ -77,7 +53,6 @@ import type {
   GanttUnit,
   GanttViewport,
   GanttZoomEvent,
-  GanttZoomLevel,
   ResolvedGroup,
   ResolvedNonWorkingBand,
   ResolvedPeriod,
@@ -169,10 +144,18 @@ function maybeAutoSchedule(rows: GanttRow[], changedId: string): GanttRow[] {
   return props.autoSchedule ? autoSchedule(rows, changedId) : rows
 }
 
+// Vue's generated `emit` type is an intersection of per-event call signatures,
+// which a generic forward can't satisfy directly; bridge it once to a
+// GanttEventMap-keyed dispatcher so `dispatch` stays type-safe at every call site.
+const emitEvent = emit as unknown as <K extends keyof GanttEventMap>(
+  name: K,
+  payload: GanttEventMap[K],
+) => void
+
 // Bubble child interactions up as the matching chart event. Components call this
 // via the context so prop-driven `<Gantt>` consumers can listen at the root.
 function dispatch<K extends keyof GanttEventMap>(name: K, payload: GanttEventMap[K]): void {
-  ;(emit as (n: string, p: unknown) => void)(name, payload)
+  emitEvent(name, payload)
   // Mirror dependency edits into `v-model:rows`.
   if (name === 'dependency-create') {
     const change = payload as GanttDependencyChange
@@ -206,86 +189,30 @@ const {
   groups: registeredGroups,
 } = useGanttRegistry()
 
-// Coarse → fine ranking, used to order tier rows and pick base/coarsest tiers.
-const TIER_RANK: Record<GanttUnit, number> = {
-  year: 0,
-  quarter: 1,
-  month: 2,
-  week: 3,
-  day: 4,
-  hour: 5,
-  minute: 6,
-}
-
-// --- Zoom / view-mode -----------------------------------------------------
-// A zoom level is a preset bundle of `tiers` + `columnWidth`. State is
-// uncontrolled-with-v-model: an internal ref seeded from the `zoom` prop and
-// kept in sync with it, so `setZoom`/`zoomIn`/`zoomOut` work standalone while
-// `v-model:zoom` (or a static `:zoom`) still drives it. When no level is active
-// the chart falls back to the raw `tiers`/`columnWidth`/`unit` props (unchanged).
-const zoomLevels = computed<GanttZoomLevel[]>(() => props.zoomLevels)
-const zoomState = ref<string | undefined>(props.zoom)
-watch(
-  () => props.zoom,
-  zoomId => {
-    if (zoomId != null) zoomState.value = zoomId
-  },
-)
-const activeZoom = computed<string | undefined>(() => zoomState.value)
-const activeIndex = computed<number>(() =>
-  zoomLevels.value.findIndex(level => level.id === activeZoom.value),
-)
-const activeLevel = computed<GanttZoomLevel | undefined>(() => zoomLevels.value[activeIndex.value])
-
-// The index `zoomIn`/`zoomOut` step from: the active level, or — when none is
-// active — the level whose base unit matches the current axis, else the coarsest.
-// `canZoomIn`/`canZoomOut` read from the same anchor, so a button's disabled
-// state always matches whether a click would move.
-const effectiveIndex = computed<number>(() => {
-  if (activeIndex.value >= 0) return activeIndex.value
-  const byUnit = zoomLevels.value.findIndex(
-    level => level.tiers[level.tiers.length - 1] === baseUnit.value,
-  )
-  return byUnit < 0 ? 0 : byUnit
+// Zoom / view-mode + the derived tier list and base/coarsest units the rest of
+// the geometry hangs off. Falls back to the raw `tiers`/`columnWidth`/`unit`
+// props when no zoom level is active.
+const {
+  tiers,
+  columnWidth,
+  baseUnit,
+  coarsestUnit,
+  zoomLevels,
+  activeZoom,
+  canZoomIn,
+  canZoomOut,
+  setZoom,
+  zoomIn,
+  zoomOut,
+} = useGanttZoom({
+  zoomLevels: () => props.zoomLevels,
+  zoom: () => props.zoom,
+  tiers: () => props.tiers,
+  unit: () => props.unit,
+  columnWidth: () => props.columnWidth,
+  onUpdateZoom: id => emit('update:zoom', id),
+  onZoomChange: event => emit('zoom-change', event),
 })
-const canZoomIn = computed(() => effectiveIndex.value < zoomLevels.value.length - 1)
-const canZoomOut = computed(() => effectiveIndex.value > 0)
-
-function setZoom(id: string): void {
-  // Idempotent: re-selecting the active level (e.g. a clamped edge step) is a
-  // no-op and emits nothing.
-  if (id === zoomState.value) return
-  const level = zoomLevels.value.find(candidate => candidate.id === id)
-  if (!level) return
-  zoomState.value = id
-  emit('update:zoom', id)
-  emit('zoom-change', { id, level })
-}
-
-// Step `delta` levels (coarse→fine ordering: +1 = finer), clamped to the range.
-function step(delta: number): void {
-  const levels = zoomLevels.value
-  const next = Math.min(levels.length - 1, Math.max(0, effectiveIndex.value + delta))
-  const target = levels[next]
-  if (target) setZoom(target.id)
-}
-const zoomIn = (): void => step(1)
-const zoomOut = (): void => step(-1)
-
-// Displayed time-group rows, deduped and ordered coarse → fine. The active zoom
-// level's tiers win; otherwise the `tiers` prop (or `[unit]`).
-const tiers = computed<GanttUnit[]>(() => {
-  const requested =
-    activeLevel.value?.tiers ?? (props.tiers?.length ? props.tiers : [props.unit])
-  return [...new Set(requested)].sort((a, b) => TIER_RANK[a] - TIER_RANK[b])
-})
-
-// Pixel density: the active zoom level's columnWidth wins over the prop.
-const columnWidth = computed<number>(() => activeLevel.value?.columnWidth ?? props.columnWidth)
-
-// The finest displayed tier drives pixel density; the coarsest snaps the bounds.
-const baseUnit = computed<GanttUnit>(() => tiers.value[tiers.value.length - 1] ?? props.unit)
-const coarsestUnit = computed<GanttUnit>(() => tiers.value[0] ?? props.unit)
 
 // Live "now" so the today-column highlight stays on the column containing the
 // current time — including hours/minutes at fine tiers. Ticks once a minute
@@ -303,43 +230,23 @@ onUnmounted(() => {
 
 const today = computed(() => (props.today ? toDate(props.today) : now.value))
 
+// Stable anchor for the auto-derived range when the chart is empty, so the
+// ticking `now` never drifts the axis under an empty chart (only observable at
+// hour/minute coarsest tiers). Captured once; real data derives the range from
+// its own tasks/periods, and an explicit `today` prop still anchors it.
+const mountTime = new Date()
+const emptyRangeAnchor = computed<Date>(() => (props.today ? toDate(props.today) : mountTime))
+
 // Single source of truth: the `rows` prop wins; otherwise declarative children.
 const sourceRows = computed<GanttRow[]>(() => props.rows ?? registeredRows.value)
 const sourceGroups = computed<GanttGroup[]>(() => props.groups ?? registeredGroups.value)
 
-// --- Group collapse state -------------------------------------------------
-// Uncontrolled: a user toggle is recorded as an explicit override that wins over
-// the group's `collapsed` default; without an override the default applies. This
-// is fully derived (no async seeding), so the default takes effect synchronously
-// in both prop-driven and declarative (post-mount registration) modes, and
-// re-renders / dynamic groups never clobber a user toggle. `toggleGroup` flips
-// the override and re-emits as the `group-toggle` event.
-const collapseOverrides = reactive(new Map<string, boolean>())
-
-function isCollapsed(group: GanttGroup): boolean {
-  return collapseOverrides.get(group.id) ?? group.collapsed ?? false
-}
-
-const groupMeta = computed<Map<string, GroupMeta>>(
-  () =>
-    new Map(
-      sourceGroups.value.map(group => [
-        group.id,
-        {
-          name: group.name ?? group.id,
-          collapsed: isCollapsed(group),
-          meta: group.meta ?? {},
-        },
-      ]),
-    ),
-)
-
-function toggleGroup(id: string): void {
-  const group = sourceGroups.value.find(g => g.id === id)
-  const current = group ? isCollapsed(group) : (collapseOverrides.get(id) ?? false)
-  collapseOverrides.set(id, !current)
-  emit('group-toggle', { id, collapsed: !current })
-}
+// Group collapse state (uncontrolled; a user toggle overrides the `collapsed`
+// default). Produces the rollup metadata `layoutGroups` needs.
+const { groupMeta, toggleGroup } = useGanttGroups({
+  sourceGroups: () => sourceGroups.value,
+  onToggle: event => emit('group-toggle', event),
+})
 
 // Resolve rows, then inject group header bands + assign lanes/top/height.
 const layout = computed(() =>
@@ -374,7 +281,7 @@ const derivedStart = computed<Date>(() => {
     ...tasks.value.map(t => t.start),
     ...(props.periods ?? []).map(p => toDate(p.start)),
   ]
-  const base = starts.length ? minDate(starts) : today.value
+  const base = starts.length ? minDate(starts) : emptyRangeAnchor.value
   return floorToUnit(base, coarsestUnit.value)
 })
 
@@ -384,13 +291,15 @@ const derivedEnd = computed<Date>(() => {
     ...tasks.value.map(t => t.end),
     ...(props.periods ?? []).map(p => toDate(p.end)),
   ]
-  const base = ends.length ? maxDate(ends) : addDays(today.value, 14)
+  const base = ends.length ? maxDate(ends) : addDays(emptyRangeAnchor.value, 14)
   return ceilToUnit(base, coarsestUnit.value)
 })
 
 // Infinite-scroll growth beyond the derived range (null until an edge extends
 // it). The effective axis is the derived range widened by these, so `fixed` mode
-// (where they stay null) behaves exactly as the plain derived range.
+// (where they stay null) behaves exactly as the plain derived range. Root-owned
+// (so the `start`/`end` computeds don't depend on `useGanttTimelineEdges`'s init
+// order) but driven by it.
 const extendedStart = shallowRef<Date | null>(null)
 const extendedEnd = shallowRef<Date | null>(null)
 
@@ -523,14 +432,15 @@ const headerHeight = computed(
 )
 
 // --- Imperative scroll API ------------------------------------------------
-// The scroll container (registered by `GanttView`) lives below the frozen
-// sidebar/header in the scroll flow, so a content-x maps to scrollLeft directly
-// (the sidebar occupies the first `sidebarWidth` px of the scrollable row).
-const scrollerEl = shallowRef<HTMLElement | null>(null)
-
-function setScroller(el: HTMLElement | null): void {
-  scrollerEl.value = el
-}
+const { scrollerEl, setScroller, applyScroll, scrollToDate, scrollToTask, scrollToToday } =
+  useGanttScrollApi({
+    dateToX: scale.dateToX,
+    sidebarWidth: () => props.sidebarWidth,
+    rowHeight: () => props.rowHeight,
+    tasks: () => tasks.value,
+    rows: () => rows.value,
+    today: () => today.value,
+  })
 
 // Edge auto-scroll during a drag (move/resize/link): scrolls the viewport toward
 // whichever edge the pointer approaches so off-screen destinations are reachable.
@@ -544,55 +454,6 @@ const autoscroll = useGanttAutoscroll(
   }),
 )
 onUnmounted(() => autoscroll.update(null))
-
-function applyScroll(
-  left: number | undefined,
-  top: number | undefined,
-  behavior: ScrollBehavior,
-): void {
-  const el = scrollerEl.value
-  if (!el) return
-  const x = left == null ? undefined : Math.max(0, left)
-  const y = top == null ? undefined : Math.max(0, top)
-  if (typeof el.scrollTo === 'function') {
-    el.scrollTo({ left: x, top: y, behavior })
-  } else {
-    // jsdom / older engines: assign directly.
-    if (x != null) el.scrollLeft = x
-    if (y != null) el.scrollTop = y
-  }
-}
-
-function leftForDate(date: Date | string | number, align: 'start' | 'center'): number {
-  const el = scrollerEl.value
-  const x = scale.dateToX(toDate(date))
-  if (align === 'center' && el) return x - (el.clientWidth - props.sidebarWidth) / 2
-  return x
-}
-
-function scrollToDate(
-  date: Date | string | number,
-  options: { behavior?: ScrollBehavior; align?: 'start' | 'center' } = {},
-): void {
-  applyScroll(leftForDate(date, options.align ?? 'start'), undefined, options.behavior ?? 'smooth')
-}
-
-function scrollToTask(
-  id: string,
-  options: { behavior?: ScrollBehavior; align?: 'start' | 'center' } = {},
-): void {
-  const task = tasks.value.find(t => t.id === id)
-  if (!task) return
-  const row = rows.value[task.order]
-  const top = row ? row.top : task.order * props.rowHeight
-  applyScroll(leftForDate(task.start, options.align ?? 'start'), top, options.behavior ?? 'smooth')
-}
-
-function scrollToToday(
-  options: { behavior?: ScrollBehavior; align?: 'start' | 'center' } = {},
-): void {
-  scrollToDate(today.value, options)
-}
 
 // Visible body-local window on each axis. The frozen sidebar/header offset both
 // the content origin and the sticky cover, so those terms cancel out.
@@ -685,67 +546,24 @@ const { linkDraft, beginLink, endLink, refresh: refreshLink } = useGanttLink({
 // While auto-scrolling reveals new tasks, re-resolve the link target / endpoint.
 watch([() => viewport.scrollLeft, () => viewport.scrollTop], () => refreshLink())
 
-// --- Timeline edges: emit `range-change` and (in `infinite`) grow the range ---
-const EDGE_THRESHOLD = OVERSCAN // px from an edge that counts as "reached"
-// Previous edge-zone snapshot, so a reach fires once per entry into a zone (not
-// every scroll frame). `null` until the first measured frame — the initial
-// position (usually pinned to the left) must not count as a reach.
-let previousEdges: { start: boolean; end: boolean } | null = null
-
-// One growth step spans a screenful (falls back to two weeks when unmeasured).
-function extensionSpanDays(): number {
-  const innerWidth = Math.max(0, viewport.width - props.sidebarWidth)
-  const days = innerWidth / scale.pxPerDay.value
-  if (days > 0) return days
-  return 14
-}
-
-function reachStartEdge(): void {
-  const proposedStart = floorToUnit(addDays(start.value, -extensionSpanDays()), coarsestUnit.value)
-  emit('range-change', { side: 'start', start: proposedStart, end: end.value })
-  if (props.timelineMode !== 'infinite') return
-  const previousStart = start.value
-  extendedStart.value = proposedStart
-  // Prepending dates shifts every content-x right by the added width; once the
-  // DOM has grown, nudge the scroll by that delta so the view stays anchored.
-  nextTick(() => {
-    const delta = scale.widthBetween(proposedStart, previousStart)
-    applyScroll(viewport.scrollLeft + delta, undefined, 'auto')
-  })
-}
-
-function reachEndEdge(): void {
-  const proposedEnd = ceilToUnit(addDays(end.value, extensionSpanDays()), coarsestUnit.value)
-  emit('range-change', { side: 'end', start: start.value, end: proposedEnd })
-  if (props.timelineMode !== 'infinite') return
-  extendedEnd.value = proposedEnd
-}
-
-watch(
-  [() => viewport.scrollLeft, () => viewport.width, () => scale.contentWidth.value],
-  () => {
-    if (viewport.width <= 0) return
-    const innerWidth = viewport.width - props.sidebarWidth
-    const nearStart = viewport.scrollLeft <= EDGE_THRESHOLD
-    const nearEnd = viewport.scrollLeft + innerWidth >= scale.contentWidth.value - EDGE_THRESHOLD
-    if (previousEdges) {
-      if (nearStart && !previousEdges.start) reachStartEdge()
-      if (nearEnd && !previousEdges.end) reachEndEdge()
-    }
-    previousEdges = { start: nearStart, end: nearEnd }
-  },
-)
-
-// Dropping back to `fixed` discards any infinite-scroll growth.
-watch(
-  () => props.timelineMode,
-  (mode) => {
-    if (mode === 'fixed') {
-      extendedStart.value = null
-      extendedEnd.value = null
-    }
-  },
-)
+// Timeline edges: emit `range-change` and (in `infinite` mode) grow the axis via
+// the root-owned `extendedStart`/`extendedEnd`.
+useGanttTimelineEdges({
+  viewport,
+  sidebarWidth: () => props.sidebarWidth,
+  timelineMode: () => props.timelineMode,
+  contentWidth: () => scale.contentWidth.value,
+  pxPerDay: () => scale.pxPerDay.value,
+  widthBetween: scale.widthBetween,
+  start: () => start.value,
+  end: () => end.value,
+  coarsestUnit: () => coarsestUnit.value,
+  applyScroll,
+  onRangeChange: event => emit('range-change', event),
+  edgeThreshold: OVERSCAN,
+  extendedStart,
+  extendedEnd,
+})
 
 const context: GanttContext = {
   config,
@@ -833,44 +651,6 @@ const rootStyle = computed(() => ({
   '--gantt-content-width': `${scale.contentWidth.value}px`,
   '--gantt-content-height': `${contentHeight.value}px`,
 }))
-
-function floorToUnit(date: Date, unit: GanttUnit): Date {
-  switch (unit) {
-    case 'year':
-      return startOfYear(date)
-    case 'quarter':
-      return startOfQuarter(date)
-    case 'month':
-      return startOfMonth(date)
-    case 'week':
-      return startOfWeek(date)
-    case 'hour':
-      return startOfHour(date)
-    case 'minute':
-      return startOfMinute(date)
-    default:
-      return startOfDay(date)
-  }
-}
-
-function ceilToUnit(date: Date, unit: GanttUnit): Date {
-  switch (unit) {
-    case 'year':
-      return endOfYear(date)
-    case 'quarter':
-      return endOfQuarter(date)
-    case 'month':
-      return endOfMonth(date)
-    case 'week':
-      return endOfWeek(date)
-    case 'hour':
-      return endOfHour(date)
-    case 'minute':
-      return endOfMinute(date)
-    default:
-      return endOfDay(date)
-  }
-}
 
 defineExpose({
   rows,

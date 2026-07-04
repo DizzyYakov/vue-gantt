@@ -35,6 +35,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   local names were spelled out, and a redundant `rowByOrder` computed alias was dropped.
   Purely internal — no API/behavior changes.
 
+- **Internal: decomposed `GanttRoot` into composables.** Zoom/view-mode, group
+  collapse, the imperative scroll API, and infinite-scroll edge detection moved into
+  dedicated internal composables (`useGanttZoom`/`useGanttGroups`/`useGanttScrollApi`/
+  `useGanttTimelineEdges`), with the pure `floorToUnit`/`ceilToUnit` helpers extracted
+  to `dateUnits`. `GanttRoot`'s script shrank by ~220 lines and each piece is now unit
+  tested in isolation. An empty chart no longer drifts its auto-range with the ticking
+  clock. Purely internal — no public API/behavior changes.
+
 - **Performance: viewport-culled dependency arrows + O(rows) group rollups.**
   `GanttDependencies` now only draws links whose endpoint rows intersect the visible
   window (window-straddling links kept), so dense dependency graphs stay light on large
