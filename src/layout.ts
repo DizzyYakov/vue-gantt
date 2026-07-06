@@ -157,6 +157,132 @@ export function layoutGroups(rows: ResolvedRow[], options: LayoutGroupsOptions):
   return { rows: outRows, groups, contentHeight: top }
 }
 
+export interface LayoutTreeOptions extends LayoutOptions {
+  /** Collapsed state by row id (uncontrolled override resolved upstream). */
+  rowCollapse: Map<string, boolean>
+}
+
+export interface TreeLayout {
+  /** Rows, lane-assigned and placed; subtree-hidden rows flagged `hidden`. */
+  rows: ResolvedRow[]
+  /** Total plottable height (hidden rows take no vertical space). */
+  contentHeight: number
+}
+
+/** Subtree extent + duration-weighted progress accumulator. */
+interface RollupAcc {
+  start: number
+  end: number
+  durSum: number
+  progSum: number
+  count: number
+}
+
+/**
+ * Lay out rows as a collapsible tree (WBS). Rows must be in **pre-order** — a
+ * parent immediately before its subtree — so, like `layoutGroups`, the returned
+ * `rows` array is not reordered and keeps its indices (`task.order → rows[order]`
+ * stays valid). `depth` drives the sidebar indent; a collapsed row hides its
+ * whole subtree (hidden rows take no vertical space but stay in the array). Each
+ * parent row (`hasChildren`) gets a `rollup` (min start / max end /
+ * duration-weighted progress) across its entire subtree.
+ *
+ * With no `parentId` anywhere this is equivalent to `layoutRows`.
+ */
+export function layoutTree(rows: ResolvedRow[], options: LayoutTreeOptions): TreeLayout {
+  const ids = new Set(rows.map(row => row.id))
+  // An unknown parent id degrades to a root (guards against typos). Real
+  // reference cycles among existing ids are not detected — they don't hang, but
+  // a node whose parent hasn't been seen yet is treated as a root.
+  const parentOf = (row: ResolvedRow): string =>
+    row.parentId && ids.has(row.parentId) ? row.parentId : ''
+
+  // Direct children by parent id, in row (render) order.
+  const childrenOf = new Map<string, string[]>()
+  for (const row of rows) {
+    const parentId = parentOf(row)
+    if (!parentId) continue
+    const list = childrenOf.get(parentId)
+    if (list) list.push(row.id)
+    else childrenOf.set(parentId, [row.id])
+  }
+
+  // Main pass: a stack of open ancestors gives depth + collapse inheritance.
+  // A frame's `subtreeHidden` is true when it (or an ancestor) hides its subtree.
+  const stack: { id: string; subtreeHidden: boolean }[] = []
+  const outRows: ResolvedRow[] = []
+  let top = 0
+
+  for (const row of rows) {
+    const parentId = parentOf(row)
+    // Pop until the stack top is this row's parent (pre-order keeps the parent
+    // open when its descendants appear; a root empties the stack).
+    while (stack.length && stack[stack.length - 1]!.id !== parentId) stack.pop()
+
+    const depth = stack.length
+    const hidden = stack.length ? stack[stack.length - 1]!.subtreeHidden : false
+    const collapsed = options.rowCollapse.get(row.id) ?? false
+    const childIds = childrenOf.get(row.id) ?? []
+    const hasChildren = childIds.length > 0
+
+    const laneCount = assignLanes(row.tasks)
+    const height = options.mode === 'lanes' ? laneCount * options.rowHeight : options.rowHeight
+
+    outRows.push({ ...row, depth, hasChildren, childIds, collapsed, hidden, laneCount, top, height })
+    if (!hidden) top += height
+
+    if (hasChildren) stack.push({ id: row.id, subtreeHidden: hidden || collapsed })
+  }
+
+  // Roll up subtree extent + progress into each parent, in one reverse pass: a
+  // row's descendants precede it in reverse pre-order, so their contributions are
+  // already merged in before the parent is reached.
+  const emptyAcc = (): RollupAcc => ({ start: Infinity, end: -Infinity, durSum: 0, progSum: 0, count: 0 })
+  const accById = new Map<string, RollupAcc>()
+  const accFor = (id: string): RollupAcc => {
+    const existing = accById.get(id)
+    if (existing) return existing
+    const created = emptyAcc()
+    accById.set(id, created)
+    return created
+  }
+
+  for (let i = outRows.length - 1; i >= 0; i--) {
+    const row = outRows[i]!
+    const acc = accFor(row.id)
+    for (const task of row.tasks) {
+      const start = task.start.getTime()
+      const end = task.end.getTime()
+      if (start < acc.start) acc.start = start
+      if (end > acc.end) acc.end = end
+      const duration = Math.max(1, end - start)
+      acc.durSum += duration
+      acc.progSum += task.progress * duration
+      acc.count++
+    }
+
+    if (row.hasChildren && acc.count > 0) {
+      row.rollup = {
+        start: new Date(acc.start),
+        end: new Date(acc.end),
+        progress: acc.durSum ? acc.progSum / acc.durSum : 0,
+      }
+    }
+
+    const parentId = parentOf(row)
+    if (parentId && acc.count > 0) {
+      const parentAcc = accFor(parentId)
+      if (acc.start < parentAcc.start) parentAcc.start = acc.start
+      if (acc.end > parentAcc.end) parentAcc.end = acc.end
+      parentAcc.durSum += acc.durSum
+      parentAcc.progSum += acc.progSum
+      parentAcc.count += acc.count
+    }
+  }
+
+  return { rows: outRows, contentHeight: top }
+}
+
 /**
  * Spans (time intervals) on a row where two or more tasks overlap. Milestones
  * (zero-length) are ignored. Adjacent/merged spans are returned once.

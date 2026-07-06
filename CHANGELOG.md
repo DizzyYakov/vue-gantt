@@ -52,6 +52,19 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Added
 
+- **Nested rows (WBS tree).** A `GanttRow.parentId` builds a collapsible tree of
+  arbitrary depth: parent rows carry their own tasks *and* a rolled-up summary bar
+  spanning their whole subtree (min start / max end / duration-weighted progress).
+  Rows are given in pre-order (a parent immediately before its subtree); declaratively,
+  nest `<GanttRow>` inside `<GanttRow>`. A parent collapses via its sidebar chevron or
+  `GanttRow.collapsed` (uncontrolled), recursively hiding its descendants and emitting
+  a `row-toggle` event (`ctx.toggleRow(id)` is also exposed). Ships the new
+  `GanttSummaryBar` component (+ `summaryBar`/`summary-bars` slots), depth-based sidebar
+  indent (`--gantt-row-indent`) and `--gantt-summary-bar-*` theme tokens; the `row` slot
+  now also receives `depth`/`collapsed`/`hasChildren`/`toggle`. Tree nesting and flat
+  `groupId` grouping are mutually exclusive per dataset; a dataset with no `parentId`
+  behaves exactly as before.
+
 - **Locale-aware week start + localized week label.** Week-tier columns now begin on
   the locale's first day of the week (e.g. Monday for `ru`/`de`) instead of always
   Sunday, and the same rule drives the auto date range, week snapping and infinite-scroll

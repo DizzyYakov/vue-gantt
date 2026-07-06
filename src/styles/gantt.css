@@ -29,6 +29,14 @@
   --gantt-group-bar-height: 40%;
   --gantt-group-bar-radius: 3px;
 
+  /* Per-level indent of tree (WBS) rows, multiplied by the row's depth. */
+  --gantt-row-indent: 16px;
+  /* Parent-row summary (rollup) bar. */
+  --gantt-summary-bar-bg: #cbd5e1;
+  --gantt-summary-bar-progress-bg: #94a3b8;
+  --gantt-summary-bar-height: 40%;
+  --gantt-summary-bar-radius: 3px;
+
   /* Opaque background for the frozen header / sidebar / corner panels so the
      scrolling body doesn't show through them. */
   --gantt-surface: #fff;

@@ -18,6 +18,10 @@ import type { GanttGroup, GanttRow } from '../types'
  *
  * Customize the header with the `group` slot (`{ group, collapsed, toggle }`) and the
  * rollup bar with the `groupBar` slot (`{ group }`).
+ *
+ * For a deep, collapsible hierarchy instead of flat groups, see
+ * [Row tree (WBS)](/docs/guides-row-tree-wbs--docs) (`GanttRow.parentId`) — the two
+ * are mutually exclusive within the same dataset.
  */
 const meta: Meta<typeof Gantt> = {
   title: 'Guides/Row grouping',
