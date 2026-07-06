@@ -168,6 +168,32 @@ describe('useGanttTimelineEdges', () => {
     expect(left).toBeGreaterThan(viewport.scrollLeft) // shifted right by the prepended width
   })
 
+  it('honors `weekBoundary` when snapping a week-coarsest range extension', async () => {
+    const { viewport, onRangeChange } = makeEdges({
+      coarsestUnit: () => 'week',
+      weekBoundary: () => ({ weekStartsOn: 1 }),
+    })
+    viewport.width = 800
+    viewport.scrollLeft = 500
+    await nextTick()
+
+    viewport.scrollLeft = 10 // enters the start zone
+    await nextTick()
+
+    expect(onRangeChange).toHaveBeenCalledWith({
+      side: 'start',
+      start: floorToUnit(addDays(START, -extensionDaysFor(800)), 'week', { weekStartsOn: 1 }),
+      end: END,
+    })
+    // Regression guard: without `weekStartsOn: 1` the proposed start would
+    // fall on the default Sunday boundary instead.
+    expect(onRangeChange).not.toHaveBeenCalledWith({
+      side: 'start',
+      start: floorToUnit(addDays(START, -extensionDaysFor(800)), 'week'),
+      end: END,
+    })
+  })
+
   it('switching timelineMode to "fixed" discards any prior growth', async () => {
     const { viewport, extendedStart, extendedEnd, setMode } = makeEdges()
     setMode('infinite')

@@ -23,6 +23,13 @@ describe('floorToUnit', () => {
     const result = floorToUnit(mid, 'not-a-unit' as GanttUnit)
     expect(result.getTime()).toBe(new Date(2026, 4, 15, 0, 0, 0, 0).getTime())
   })
+
+  it('honors an explicit `weekStartsOn` for the week unit', () => {
+    // Same `mid` (Fri 2026-05-15); a Monday-start week floors to Mon 2026-05-11
+    // instead of the default Sunday 2026-05-10.
+    const result = floorToUnit(mid, 'week', { weekStartsOn: 1 })
+    expect(result.getTime()).toBe(new Date(2026, 4, 11, 0, 0, 0, 0).getTime())
+  })
 })
 
 describe('ceilToUnit', () => {
@@ -41,5 +48,12 @@ describe('ceilToUnit', () => {
   it('falls back to day for an unrecognized unit', () => {
     const result = ceilToUnit(mid, 'not-a-unit' as GanttUnit)
     expect(result.getTime()).toBe(new Date(2026, 4, 15, 23, 59, 59, 999).getTime())
+  })
+
+  it('honors an explicit `weekStartsOn` for the week unit', () => {
+    // Same `mid` (Fri 2026-05-15); a Monday-start week ceils to end of Sun
+    // 2026-05-17 instead of the default Sat 2026-05-16.
+    const result = ceilToUnit(mid, 'week', { weekStartsOn: 1 })
+    expect(result.getTime()).toBe(new Date(2026, 4, 17, 23, 59, 59, 999).getTime())
   })
 })

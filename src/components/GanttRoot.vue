@@ -93,6 +93,7 @@ const props = withDefaults(defineProps<GanttRootProps>(), {
   today: undefined,
   labelFormat: undefined,
   locale: undefined,
+  weekStartsOn: undefined,
   zoomLevels: () => DEFAULT_ZOOM_LEVELS,
   zoom: undefined,
   periods: undefined,
@@ -274,6 +275,12 @@ const taskOrder = computed(() => {
 })
 
 // Range derived from the props/data alone (before any infinite-scroll growth).
+// Week-boundary options so the auto range snaps weeks to the locale/`weekStartsOn`.
+const weekBoundary = computed(() => ({
+  weekStartsOn: props.weekStartsOn,
+  locale: props.locale,
+}))
+
 const derivedStart = computed<Date>(() => {
   if (props.startDate != null) return toDate(props.startDate)
   // Periods extend the auto range so a sprint before the first task stays visible.
@@ -282,7 +289,7 @@ const derivedStart = computed<Date>(() => {
     ...(props.periods ?? []).map(p => toDate(p.start)),
   ]
   const base = starts.length ? minDate(starts) : emptyRangeAnchor.value
-  return floorToUnit(base, coarsestUnit.value)
+  return floorToUnit(base, coarsestUnit.value, weekBoundary.value)
 })
 
 const derivedEnd = computed<Date>(() => {
@@ -292,7 +299,7 @@ const derivedEnd = computed<Date>(() => {
     ...(props.periods ?? []).map(p => toDate(p.end)),
   ]
   const base = ends.length ? maxDate(ends) : addDays(emptyRangeAnchor.value, 14)
-  return ceilToUnit(base, coarsestUnit.value)
+  return ceilToUnit(base, coarsestUnit.value, weekBoundary.value)
 })
 
 // Infinite-scroll growth beyond the derived range (null until an edge extends
@@ -323,6 +330,7 @@ const scale = useGanttScale({
   today,
   labelFormat: toRef(props, 'labelFormat'),
   locale: toRef(props, 'locale'),
+  weekStartsOn: toRef(props, 'weekStartsOn'),
 })
 
 const config = computed<GanttConfig>(() => ({
@@ -350,6 +358,7 @@ const config = computed<GanttConfig>(() => ({
   autoSchedule: props.autoSchedule,
   dragLabelFormat: props.dragLabelFormat,
   locale: props.locale,
+  weekStartsOn: props.weekStartsOn,
   dragLabel: props.dragLabel,
   start: start.value,
   end: end.value,
@@ -558,6 +567,7 @@ useGanttTimelineEdges({
   start: () => start.value,
   end: () => end.value,
   coarsestUnit: () => coarsestUnit.value,
+  weekBoundary: () => weekBoundary.value,
   applyScroll,
   onRangeChange: event => emit('range-change', event),
   edgeThreshold: OVERSCAN,

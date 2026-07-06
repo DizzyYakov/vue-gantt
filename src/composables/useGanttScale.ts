@@ -15,9 +15,10 @@ import {
   startOfWeek,
   startOfYear,
 } from 'date-fns'
-import type { Locale } from 'date-fns'
+import type { Day, Locale } from 'date-fns'
 import { computed, toValue, type MaybeRefOrGetter } from 'vue'
 import { toDate } from '../context'
+import type { WeekBoundaryOptions } from '../dateUnits'
 import type { GanttColumn, GanttLabelFormat, GanttUnit } from '../types'
 
 const MS_PER_DAY = 86_400_000
@@ -41,6 +42,33 @@ const DEFAULT_LABEL_FORMAT: Record<GanttUnit, string> = {
   day: 'd',
   hour: 'HH',
   minute: 'mm',
+}
+
+/**
+ * Localized prefix for the default week label (date-fns has no localized "week"
+ * word token like `MMM` gives for months). Keyed by the locale's primary
+ * language subtag; anything unmapped falls back to `'W'`. Override the whole
+ * week label via `labelFormat` if a different form is needed.
+ */
+const WEEK_PREFIX: Record<string, string> = {
+  en: 'W',
+  ru: 'Н',
+  de: 'KW',
+  fr: 'S',
+}
+
+function weekPrefix(locale: Locale | undefined): string {
+  const language = locale?.code?.split('-')[0]
+  if (language && WEEK_PREFIX[language]) return WEEK_PREFIX[language]
+  return 'W'
+}
+
+/** The tier's default format, with the week prefix localized per `locale`. */
+function defaultFormatFor(tier: GanttUnit, locale: Locale | undefined): string {
+  // Wrap the prefix in single quotes so its letters (e.g. `K`/`W` in `KW`) are
+  // treated as literals, not date-fns format tokens.
+  if (tier === 'week') return `'${weekPrefix(locale)}'w`
+  return DEFAULT_LABEL_FORMAT[tier]
 }
 
 /** Floor a date to the start of its tier cell. */
@@ -89,6 +117,12 @@ export interface ScaleOptions {
   labelFormat?: MaybeRefOrGetter<GanttLabelFormat | undefined>
   /** date-fns `Locale` for the (non-function) label formats. */
   locale?: MaybeRefOrGetter<Locale | undefined>
+  /**
+   * First day of the week (0 = Sunday … 6 = Saturday) for week-tier cell
+   * boundaries and the `w` number token. Overrides the `locale`'s own
+   * `weekStartsOn`; when unset it falls back to the locale, then Sunday.
+   */
+  weekStartsOn?: MaybeRefOrGetter<Day | undefined>
 }
 
 /**
@@ -101,6 +135,17 @@ export function useGanttScale(options: ScaleOptions) {
     const unit = toValue(options.unit)
     return toValue(options.columnWidth) / TIER_DAYS[unit]
   })
+
+  /** Week-boundary options: an explicit `weekStartsOn` wins over the locale. */
+  function weekOptions(): WeekBoundaryOptions {
+    return { weekStartsOn: toValue(options.weekStartsOn), locale: toValue(options.locale) }
+  }
+
+  /** Floor to the tier's cell start; the week floor honors the locale/`weekStartsOn`. */
+  function floorTo(tier: GanttUnit, date: Date): Date {
+    if (tier === 'week') return startOfWeek(date, weekOptions())
+    return FLOOR[tier](date)
+  }
 
   function dateToX(date: Date | string | number): number {
     return daysBetween(toValue(options.start), toDate(date)) * pxPerDay.value
@@ -118,7 +163,7 @@ export function useGanttScale(options: ScaleOptions) {
   /** Snap a date to the nearest base-unit boundary (for drag & drop). */
   function snap(date: Date): Date {
     const base = toValue(options.unit)
-    const floor = FLOOR[base](date)
+    const floor = floorTo(base, date)
     const next = NEXT_BOUNDARY[base](floor, 1)
     return date.getTime() - floor.getTime() <= next.getTime() - date.getTime() ? floor : next
   }
@@ -130,7 +175,7 @@ export function useGanttScale(options: ScaleOptions) {
     const end = toValue(options.end)
     if (end <= start) return 0
     const base = toValue(options.unit)
-    const lastCellEnd = NEXT_BOUNDARY[base](FLOOR[base](end), 1)
+    const lastCellEnd = NEXT_BOUNDARY[base](floorTo(base, end), 1)
     return Math.max(0, dateToX(lastCellEnd))
   })
 
@@ -163,20 +208,21 @@ export function useGanttScale(options: ScaleOptions) {
     if (typeof lf === 'function') {
       labelFor = (date) => lf(date, tier)
     } else {
-      let fmt: string = DEFAULT_LABEL_FORMAT[tier]
+      let fmt: string = defaultFormatFor(tier, loc)
       if (lf && typeof lf === 'object') {
         // A per-tier format map: use this tier's entry, or the default if absent.
-        fmt = lf[tier] ?? DEFAULT_LABEL_FORMAT[tier]
+        fmt = lf[tier] ?? defaultFormatFor(tier, loc)
       } else if (typeof lf === 'string' && tier === toValue(options.unit)) {
         // A single format string only styles the base unit's tier.
         fmt = lf
       }
-      labelFor = (date) => format(date, fmt, { locale: loc })
+      // Pass `weekStartsOn` so the `w` number token matches the week cell boundary.
+      labelFor = (date) => format(date, fmt, { locale: loc, weekStartsOn: toValue(options.weekStartsOn) })
     }
 
     // First cell boundary at/just left of the window, never before the range.
-    let cursor = FLOOR[tier](xToDate(lo))
-    if (cursor.getTime() < start.getTime()) cursor = FLOOR[tier](start)
+    let cursor = floorTo(tier, xToDate(lo))
+    if (cursor.getTime() < start.getTime()) cursor = floorTo(tier, start)
 
     const out: GanttColumn[] = []
     let guard = 0

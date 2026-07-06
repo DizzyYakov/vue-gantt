@@ -52,6 +52,15 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Added
 
+- **Locale-aware week start + localized week label.** Week-tier columns now begin on
+  the locale's first day of the week (e.g. Monday for `ru`/`de`) instead of always
+  Sunday, and the same rule drives the auto date range, week snapping and infinite-scroll
+  growth. A new `weekStartsOn` prop (`0` = Sunday … `6` = Saturday) overrides the locale
+  when you need an explicit start day. The default week label prefix is also localized
+  (`en → W`, `ru → Н`, `de → KW`, `fr → S`, otherwise `W`); override the whole label via
+  `labelFormat` as before. Without a `locale`/`weekStartsOn` the previous Sunday-start,
+  `W`-prefixed behavior is unchanged.
+
 - **Non-working calendar shading.** New `nonWorking` prop (`boolean |
   NonWorkingCalendar`) shades non-working time — weekends, holidays and arbitrary off
   periods — as a faint background band on the axis. `true` shades Sat/Sun; a
