@@ -115,6 +115,14 @@ const meta: Meta<typeof Gantt> = {
         'date-fns `Locale` for all date labels. Import it yourself ' +
         "(e.g. `import { ru } from 'date-fns/locale'`) and pass the object.",
     },
+    weekStartsOn: {
+      control: 'select',
+      options: [0, 1, 2, 3, 4, 5, 6],
+      description:
+        "First day of the week (0=Sunday … 6=Saturday). Overrides the `locale`'s own " +
+        'week start; falls back to the locale, then Sunday. Affects week-tier column ' +
+        "boundaries, the week `w` number label, and week snapping.",
+    },
     'onZoom-change': { action: 'zoom-change', table: { category: 'events' } },
     'onRange-change': { action: 'range-change', table: { category: 'events' } },
     onMove: { action: 'move', table: { category: 'events' } },

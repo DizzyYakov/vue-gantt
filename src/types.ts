@@ -1,4 +1,4 @@
-import type { Locale } from 'date-fns'
+import type { Day, Locale } from 'date-fns'
 import type { ComputedRef } from 'vue'
 import type { ArrowHeadBuilder } from './arrowHeads'
 import type { DependencyPathBuilder } from './dependencyPaths'
@@ -447,6 +447,13 @@ export interface GanttRootProps {
    */
   locale?: Locale
   /**
+   * First day of the week (0 = Sunday … 6 = Saturday). Overrides the `locale`'s
+   * own week start; when unset it falls back to the `locale`, then Sunday.
+   * Affects week-tier column boundaries, the week `w` number label, and week
+   * snapping.
+   */
+  weekStartsOn?: Day
+  /**
    * Named zoom levels (view-mode presets) the `zoom` prop / `GanttZoom` control
    * switch between; each bundles `tiers` + `columnWidth`. Defaults to
    * `DEFAULT_ZOOM_LEVELS` (year → hour).
@@ -520,6 +527,8 @@ export interface GanttConfig {
   dragLabelFormat: string
   /** date-fns `Locale` applied to all date labels (undefined = English default). */
   locale?: Locale
+  /** First day of the week (0 = Sunday … 6 = Saturday); overrides the locale's own. */
+  weekStartsOn?: Day
   /** Optional override for the drag tooltip text (move / resize / progress). */
   dragLabel?: (info: GanttDragLabelInfo) => string
   start: Date

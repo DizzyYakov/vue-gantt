@@ -310,6 +310,7 @@ parent collapses to the content height and simply grows to fit (as before).
 | `today`                 | `Date \| string \| number`                        | now             | The "today" reference.                                                                                                                                                                                                                                        |
 | `labelFormat`           | `GanttLabelFormat`                                | per tier        | Column label formatting. A date-fns `string` (base unit only — other tiers keep defaults), a per-tier map `Partial<Record<GanttUnit, string>>`, or a `(date, tier) => string` function (full control). E.g. `{ month: 'LLLL yyyy', week: "'W'w", day: 'd' }`. |
 | `locale`                | `Locale` (date-fns)                               | English         | date-fns locale for all date labels (headers, drag labels, tooltips). See [Localization](#localization-i18n).                                                                                                                                                  |
+| `weekStartsOn`          | `Day` (date-fns, `0`–`6`)                          | from `locale`, else `0` | First day of the week (`0`=Sunday … `6`=Saturday). Overrides the `locale`'s own week start. Affects week-tier column boundaries, the week `w` number label, and week snapping. See [Localization](#localization-i18n).                                        |
 
 ### Item props (`GanttItemProps`, for `<GanttTask>` / `<GanttMilestone>`)
 
@@ -1002,6 +1003,29 @@ import { ru } from 'date-fns/locale'
 custom formats) and with `dragLabelFormat`. A `labelFormat` **function** owns its own
 formatting, so it isn't affected by `locale` — call `format(date, fmt, { locale })`
 yourself inside it if needed.
+
+### Week start & the week label
+
+The `week` tier's column boundaries (and drag snapping) start on Sunday unless
+`locale` says otherwise; `weekStartsOn` overrides either. The default week label's
+prefix (the `w` week-number token, e.g. `W23`) is also localized from `locale`'s
+language automatically — `en`→`W`, `ru`→`Н`, `de`→`KW`, `fr`→`S`, any other
+language falls back to `W`:
+
+```vue
+<script setup>
+import { Gantt } from '@dizzy_yakov/vue-gantt'
+import { ru } from 'date-fns/locale'
+</script>
+
+<template>
+  <!-- ru: weeks start Monday, label prefix 'Н' (e.g. 'Н23') -->
+  <Gantt :rows="rows" :locale="ru" :week-starts-on="1" :tiers="['month', 'week', 'day']" />
+</template>
+```
+
+Override the whole week label via `labelFormat` (e.g. `{ week: "'нед 'w" }`) if the
+localized prefix isn't what you want.
 
 > **RTL** (right-to-left layouts) is not covered yet — `locale` handles date text only,
 > not layout mirroring.

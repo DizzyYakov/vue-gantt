@@ -1,6 +1,6 @@
 import { addDays } from 'date-fns'
 import { nextTick, watch, type ShallowRef } from 'vue'
-import { ceilToUnit, floorToUnit } from '../dateUnits'
+import { ceilToUnit, floorToUnit, type WeekBoundaryOptions } from '../dateUnits'
 import type { GanttRangeChangeEvent, GanttTimelineMode, GanttUnit, GanttViewport } from '../types'
 import type { ApplyScrollFn } from './useGanttScrollApi'
 
@@ -20,6 +20,8 @@ export interface TimelineEdgesOptions {
   start: () => Date
   end: () => Date
   coarsestUnit: () => GanttUnit
+  /** Week-boundary options (locale / `weekStartsOn`) for week-tier range snapping. */
+  weekBoundary?: () => WeekBoundaryOptions
   /** Nudge the scroll position (from `useGanttScrollApi`). */
   applyScroll: ApplyScrollFn
   /** `range-change` event — an edge was reached. */
@@ -59,6 +61,7 @@ export function useGanttTimelineEdges(options: TimelineEdgesOptions): void {
     const proposedStart = floorToUnit(
       addDays(options.start(), -extensionSpanDays()),
       options.coarsestUnit(),
+      options.weekBoundary?.(),
     )
     options.onRangeChange({ side: 'start', start: proposedStart, end: options.end() })
     if (options.timelineMode() !== 'infinite') return
@@ -76,6 +79,7 @@ export function useGanttTimelineEdges(options: TimelineEdgesOptions): void {
     const proposedEnd = ceilToUnit(
       addDays(options.end(), extensionSpanDays()),
       options.coarsestUnit(),
+      options.weekBoundary?.(),
     )
     options.onRangeChange({ side: 'end', start: options.start(), end: proposedEnd })
     if (options.timelineMode() !== 'infinite') return

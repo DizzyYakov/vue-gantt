@@ -20,9 +20,12 @@ import { sampleRows } from './_shared'
  * ```
  *
  * Combine it with `labelFormat` for locale-aware custom formats (the locale is
- * threaded into every `format` call, so `LLLL` etc. come out translated). This guide
- * covers date localization only — **RTL** layout mirroring is a separate concern and
- * not handled by `locale`.
+ * threaded into every `format` call, so `LLLL` etc. come out translated). The default
+ * week label's prefix (the `w` week-number token) is also localized from `locale`'s
+ * language automatically — `en`→`W`, `ru`→`Н`, `de`→`KW`, `fr`→`S`, any other language
+ * falls back to `W`. The week tier's own start day comes from `locale` too (override
+ * either with `weekStartsOn`). This guide covers date localization only — **RTL**
+ * layout mirroring is a separate concern and not handled by `locale`.
  */
 const meta: Meta<typeof Gantt> = {
   title: 'Guides/Localization',
@@ -40,19 +43,27 @@ export default meta
 
 type Story = StoryObj<typeof Gantt>
 
-/** Russian (`ru`): month names + weekday abbreviations render in Russian. */
+/**
+ * Russian (`ru`): month names + weekday abbreviations render in Russian, and the
+ * week tier's default label prefix auto-localizes to `Н` (e.g. `Н23`).
+ */
 export const Russian: Story = {
   args: { locale: ru },
 }
 
-/** German (`de`): the same chart with German date labels. */
+/**
+ * German (`de`): the same chart with German date labels; the week tier's default
+ * label prefix auto-localizes to `KW` (e.g. `KW23`).
+ */
 export const German: Story = {
   args: { locale: de },
 }
 
 /**
  * `locale` composes with `labelFormat`: here a per-tier format (`LLLL yyyy` month,
- * ISO week, `d EEEEE` day) renders with Russian month and weekday names.
+ * ISO week, `d EEEEE` day) renders with Russian month and weekday names. The
+ * explicit `week: "'W'w"` format overrides the auto-localized `Н` prefix — pass
+ * your own literal prefix (e.g. `"'нед 'w"`) when the auto default isn't wanted.
  */
 export const WithLabelFormat: Story = {
   args: {
@@ -62,6 +73,20 @@ export const WithLabelFormat: Story = {
       week: "'W'w",
       day: 'd EEEEE',
     },
+    columnWidth: 46,
+  },
+}
+
+/**
+ * `weekStartsOn` overrides the week's first day independently of `locale` (0=Sunday
+ * … 6=Saturday). Here Russian labels are paired with a Monday week start (the ISO
+ * convention `ru` already defaults to) made explicit, so the week-tier boundaries
+ * and the `w` number both align to Monday.
+ */
+export const WeekStartsOnMonday: Story = {
+  args: {
+    locale: ru,
+    weekStartsOn: 1,
     columnWidth: 46,
   },
 }
