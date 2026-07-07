@@ -52,6 +52,15 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Added
 
+- **Row decoration.** Mark or highlight a sidebar row without replacing its render:
+  a new `#row-suffix` slot appends a badge/marker after the row name (scope
+  `{ row, index, depth, collapsed, hasChildren }`), and any primitive
+  (`string`/`number`/`boolean`) entry in `row.meta` is surfaced as a `data-*`
+  attribute on `.gantt-task-list__row` for pure-CSS styling (e.g.
+  `.gantt-task-list__row[data-ppr]`). The reserved
+  `data-id`/`data-group`/`data-depth`/`data-has-children`/`data-collapsed`
+  attributes can't be clobbered by `meta`.
+
 - **Nested rows (WBS tree).** A `GanttRow.parentId` builds a collapsible tree of
   arbitrary depth: parent rows carry their own tasks *and* a rolled-up summary bar
   spanning their whole subtree (min start / max end / duration-weighted progress).
