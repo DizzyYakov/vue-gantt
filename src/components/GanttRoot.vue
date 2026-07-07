@@ -57,6 +57,7 @@ import type {
   GanttZoomEvent,
   ResolvedGroup,
   ResolvedNonWorkingBand,
+  ResolvedMarker,
   ResolvedPeriod,
   ResolvedResource,
   ResolvedRow,
@@ -101,6 +102,7 @@ const props = withDefaults(defineProps<GanttRootProps>(), {
   zoom: undefined,
   periods: undefined,
   resources: undefined,
+  markers: undefined,
   nonWorking: undefined,
 })
 
@@ -468,6 +470,22 @@ function resourcesFor(task: ResolvedTask): ResolvedResource[] {
   return out
 }
 
+// Reference markers (quarter boundaries, release dates), positioned in pixels via
+// the scale. Purely decorative — like `nonWorking`, they never extend the axis.
+const markers = computed<ResolvedMarker[]>(() =>
+  (props.markers ?? []).map((marker, index) => {
+    const date = toDate(marker.date)
+    return {
+      id: marker.id,
+      label: marker.label ?? '',
+      date,
+      x: scale.dateToX(date),
+      index,
+      meta: marker.meta ?? {},
+    }
+  }),
+)
+
 // Non-working bands (weekends/holidays/off periods), positioned in pixels. Unlike
 // `periods` these never extend the axis or add a header row — pure body shading.
 const nonWorking = computed<ResolvedNonWorkingBand[]>(() =>
@@ -642,6 +660,7 @@ const context: GanttContext = {
   periods,
   resources,
   resourcesFor,
+  markers,
   nonWorking,
   criticalTasks,
   slack: slackMap,

@@ -113,6 +113,11 @@ defineSlots<{
   deadlines?: (props: { tasks: unknown }) => unknown
   dependencies?: (props: { tasks: unknown }) => unknown
   today?: (props: { today: unknown; dateToX: unknown }) => unknown
+  /** Overrides the reference-marker overlay wholesale (`{ markers }`). Named apart
+   *  from the `markers` prop so `ComponentProps & ComponentSlots` typings don't clash. */
+  'marker-lines'?: (props: { markers: unknown }) => unknown
+  /** Per-marker render inside the default overlay (`{ marker }`). */
+  marker?: (props: { marker: unknown }) => unknown
   'body-extra'?: (props: { contentWidth: number; contentHeight: number }) => unknown
   /** Per-variant bar slot: used for a task whose `variant` matches (falls back to `bar`). */
   [name: `task-${string}`]: (props: { task: unknown; progress: number; resources: unknown }) => unknown
@@ -235,6 +240,12 @@ defineExpose({
       <template v-if="$slots.today" #today="slotProps"
         ><slot name="today" v-bind="slotProps"
       /></template>
+      <template v-if="$slots['marker-lines']" #marker-lines="slotProps">
+        <slot name="marker-lines" v-bind="slotProps" />
+      </template>
+      <template v-if="$slots.marker" #marker="slotProps">
+        <slot name="marker" v-bind="slotProps" />
+      </template>
       <template v-if="$slots['body-extra']" #body-extra="slotProps">
         <slot name="body-extra" v-bind="slotProps" />
       </template>

@@ -621,6 +621,25 @@ describe('slot forwarding', () => {
     }
   })
 
+  it('forwards #row-suffix through the public wrapper, appended after the default name', () => {
+    const wrapper = mount(Gantt, {
+      props: { rows, today: '2026-01-03' },
+      slots: {
+        'row-suffix': (p: { row: unknown }) =>
+          h('span', { class: 's-row-suffix' }, `suffix:${(p.row as { id: string }).id}`),
+      },
+    })
+    // Default row name rendering is untouched...
+    expect(wrapper.find('.gantt-task-list__name').exists()).toBe(true)
+    // ...and the suffix is appended per row.
+    const suffixes = wrapper.findAll('.s-row-suffix')
+    expect(suffixes.length).toBe(rows.length)
+    const row = wrapper.find('.gantt-task-list__row')
+    const nameIndex = row.html().indexOf('gantt-task-list__name')
+    const suffixIndex = row.html().indexOf('s-row-suffix')
+    expect(suffixIndex).toBeGreaterThan(nameIndex)
+  })
+
   it('forwards per-item slots (row/column/bar/milestone)', () => {
     const wrapper = mount(Gantt, {
       props: { rows, today: '2026-01-03' },
