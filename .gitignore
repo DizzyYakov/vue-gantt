@@ -46,7 +46,7 @@ playwright-report/
 storybook-static/
 
 
-*local*
+*.local.*
 graphify*
 
 .vscode

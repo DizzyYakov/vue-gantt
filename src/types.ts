@@ -1,4 +1,4 @@
-import type { Locale } from 'date-fns'
+import type { Day, Locale } from 'date-fns'
 import type { ComputedRef } from 'vue'
 import type { ArrowHeadBuilder } from './arrowHeads'
 import type { DependencyPathBuilder } from './dependencyPaths'
@@ -152,6 +152,16 @@ export interface GanttRow {
    * under a collapsible group header; members should be contiguous in `rows`.
    */
   groupId?: string
+  /**
+   * Id of the parent row, forming a collapsible tree (WBS). Omit for a root row.
+   * Rows must be given in pre-order — a parent immediately before its subtree
+   * (like `groupId` members must be contiguous). A row's descendants roll up
+   * into its summary bar. Tree nesting and flat `groupId` grouping are mutually
+   * exclusive: don't mix `parentId` and `groupId` in the same dataset.
+   */
+  parentId?: string
+  /** Initial collapsed state of this row's subtree (uncontrolled). */
+  collapsed?: boolean
   /** Arbitrary extra data forwarded to slots untouched. */
   meta?: Record<string, unknown>
 }
@@ -280,8 +290,23 @@ export interface ResolvedRow {
   tasks: ResolvedTask[]
   /** Id of the owning group, or '' when the row is ungrouped. */
   groupId: string
-  /** True when the row's group is collapsed (excluded from layout + render). */
+  /** Id of the parent row in the tree, or '' when the row is a root. */
+  parentId: string
+  /** Tree depth (0 = root); drives the sidebar indent. */
+  depth: number
+  /** Whether this row has child rows (drives the chevron + summary bar). */
+  hasChildren: boolean
+  /** Ids of the direct child rows, in render order. */
+  childIds: string[]
+  /** Whether this row's own subtree is collapsed. */
+  collapsed: boolean
+  /** True when the row is hidden by a collapsed group or ancestor (excluded from layout + render). */
   hidden: boolean
+  /**
+   * Rolled-up extent + aggregate progress across this row's subtree tasks.
+   * Present only on parent rows (`hasChildren`); drives the summary bar.
+   */
+  rollup?: { start: Date; end: Date; progress: number }
   /** Number of sub-lanes needed for overlapping tasks (≥1). */
   laneCount: number
   /** Pixel offset of the row's top from the body origin. */
@@ -447,6 +472,13 @@ export interface GanttRootProps {
    */
   locale?: Locale
   /**
+   * First day of the week (0 = Sunday … 6 = Saturday). Overrides the `locale`'s
+   * own week start; when unset it falls back to the `locale`, then Sunday.
+   * Affects week-tier column boundaries, the week `w` number label, and week
+   * snapping.
+   */
+  weekStartsOn?: Day
+  /**
    * Named zoom levels (view-mode presets) the `zoom` prop / `GanttZoom` control
    * switch between; each bundles `tiers` + `columnWidth`. Defaults to
    * `DEFAULT_ZOOM_LEVELS` (year → hour).
@@ -520,6 +552,8 @@ export interface GanttConfig {
   dragLabelFormat: string
   /** date-fns `Locale` applied to all date labels (undefined = English default). */
   locale?: Locale
+  /** First day of the week (0 = Sunday … 6 = Saturday); overrides the locale's own. */
+  weekStartsOn?: Day
   /** Optional override for the drag tooltip text (move / resize / progress). */
   dragLabel?: (info: GanttDragLabelInfo) => string
   start: Date
@@ -618,6 +652,14 @@ export interface GanttDependencyUpdate extends GanttDependencyChange {
 /** Payload emitted when a group is collapsed or expanded. */
 export interface GanttGroupToggleEvent {
   /** Id of the toggled group. */
+  id: string
+  /** The new collapsed state. */
+  collapsed: boolean
+}
+
+/** Payload emitted when a tree row's subtree is collapsed or expanded. */
+export interface GanttRowToggleEvent {
+  /** Id of the toggled row. */
   id: string
   /** The new collapsed state. */
   collapsed: boolean
@@ -829,6 +871,8 @@ export interface GanttContext {
   unregisterGroup: (id: string) => void
   /** Collapse/expand a group by id (re-emitted as the `group-toggle` event). */
   toggleGroup: (id: string) => void
+  /** Collapse/expand a tree row's subtree by id (re-emitted as the `row-toggle` event). */
+  toggleRow: (id: string) => void
   /** Register a declaratively-declared task into a row (used by `GanttTask`). */
   registerTask: (task: GanttTask, rowId: string) => void
   /** Remove a previously registered task. */

@@ -142,6 +142,19 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Changed
 
+- **Internal: `GanttRoot` readability cleanup.** Non-deeply-reactive refs (`now`,
+  the infinite-scroll extents, the scroll-container element) use `shallowRef`, cryptic
+  local names were spelled out, and a redundant `rowByOrder` computed alias was dropped.
+  Purely internal — no API/behavior changes.
+
+- **Internal: decomposed `GanttRoot` into composables.** Zoom/view-mode, group
+  collapse, the imperative scroll API, and infinite-scroll edge detection moved into
+  dedicated internal composables (`useGanttZoom`/`useGanttGroups`/`useGanttScrollApi`/
+  `useGanttTimelineEdges`), with the pure `floorToUnit`/`ceilToUnit` helpers extracted
+  to `dateUnits`. `GanttRoot`'s script shrank by ~220 lines and each piece is now unit
+  tested in isolation. An empty chart no longer drifts its auto-range with the ticking
+  clock. Purely internal — no public API/behavior changes.
+
 - **Performance: viewport-culled dependency arrows + O(rows) group rollups.**
   `GanttDependencies` now only draws links whose endpoint rows intersect the visible
   window (window-straddling links kept), so dense dependency graphs stay light on large
@@ -150,6 +163,28 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   measured ~2.6× faster at 10k tasks / 400 groups. No API/behavior changes.
 
 ### Added
+
+- **Nested rows (WBS tree).** A `GanttRow.parentId` builds a collapsible tree of
+  arbitrary depth: parent rows carry their own tasks *and* a rolled-up summary bar
+  spanning their whole subtree (min start / max end / duration-weighted progress).
+  Rows are given in pre-order (a parent immediately before its subtree); declaratively,
+  nest `<GanttRow>` inside `<GanttRow>`. A parent collapses via its sidebar chevron or
+  `GanttRow.collapsed` (uncontrolled), recursively hiding its descendants and emitting
+  a `row-toggle` event (`ctx.toggleRow(id)` is also exposed). Ships the new
+  `GanttSummaryBar` component (+ `summaryBar`/`summary-bars` slots), depth-based sidebar
+  indent (`--gantt-row-indent`) and `--gantt-summary-bar-*` theme tokens; the `row` slot
+  now also receives `depth`/`collapsed`/`hasChildren`/`toggle`. Tree nesting and flat
+  `groupId` grouping are mutually exclusive per dataset; a dataset with no `parentId`
+  behaves exactly as before.
+
+- **Locale-aware week start + localized week label.** Week-tier columns now begin on
+  the locale's first day of the week (e.g. Monday for `ru`/`de`) instead of always
+  Sunday, and the same rule drives the auto date range, week snapping and infinite-scroll
+  growth. A new `weekStartsOn` prop (`0` = Sunday … `6` = Saturday) overrides the locale
+  when you need an explicit start day. The default week label prefix is also localized
+  (`en → W`, `ru → Н`, `de → KW`, `fr → S`, otherwise `W`); override the whole label via
+  `labelFormat` as before. Without a `locale`/`weekStartsOn` the previous Sunday-start,
+  `W`-prefixed behavior is unchanged.
 
 - **Non-working calendar shading.** New `nonWorking` prop (`boolean |
   NonWorkingCalendar`) shades non-working time — weekends, holidays and arbitrary off

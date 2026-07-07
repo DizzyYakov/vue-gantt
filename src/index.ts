@@ -10,6 +10,7 @@ export { default as GanttTimeline } from './components/GanttTimeline.vue'
 export { default as GanttTaskList } from './components/GanttTaskList.vue'
 export { default as GanttGroup } from './components/GanttGroup.vue'
 export { default as GanttGroupBar } from './components/GanttGroupBar.vue'
+export { default as GanttSummaryBar } from './components/GanttSummaryBar.vue'
 export { default as GanttRow } from './components/GanttRow.vue'
 export { default as GanttTask } from './components/GanttTask.vue'
 export { default as GanttMilestone } from './components/GanttMilestone.vue'
@@ -117,6 +118,7 @@ export type {
   GanttBeginLinkArgs,
   GanttGroup as GanttGroupData,
   GanttGroupToggleEvent,
+  GanttRowToggleEvent,
   GanttIssue,
   GanttIssueType,
   GanttLabelFormat,

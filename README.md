@@ -20,7 +20,10 @@ design system. One runtime dependency (`date-fns`), fully typed.
 - 📊 Task **bars with progress**, **milestones**, finish-to-start **dependency
   arrows**, **baselines** (planned vs actual), and a live **"today"** line.
 - 🧩 **Two APIs** — a prop-driven `<Gantt :rows>` or composable primitives.
-- 🗂️ Collapsible **row groups** with rolled-up summary bars.
+- 🗂️ Collapsible **row groups** with rolled-up summary bars, and a deep
+  **row tree (WBS)** via `parentId` with per-parent rollup bars.
+- 🏷️ **Row decoration** — an add-on `row-suffix` slot for badges, plus a
+  `meta` → `data-*` passthrough for CSS-only row highlighting.
 - ✋ **Drag interactions** (all opt-in, controlled): move, resize an edge, set
   progress, and create/edit dependencies — with a live, formattable tooltip and
   edge **auto-scroll** to reach drop targets off-screen.
@@ -145,6 +148,7 @@ slots for overriding any part. Every slot is scoped — its props give you the s
 | `period-bands` | `{ periods }`                     | `<GanttPeriods>` (sprint bands)     |
 | `bars`         | `{ tasks }`                       | the task bar / milestone layer      |
 | `group-bars`   | `{ groups }`                      | `<GanttGroupBar>` (group rollups)   |
+| `summary-bars` | `{ rows }`                        | `<GanttSummaryBar>` (row-tree WBS rollups) |
 | `conflicts`    | `{ conflicts }`                   | `<GanttConflicts>`                  |
 | `baselines`    | `{ tasks }`                       | `<GanttBaselines>` (planned bars)   |
 | `slack`        | `{ slack }`                       | `<GanttSlack>` (free-float bars)    |
@@ -164,8 +168,12 @@ unless the `nonWorking` prop is set), `tasks` are `ResolvedTask[]` (all of them 
 unless `overlap: 'conflict'`), and `slack` is a `Map<string, number>` of free-float
 days by task id (empty unless `slack` is on).
 
-**Leaf slots** customize a single repeated item: `row` (`{ row, index }`),
-`group` (`{ group, collapsed, toggle }`), `groupBar` (`{ group }`), `column`
+**Leaf slots** customize a single repeated item: `row`
+(`{ row, index, depth, collapsed, hasChildren, toggle }`), `row-suffix`
+(same scope minus `toggle` — an add-on rendered *after* the row name without
+replacing `row`; see [Row decoration](#row-decoration)), `group`
+(`{ group, collapsed, toggle }`), `groupBar` (`{ group }`), `summaryBar`
+(`{ row }` — a WBS parent row, see [row tree](#row-tree-wbs)), `column`
 (`{ column, tier }`), `period` (`{ period }`), `bar` (`{ task, progress }`), `milestone` (`{ task }`),
 `tooltip` (`{ task }`), `rowEditor` (`{ row, value, commit, cancel }`) and
 `taskEditor` (`{ task, value, commit, cancel }`).
@@ -245,7 +253,8 @@ every [chart event](#events); the rest are the building blocks.
 | `<GanttTaskList>`     | —                                                | `row-click` · `row-dblclick` · `row-contextmenu` |
 | `<GanttGroup>`        | `id` · `name?` · `collapsed?` · `meta?`          | — (toggle bubbles as `group-toggle` on the root) |
 | `<GanttGroupBar>`     | —                                                | —                                                |
-| `<GanttRow>`          | `id` · `name?` · `tasks?` · `groupId?` · `meta?` | —                                                |
+| `<GanttRow>`          | `id` · `name?` · `tasks?` · `groupId?` · `parentId?` · `collapsed?` · `meta?` | — (toggle bubbles as `row-toggle` on the root) |
+| `<GanttSummaryBar>`   | —                                                | —                                                |
 | `<GanttTask>`         | `GanttItemProps`                                 | `click` · `dblclick` · `contextmenu`             |
 | `<GanttMilestone>`    | `GanttItemProps`                                 | `click` · `dblclick` · `contextmenu`             |
 | `<GanttGrid>`         | `tier?: GanttUnit`                               | `cell-click` · `cell-dblclick`                   |
@@ -310,6 +319,7 @@ parent collapses to the content height and simply grows to fit (as before).
 | `today`                 | `Date \| string \| number`                        | now             | The "today" reference.                                                                                                                                                                                                                                        |
 | `labelFormat`           | `GanttLabelFormat`                                | per tier        | Column label formatting. A date-fns `string` (base unit only — other tiers keep defaults), a per-tier map `Partial<Record<GanttUnit, string>>`, or a `(date, tier) => string` function (full control). E.g. `{ month: 'LLLL yyyy', week: "'W'w", day: 'd' }`. |
 | `locale`                | `Locale` (date-fns)                               | English         | date-fns locale for all date labels (headers, drag labels, tooltips). See [Localization](#localization-i18n).                                                                                                                                                  |
+| `weekStartsOn`          | `Day` (date-fns, `0`–`6`)                          | from `locale`, else `0` | First day of the week (`0`=Sunday … `6`=Saturday). Overrides the `locale`'s own week start. Affects week-tier column boundaries, the week `w` number label, and week snapping. See [Localization](#localization-i18n).                                        |
 
 ### Item props (`GanttItemProps`, for `<GanttTask>` / `<GanttMilestone>`)
 
@@ -444,6 +454,7 @@ your data (the [utilities](#utilities) make this one-liners).
 | `zoom-change`                  | `GanttZoomEvent`                             | the active zoom level changes (carries the level).     |
 | `range-change`                 | `GanttRangeChangeEvent`                      | a scroll reaches a timeline edge (both `timelineMode`s).  |
 | `group-toggle`                 | `GanttGroupToggleEvent`                      | a group is collapsed/expanded.                         |
+| `row-toggle`                   | `GanttRowToggleEvent`                        | a tree row's ([WBS](#row-tree-wbs)) subtree is collapsed/expanded. |
 | `dependency-create`            | `GanttDependencyChange`                      | a link is dragged from one task to another.            |
 | `dependency-update`            | `GanttDependencyUpdate`                      | an arrow endpoint is re-routed (carries `previous`).   |
 | `dependency-remove`            | `GanttDependencyChange`                      | an arrow is clicked (when `linkable`).                 |
@@ -486,6 +497,10 @@ interface GanttRowEditEvent {
   row: ResolvedRow
 }
 interface GanttGroupToggleEvent {
+  id: string
+  collapsed: boolean
+}
+interface GanttRowToggleEvent {
   id: string
   collapsed: boolean
 }
@@ -757,6 +772,109 @@ declarative `<GanttGroup>`).
 
 ![Row grouping](https://raw.githubusercontent.com/LavaYasha/vue-gantt/main/docs/grouping.png)
 
+## Row tree (WBS)
+
+Set `GanttRow.parentId` to nest a row under another, building a collapsible tree
+of arbitrary depth (a work-breakdown structure). Rows must be given in
+**pre-order** — a parent immediately before its subtree, same as `groupId`
+members must be contiguous — and a dataset mixes one or the other, never both
+(`parentId` and `groupId` are mutually exclusive across the same rows). A
+parent row keeps its own tasks (if any) **and** shows a rolled-up **summary
+bar** spanning the earliest start to the latest end across its whole subtree,
+with duration-weighted aggregate progress. The sidebar indents each row by
+`depth * --gantt-row-indent` and gives rows with children a chevron toggle.
+
+Collapse is **uncontrolled**: `GanttRow.collapsed` seeds the initial state,
+clicking the chevron (or calling `ctx.toggleRow(id)`) flips it, and
+`row-toggle` fires with the new state. Collapsing a parent recursively hides
+its descendants (excluded from layout/render, no vertical space) while its
+summary bar keeps covering the full (still collapsed) subtree extent.
+
+```vue
+<Gantt :rows="rows" />
+```
+
+```ts
+const rows: GanttRowData[] = [
+  { id: 'project', name: 'Project' },
+  {
+    id: 'phase-design',
+    name: 'Design',
+    parentId: 'project',
+    tasks: [{ id: 'design', start: '2026-06-01', end: '2026-06-10', progress: 80 }],
+  },
+  {
+    id: 'phase-build',
+    name: 'Build',
+    parentId: 'project',
+    collapsed: true, // starts folded; its summary bar still shows the rolled-up span
+    tasks: [{ id: 'build', start: '2026-06-10', end: '2026-06-24', progress: 20 }],
+  },
+]
+```
+
+Declaratively, nest `<GanttRow>`s — the inner row inherits `parentId` from the
+enclosing one (like `<GanttTask>` inherits its row):
+
+```vue
+<GanttRoot>
+  <GanttTaskList />
+  <GanttRow id="project" name="Project">
+    <GanttRow id="phase-design" name="Design">
+      <GanttTask id="design" start="2026-06-01" end="2026-06-10" :progress="80" />
+    </GanttRow>
+    <GanttRow id="phase-build" name="Build">
+      <GanttTask id="build" start="2026-06-10" end="2026-06-24" :progress="20" />
+    </GanttRow>
+  </GanttRow>
+  <GanttSummaryBar />
+</GanttRoot>
+```
+
+The rollup bar is rendered by `<GanttSummaryBar>` (auto-mounted by
+`<GanttView>` / `<Gantt>`; override it via the `summary-bars` section slot, or
+just its rollup content via the `summaryBar` leaf slot, `{ row }`). Customize
+the sidebar row itself — chevron, indent, name — via the `row` slot
+(`{ row, index, depth, collapsed, hasChildren, toggle }`). Style with the
+`--gantt-row-indent` / `--gantt-summary-bar-*` [variables](#css-variables).
+
+## Row decoration
+
+Two lightweight, additive hooks let you mark up a sidebar row without
+overriding its whole render:
+
+- **`row-suffix` slot** — rendered *after* the row name (`{ row, index, depth,
+  collapsed, hasChildren }`, same scope as `row` minus `toggle`). Use it to
+  append a badge/marker while keeping the default name rendering (and the
+  `row` slot, if you also use one) untouched:
+
+  ```vue
+  <Gantt :rows="rows">
+    <template #row-suffix="{ row }">
+      <span v-if="row.meta.ppr" class="badge">PPR</span>
+    </template>
+  </Gantt>
+  ```
+
+- **`meta` → `data-*` passthrough** — primitive (`string`/`number`/`boolean`)
+  entries of a row's `meta` are forwarded as `data-<key>` attributes on its
+  `.gantt-task-list__row` element, so you can highlight/mark the row with
+  plain CSS, no slot needed:
+
+  ```ts
+  const rows: GanttRowData[] = [{ id: 'task', name: 'Task', meta: { ppr: true } }]
+  ```
+
+  ```css
+  .gantt-task-list__row[data-ppr] {
+    background: var(--gantt-critical-color, #ef4444);
+  }
+  ```
+
+  Only primitive values are forwarded (objects/arrays are skipped), and the
+  reserved `data-id` / `data-group` / `data-depth` / `data-has-children` /
+  `data-collapsed` attributes are never overwritten by `meta`.
+
 ## Baselines (planned vs actual)
 
 Give a task both `baselineStart` and `baselineEnd` to draw its **baseline** — the
@@ -1003,6 +1121,29 @@ custom formats) and with `dragLabelFormat`. A `labelFormat` **function** owns it
 formatting, so it isn't affected by `locale` — call `format(date, fmt, { locale })`
 yourself inside it if needed.
 
+### Week start & the week label
+
+The `week` tier's column boundaries (and drag snapping) start on Sunday unless
+`locale` says otherwise; `weekStartsOn` overrides either. The default week label's
+prefix (the `w` week-number token, e.g. `W23`) is also localized from `locale`'s
+language automatically — `en`→`W`, `ru`→`Н`, `de`→`KW`, `fr`→`S`, any other
+language falls back to `W`:
+
+```vue
+<script setup>
+import { Gantt } from '@dizzy_yakov/vue-gantt'
+import { ru } from 'date-fns/locale'
+</script>
+
+<template>
+  <!-- ru: weeks start Monday, label prefix 'Н' (e.g. 'Н23') -->
+  <Gantt :rows="rows" :locale="ru" :week-starts-on="1" :tiers="['month', 'week', 'day']" />
+</template>
+```
+
+Override the whole week label via `labelFormat` (e.g. `{ week: "'нед 'w" }`) if the
+localized prefix isn't what you want.
+
 > **RTL** (right-to-left layouts) is not covered yet — `locale` handles date text only,
 > not layout mirroring.
 
@@ -1152,6 +1293,16 @@ default slot (`<slot :links>`).
 | `--gantt-group-bar-progress-bg`    | `#94a3b8` | Rollup bar progress fill.            |
 | `--gantt-group-bar-height`         | `40%`     | Rollup bar height.                   |
 | `--gantt-group-bar-radius`         | `3px`     | Rollup bar radius.                   |
+
+**Row tree (WBS)** — see [Row tree](#row-tree-wbs)
+
+| Variable                          | Default   | Purpose                                    |
+| ---------------------------------- | --------- | ------------------------------------------ |
+| `--gantt-row-indent`               | `16px`    | Per-level sidebar indent, × the row's depth. |
+| `--gantt-summary-bar-bg`           | `#cbd5e1` | Parent-row rollup bar track.               |
+| `--gantt-summary-bar-progress-bg`  | `#94a3b8` | Parent-row rollup bar progress fill.       |
+| `--gantt-summary-bar-height`       | `40%`     | Rollup bar height.                         |
+| `--gantt-summary-bar-radius`       | `3px`     | Rollup bar radius.                         |
 
 **Overlap modes**
 

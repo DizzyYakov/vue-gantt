@@ -14,6 +14,9 @@ export const GANTT_CONTEXT: InjectionKey<GanttContext> = Symbol('gantt-context')
 /** Injection key carrying the enclosing row's id to declarative `GanttTask`s. */
 export const GANTT_ROW: InjectionKey<ComputedRef<string>> = Symbol('gantt-row')
 
+/** Injection key carrying the enclosing row's id to nested declarative `GanttRow`s (tree parent). */
+export const GANTT_PARENT_ROW: InjectionKey<ComputedRef<string>> = Symbol('gantt-parent-row')
+
 /** Injection key carrying the enclosing group's id to declarative `GanttRow`s. */
 export const GANTT_GROUP: InjectionKey<ComputedRef<string>> = Symbol('gantt-group')
 
@@ -102,6 +105,13 @@ export function normalizeRow(row: GanttRow, order: number): ResolvedRow {
     meta: row.meta ?? {},
     tasks: (row.tasks ?? []).map(task => normalizeTask(task, row.id, order)),
     groupId: row.groupId ?? '',
+    // Tree fields are placeholders here (like `hidden`/`laneCount`); the final
+    // values are filled by `layoutTree`.
+    parentId: row.parentId ?? '',
+    depth: 0,
+    hasChildren: false,
+    childIds: [],
+    collapsed: false,
     hidden: false,
     laneCount: 1,
     top: order,

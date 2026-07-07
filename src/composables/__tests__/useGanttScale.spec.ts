@@ -1,5 +1,5 @@
 import { format, type Locale } from 'date-fns'
-import { de } from 'date-fns/locale'
+import { de, ru } from 'date-fns/locale'
 import { describe, expect, it } from 'vitest'
 import { ref } from 'vue'
 import type { GanttLabelFormat } from '../../types'
@@ -74,6 +74,40 @@ describe('useGanttScale', () => {
       // 70px / 7 days = 10px per day
       expect(scale.dateToX(day(2026, 1, 8))).toBe(70)
       expect(scale.columns.value.length).toBeGreaterThan(0)
+    })
+  })
+
+  describe('week locale / weekStartsOn', () => {
+    // Jan 1 2026 is a Thursday; the enclosing week starts Sun Dec 28 or Mon Dec 29.
+    const makeWeekScale = (locale?: Locale, weekStartsOn?: 0 | 1) =>
+      useGanttScale({
+        unit: ref<'week'>('week'),
+        columnWidth: ref(70),
+        start: ref(day(2026, 1, 1)),
+        end: ref(day(2026, 2, 15)),
+        locale: ref(locale),
+        weekStartsOn: ref(weekStartsOn),
+      })
+
+    it('starts week columns on Monday for a Monday-start locale', () => {
+      const first = makeWeekScale(ru).columnsFor('week')[0]!
+      expect(first.date.getDay()).toBe(1) // Monday
+    })
+
+    it('localizes the week label prefix per locale', () => {
+      expect(makeWeekScale(ru).columnsFor('week')[0]!.label).toMatch(/^Н\d/) // Russian «Н»
+      expect(makeWeekScale(de).columnsFor('week')[0]!.label).toMatch(/^KW\d/) // German «KW»
+    })
+
+    it('lets weekStartsOn override the locale week start', () => {
+      const first = makeWeekScale(ru, 0).columnsFor('week')[0]!
+      expect(first.date.getDay()).toBe(0) // Sunday, despite the ru locale
+    })
+
+    it('defaults to Sunday start and a "W" prefix without locale/weekStartsOn (regression guard)', () => {
+      const first = makeWeekScale().columnsFor('week')[0]!
+      expect(first.date.getDay()).toBe(0) // Sunday
+      expect(first.label).toMatch(/^W\d/)
     })
   })
 
