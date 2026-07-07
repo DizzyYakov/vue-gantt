@@ -4,6 +4,18 @@ All notable changes to this project are documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [1.7.0](https://github.com/LavaYasha/vue-gantt/compare/vue-gantt-v1.6.0...vue-gantt-v1.7.0) (2026-07-07)
+
+
+### Features
+
+* add sufix to row label; add data-attr to row ([964e9e1](https://github.com/LavaYasha/vue-gantt/commit/964e9e1756c9bdf46f83a843488835af057b8ac5))
+* add sufix to row label; add data-attr to row ([be6f295](https://github.com/LavaYasha/vue-gantt/commit/be6f295f166fae63b8ce086e89faad022aeb7626))
+* locale-aware week start + localized week label ([db74034](https://github.com/LavaYasha/vue-gantt/commit/db7403427f6e265521d658d09f23cc0941445614))
+* locale-aware week start + localized week label ([d064409](https://github.com/LavaYasha/vue-gantt/commit/d064409c2b3f9e5f2956716d6e5744f14897be30))
+* nested rows (WBS tree) with rollup summary bars ([eccccf7](https://github.com/LavaYasha/vue-gantt/commit/eccccf7fb9b6776f97cfd93dbe8d6d240fe176fc))
+* nested rows (WBS tree) with rollup summary bars ([1ed1a8f](https://github.com/LavaYasha/vue-gantt/commit/1ed1a8f69eeefe7b2da3cfa958586fd6b10b51b8))
+
 ## [1.6.0](https://github.com/LavaYasha/vue-gantt/compare/vue-gantt-v1.5.0...vue-gantt-v1.6.0) (2026-07-03)
 
 
