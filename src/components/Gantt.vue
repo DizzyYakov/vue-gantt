@@ -7,6 +7,7 @@ import type {
   GanttDependencyEvent,
   GanttDependencyUpdate,
   GanttGroupToggleEvent,
+  GanttRowToggleEvent,
   GanttMoveEvent,
   GanttProgressEvent,
   GanttRangeChangeEvent,
@@ -41,6 +42,7 @@ const emit = defineEmits<{
   'zoom-change': [event: GanttZoomEvent]
   'range-change': [event: GanttRangeChangeEvent]
   'group-toggle': [event: GanttGroupToggleEvent]
+  'row-toggle': [event: GanttRowToggleEvent]
   'dependency-create': [event: GanttDependencyChange]
   'dependency-remove': [event: GanttDependencyChange]
   'dependency-update': [event: GanttDependencyUpdate]
@@ -61,7 +63,14 @@ const emit = defineEmits<{
 
 defineSlots<{
   sidebar?: (props: { rows: unknown; groups: unknown }) => unknown
-  row?: (props: { row: unknown; index: number }) => unknown
+  row?: (props: {
+    row: unknown
+    index: number
+    depth: number
+    collapsed: boolean
+    hasChildren: boolean
+    toggle: () => void
+  }) => unknown
   rowEditor?: (props: {
     row: unknown
     value: string
@@ -77,6 +86,8 @@ defineSlots<{
   group?: (props: { group: unknown; collapsed: boolean; toggle: () => void }) => unknown
   groupBar?: (props: { group: unknown }) => unknown
   'group-bars'?: (props: { groups: unknown }) => unknown
+  summaryBar?: (props: { row: unknown }) => unknown
+  'summary-bars'?: (props: { rows: unknown }) => unknown
   baselines?: (props: { tasks: unknown }) => unknown
   corner?: (props: { config: unknown }) => unknown
   timeline?: (props: { config: unknown; visibleColumnsFor: unknown }) => unknown
@@ -146,6 +157,7 @@ defineExpose({
     @zoom-change="emit('zoom-change', $event)"
     @range-change="emit('range-change', $event)"
     @group-toggle="emit('group-toggle', $event)"
+    @row-toggle="emit('row-toggle', $event)"
     @dependency-create="emit('dependency-create', $event)"
     @dependency-remove="emit('dependency-remove', $event)"
     @dependency-update="emit('dependency-update', $event)"
@@ -188,6 +200,9 @@ defineExpose({
       <template v-if="$slots['group-bars']" #group-bars="slotProps">
         <slot name="group-bars" v-bind="slotProps" />
       </template>
+      <template v-if="$slots['summary-bars']" #summary-bars="slotProps">
+        <slot name="summary-bars" v-bind="slotProps" />
+      </template>
       <template v-if="$slots.baselines" #baselines="slotProps">
         <slot name="baselines" v-bind="slotProps" />
       </template>
@@ -227,6 +242,9 @@ defineExpose({
       /></template>
       <template v-if="$slots.groupBar" #groupBar="slotProps"
         ><slot name="groupBar" v-bind="slotProps"
+      /></template>
+      <template v-if="$slots.summaryBar" #summaryBar="slotProps"
+        ><slot name="summaryBar" v-bind="slotProps"
       /></template>
       <template v-if="$slots.column" #column="slotProps"
         ><slot name="column" v-bind="slotProps"

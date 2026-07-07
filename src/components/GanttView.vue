@@ -13,6 +13,7 @@ import GanttMilestone from './GanttMilestone.vue'
 import GanttNonWorking from './GanttNonWorking.vue'
 import GanttPeriods from './GanttPeriods.vue'
 import GanttSlack from './GanttSlack.vue'
+import GanttSummaryBar from './GanttSummaryBar.vue'
 import GanttTask from './GanttTask.vue'
 import GanttTaskList from './GanttTaskList.vue'
 import GanttTimeline from './GanttTimeline.vue'
@@ -148,6 +149,14 @@ const scrollStyle = computed(() => {
               <slot name="groupBar" v-bind="groupBarProps" />
             </template>
           </GanttGroupBar>
+        </slot>
+
+        <slot name="summary-bars" :rows="visibleRows">
+          <GanttSummaryBar>
+            <template v-if="$slots.summaryBar" #default="summaryBarProps">
+              <slot name="summaryBar" v-bind="summaryBarProps" />
+            </template>
+          </GanttSummaryBar>
         </slot>
 
         <slot name="baselines" :tasks="visibleTasks">

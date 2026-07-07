@@ -3,6 +3,7 @@ import { addDays, max as maxDate, min as minDate } from 'date-fns'
 import { computed, onMounted, onUnmounted, provide, reactive, shallowRef, toRef, watch } from 'vue'
 import { useGanttAutoscroll } from '../composables/useGanttAutoscroll'
 import { useGanttGroups } from '../composables/useGanttGroups'
+import { useGanttRows } from '../composables/useGanttRows'
 import { useGanttLink } from '../composables/useGanttLink'
 import { useGanttScale } from '../composables/useGanttScale'
 import { useGanttScrollApi } from '../composables/useGanttScrollApi'
@@ -13,7 +14,7 @@ import { triangleArrow } from '../arrowHeads'
 import { GANTT_CONTEXT, GANTT_DEFAULTS, normalizeRow, toDate } from '../context'
 import { ceilToUnit, floorToUnit } from '../dateUnits'
 import { elbowPath } from '../dependencyPaths'
-import { conflictSegments, layoutGroups } from '../layout'
+import { conflictSegments, layoutGroups, layoutTree } from '../layout'
 import {
   addDependency,
   applyMove,
@@ -40,6 +41,7 @@ import type {
   GanttEventMap,
   GanttGroup,
   GanttGroupToggleEvent,
+  GanttRowToggleEvent,
   GanttMoveEvent,
   GanttProgressEvent,
   GanttRangeChangeEvent,
@@ -113,6 +115,7 @@ const emit = defineEmits<{
   'zoom-change': [event: GanttZoomEvent]
   'range-change': [event: GanttRangeChangeEvent]
   'group-toggle': [event: GanttGroupToggleEvent]
+  'row-toggle': [event: GanttRowToggleEvent]
   'dependency-create': [event: GanttDependencyChange]
   'dependency-remove': [event: GanttDependencyChange]
   'dependency-update': [event: GanttDependencyUpdate]
@@ -249,18 +252,35 @@ const { groupMeta, toggleGroup } = useGanttGroups({
   onToggle: event => emit('group-toggle', event),
 })
 
-// Resolve rows, then inject group header bands + assign lanes/top/height.
-const layout = computed(() =>
-  layoutGroups(
-    sourceRows.value.map((row, order) => normalizeRow(row, order)),
-    {
+// Tree-row collapse state (uncontrolled; same model as groups).
+const { rowCollapse, toggleRow } = useGanttRows({
+  sourceRows: () => sourceRows.value,
+  onToggle: event => emit('row-toggle', event),
+})
+
+// A `parentId` anywhere switches to the tree layout; otherwise the flat/group
+// layout. The two modes are mutually exclusive within a dataset.
+const isTree = computed(() => sourceRows.value.some(row => Boolean(row.parentId)))
+
+// Resolve rows, then either build the tree (depth/collapse/rollup) or inject
+// group header bands. Both yield `{ rows, groups, contentHeight }`.
+const layout = computed(() => {
+  const resolved = sourceRows.value.map((row, order) => normalizeRow(row, order))
+  if (isTree.value) {
+    const tree = layoutTree(resolved, {
       mode: props.overlap,
       rowHeight: props.rowHeight,
-      groupHeaderHeight: props.groupHeaderHeight,
-      groupMeta: groupMeta.value,
-    },
-  ),
-)
+      rowCollapse: rowCollapse.value,
+    })
+    return { rows: tree.rows, groups: [] as ResolvedGroup[], contentHeight: tree.contentHeight }
+  }
+  return layoutGroups(resolved, {
+    mode: props.overlap,
+    rowHeight: props.rowHeight,
+    groupHeaderHeight: props.groupHeaderHeight,
+    groupMeta: groupMeta.value,
+  })
+})
 
 const rows = computed<ResolvedRow[]>(() => layout.value.rows)
 const groups = computed<ResolvedGroup[]>(() => layout.value.groups)
@@ -605,6 +625,7 @@ const context: GanttContext = {
   registerGroup,
   unregisterGroup,
   toggleGroup,
+  toggleRow,
   registerTask,
   unregisterTask,
   moveTask: event => {

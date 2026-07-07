@@ -5,7 +5,15 @@ import { useInlineEdit, vFocus } from '../composables/useInlineEdit'
 import { useLongPress } from '../composables/useLongPress'
 import type { GanttRowEvent, ResolvedRow } from '../types'
 
-const { visibleRows, visibleGroups, toggleGroup, dispatch, config, editRow } = useGanttContext()
+const { visibleRows, visibleGroups, toggleGroup, toggleRow, dispatch, config, editRow } =
+  useGanttContext()
+
+// Tree rows indent by depth; a plain (group/flat) row keeps depth 0 (no inline
+// pad, so the `[data-group]` indent still applies).
+function rowIndent(row: ResolvedRow): string | undefined {
+  if (row.depth <= 0) return undefined
+  return `calc(var(--gantt-row-indent, 16px) * ${row.depth})`
+}
 
 const emit = defineEmits<{
   'row-click': [event: GanttRowEvent]
@@ -98,7 +106,10 @@ function onRowContextmenu(row: ResolvedRow, event: MouseEvent): void {
       class="gantt-task-list__row"
       :data-id="row.id"
       :data-group="row.groupId || undefined"
-      :style="{ top: `${row.top}px`, height: `${row.height}px` }"
+      :data-depth="row.depth || undefined"
+      :data-has-children="row.hasChildren || undefined"
+      :data-collapsed="(row.hasChildren && row.collapsed) || undefined"
+      :style="{ top: `${row.top}px`, height: `${row.height}px`, paddingLeft: rowIndent(row) }"
       @pointerdown="onRowDown(row, $event)"
       @pointermove="longPress.onPointermove"
       @pointerup="longPress.onPointerup"
@@ -107,7 +118,25 @@ function onRowContextmenu(row: ResolvedRow, event: MouseEvent): void {
       @dblclick="onRowDblclick(row, $event)"
       @contextmenu="onRowContextmenu(row, $event)"
     >
-      <slot name="row" :row="row" :index="row.order">
+      <slot
+        name="row"
+        :row="row"
+        :index="row.order"
+        :depth="row.depth"
+        :collapsed="row.collapsed"
+        :has-children="row.hasChildren"
+        :toggle="() => toggleRow(row.id)"
+      >
+        <button
+          v-if="row.hasChildren"
+          type="button"
+          class="gantt-task-list__row-toggle"
+          :aria-expanded="!row.collapsed"
+          @click.stop="toggleRow(row.id)"
+          @dblclick.stop
+        >
+          <span class="gantt-task-list__chevron" aria-hidden="true" />
+        </button>
         <slot
           v-if="editable && editingName && editingRow?.id === row.id"
           name="rowEditor"
@@ -152,6 +181,25 @@ function onRowContextmenu(row: ResolvedRow, event: MouseEvent): void {
 /* Member rows are indented under their group header. */
 .gantt-task-list__row[data-group] {
   padding-left: var(--gantt-group-indent, 16px);
+}
+
+/* Tree row collapse toggle: a compact button wrapping the chevron. */
+.gantt-task-list__row-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+  width: 18px;
+  height: 100%;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  cursor: pointer;
+}
+
+.gantt-task-list__row[data-collapsed] .gantt-task-list__chevron {
+  transform: rotate(0deg);
 }
 
 .gantt-task-list__name {

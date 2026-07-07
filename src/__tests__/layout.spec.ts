@@ -1,6 +1,13 @@
 import { describe, expect, it } from 'vitest'
 import { normalizeRow } from '../context'
-import { assignLanes, conflictSegments, layoutGroups, layoutRows, type GroupMeta } from '../layout'
+import {
+  assignLanes,
+  conflictSegments,
+  layoutGroups,
+  layoutRows,
+  layoutTree,
+  type GroupMeta,
+} from '../layout'
 import type { GanttRow, ResolvedTask } from '../types'
 
 const task = (id: string, start: string, end: string): ResolvedTask => {
@@ -158,6 +165,155 @@ describe('layoutGroups', () => {
     expect(out.groups).toHaveLength(0)
     expect(out.rows.map(r => [r.top, r.height])).toEqual(flat.map(r => [r.top, r.height]))
     expect(out.contentHeight).toBe(flat[flat.length - 1]!.top + flat[flat.length - 1]!.height)
+  })
+})
+
+describe('layoutTree', () => {
+  // A three-level tree in pre-order: parent → child → grandchild, plus a sibling.
+  const tree: GanttRow[] = [
+    { id: 'p', tasks: [{ id: 'pt', start: '2026-06-10', end: '2026-06-12' }] },
+    { id: 'c1', parentId: 'p', tasks: [{ id: 'c1t', start: '2026-06-01', end: '2026-06-05' }] },
+    { id: 'g1', parentId: 'c1', tasks: [{ id: 'g1t', start: '2026-06-03', end: '2026-06-20' }] },
+    { id: 'c2', parentId: 'p', tasks: [{ id: 'c2t', start: '2026-06-06', end: '2026-06-08' }] },
+  ]
+  const resolve = (rows: GanttRow[]) => rows.map((r, i) => normalizeRow(r, i))
+  const collapse = (entries: Record<string, boolean> = {}) => new Map(Object.entries(entries))
+
+  it('assigns depth, hasChildren and childIds by parentId', () => {
+    const out = layoutTree(resolve(tree), { mode: 'overlap', rowHeight: 30, rowCollapse: collapse() })
+    const byId = new Map(out.rows.map(r => [r.id, r]))
+    expect(out.rows.map(r => r.depth)).toEqual([0, 1, 2, 1])
+    expect(byId.get('p')!.hasChildren).toBe(true)
+    expect(byId.get('g1')!.hasChildren).toBe(false)
+    expect(byId.get('p')!.childIds).toEqual(['c1', 'c2'])
+    expect(byId.get('c1')!.childIds).toEqual(['g1'])
+  })
+
+  it('stacks tops and preserves the order == index contract', () => {
+    const out = layoutTree(resolve(tree), { mode: 'overlap', rowHeight: 30, rowCollapse: collapse() })
+    expect(out.rows.map(r => r.top)).toEqual([0, 30, 60, 90])
+    expect(out.contentHeight).toBe(120)
+    out.rows.forEach((r, i) => expect(r.order).toBe(i))
+  })
+
+  it('recursively hides a collapsed row\'s whole subtree without removing rows', () => {
+    const out = layoutTree(resolve(tree), {
+      mode: 'overlap',
+      rowHeight: 30,
+      rowCollapse: collapse({ p: true }),
+    })
+    const byId = new Map(out.rows.map(r => [r.id, r]))
+    // p stays visible; every descendant is hidden.
+    expect(byId.get('p')!.hidden).toBe(false)
+    expect([byId.get('c1')!.hidden, byId.get('g1')!.hidden, byId.get('c2')!.hidden]).toEqual([
+      true,
+      true,
+      true,
+    ])
+    // Hidden rows take no vertical space, but the array (and indices) is intact.
+    expect(out.rows).toHaveLength(4)
+    expect(out.contentHeight).toBe(30)
+    out.rows.forEach((r, i) => expect(r.order).toBe(i))
+  })
+
+  it('rolls up a parent to the min start / max end / duration-weighted progress of its subtree', () => {
+    const rows: GanttRow[] = [
+      { id: 'p', tasks: [] },
+      { id: 'a', parentId: 'p', tasks: [{ id: 'at', start: '2026-06-01', end: '2026-06-03', progress: 100 }] },
+      { id: 'b', parentId: 'p', tasks: [{ id: 'bt', start: '2026-06-05', end: '2026-06-09', progress: 0 }] },
+    ]
+    const out = layoutTree(resolve(rows), { mode: 'overlap', rowHeight: 30, rowCollapse: collapse() })
+    const parent = out.rows.find(r => r.id === 'p')!
+    expect(parent.rollup!.start).toEqual(new Date(2026, 5, 1))
+    expect(parent.rollup!.end).toEqual(new Date(2026, 5, 9))
+    // durations 2d (100%) + 4d (0%) → 200 / 6 ≈ 33.33
+    expect(parent.rollup!.progress).toBeCloseTo(200 / 6, 5)
+  })
+
+  it('includes collapsed descendants in the rollup', () => {
+    const out = layoutTree(resolve(tree), {
+      mode: 'overlap',
+      rowHeight: 30,
+      rowCollapse: collapse({ p: true }),
+    })
+    const parent = out.rows.find(r => r.id === 'p')!
+    // subtree spans g1t start (06-03) is later than c1t (06-01); min is 06-01, max is g1t end 06-20.
+    expect(parent.rollup!.start).toEqual(new Date(2026, 5, 1))
+    expect(parent.rollup!.end).toEqual(new Date(2026, 5, 20))
+  })
+
+  it('is equivalent to layoutRows when no row has a parentId', () => {
+    const flatRows: GanttRow[] = [
+      { id: 'r1', tasks: [{ id: 'a', start: '2026-06-01', end: '2026-06-10' }] },
+      { id: 'r2', tasks: [{ id: 'b', start: '2026-06-01', end: '2026-06-03' }] },
+    ]
+    const tree = layoutTree(resolve(flatRows), { mode: 'lanes', rowHeight: 30, rowCollapse: collapse() })
+    const flat = layoutRows(resolve(flatRows), { mode: 'lanes', rowHeight: 30 })
+    expect(tree.rows.map(r => [r.top, r.height])).toEqual(flat.map(r => [r.top, r.height]))
+  })
+
+  it('grows a parent row to laneCount * rowHeight in lanes mode; children stack below it', () => {
+    const lanesTree: GanttRow[] = [
+      {
+        id: 'p',
+        tasks: [
+          { id: 'p1', start: '2026-06-01', end: '2026-06-10' },
+          { id: 'p2', start: '2026-06-05', end: '2026-06-15' }, // overlaps p1 → 2 lanes
+        ],
+      },
+      { id: 'c1', parentId: 'p', tasks: [{ id: 'c1t', start: '2026-06-01', end: '2026-06-02' }] },
+    ]
+    const out = layoutTree(resolve(lanesTree), { mode: 'lanes', rowHeight: 30, rowCollapse: collapse() })
+    const byId = new Map(out.rows.map(r => [r.id, r]))
+    expect(byId.get('p')!.laneCount).toBe(2)
+    expect(byId.get('p')!.height).toBe(60)
+    expect(byId.get('p')!.top).toBe(0)
+    // The child starts below the grown parent, not a plain single rowHeight.
+    expect(byId.get('c1')!.top).toBe(60)
+    expect(byId.get('c1')!.height).toBe(30)
+    expect(out.contentHeight).toBe(90)
+  })
+
+  it('collapsing a middle-level row hides only its own subtree (ancestor + siblings unaffected)', () => {
+    const out = layoutTree(resolve(tree), {
+      mode: 'overlap',
+      rowHeight: 30,
+      rowCollapse: collapse({ c1: true }),
+    })
+    const byId = new Map(out.rows.map(r => [r.id, r]))
+    // p (ancestor) and c1 itself stay visible; only c1's own child (g1) is hidden.
+    expect(byId.get('p')!.hidden).toBe(false)
+    expect(byId.get('c1')!.hidden).toBe(false)
+    expect(byId.get('c1')!.collapsed).toBe(true)
+    expect(byId.get('g1')!.hidden).toBe(true)
+    // c2 is p's other child, a sibling of c1 — unrelated to c1's collapse.
+    expect(byId.get('c2')!.hidden).toBe(false)
+
+    // p(0..30) c1(30..60) g1 hidden (no space) c2 resumes right after c1's band.
+    expect(out.rows.map(r => r.top)).toEqual([0, 30, 60, 60])
+    expect(out.contentHeight).toBe(90)
+    // The order == index contract holds regardless of where the collapse sits.
+    out.rows.forEach((r, i) => expect(r.order).toBe(i))
+  })
+
+  it('treats an unknown parentId as a root instead of hanging', () => {
+    const rows: GanttRow[] = [
+      { id: 'x', parentId: 'ghost', tasks: [{ id: 'xt', start: '2026-06-01', end: '2026-06-02' }] },
+    ]
+    const out = layoutTree(resolve(rows), { mode: 'overlap', rowHeight: 30, rowCollapse: collapse() })
+    expect(out.rows[0]!.depth).toBe(0)
+    expect(out.rows[0]!.hidden).toBe(false)
+  })
+
+  it('does not hang on a reference cycle among existing ids', () => {
+    // a→b→a is a genuine cycle; layout must terminate (it degrades, not detects).
+    const rows: GanttRow[] = [
+      { id: 'a', parentId: 'b', tasks: [{ id: 'at', start: '2026-06-01', end: '2026-06-02' }] },
+      { id: 'b', parentId: 'a', tasks: [{ id: 'bt', start: '2026-06-03', end: '2026-06-04' }] },
+    ]
+    const out = layoutTree(resolve(rows), { mode: 'overlap', rowHeight: 30, rowCollapse: collapse() })
+    expect(out.rows).toHaveLength(2)
+    expect(out.contentHeight).toBeGreaterThan(0)
   })
 })
 
