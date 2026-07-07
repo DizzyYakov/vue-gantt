@@ -110,6 +110,8 @@ export interface GanttTask {
   progress?: number
   /** Ids of tasks that must finish before this one (drawn as arrows). */
   dependencies?: string[]
+  /** Ids of resources (people/equipment) assigned to this task. */
+  resourceIds?: string[]
   type?: GanttItemType
   /**
    * Free-form category tag. In the prop-driven `<Gantt>` render it selects a
@@ -218,6 +220,32 @@ export interface ResolvedPeriod {
 }
 
 /**
+ * A resource (person or equipment) a task can be assigned to via
+ * `GanttTask.resourceIds`. A flat lookup table passed to the `resources` prop;
+ * the library surfaces a task's resolved resources into its bar/milestone slots
+ * (rendering — badges, avatars — is up to the consumer). Purely a data model:
+ * resources don't add their own lane (a resource swimlane is out of scope).
+ */
+export interface GanttResource {
+  /** Stable unique identifier, referenced by `GanttTask.resourceIds`. */
+  id: string
+  /** Display name. Falls back to `id`. */
+  name?: string
+  /** Optional color a slot can use to tint a badge/avatar. */
+  color?: string
+  /** Arbitrary extra data forwarded to slots untouched. */
+  meta?: Record<string, unknown>
+}
+
+/** A resource after its name/meta defaults are applied. */
+export interface ResolvedResource {
+  id: string
+  name: string
+  color?: string
+  meta: Record<string, unknown>
+}
+
+/**
  * A working calendar: which weekdays / dates / spans count as non-working. Passed
  * to the `nonWorking` prop to shade weekends, holidays and custom off periods as a
  * faint background band. Unlike `periods`, it never adds a header row or extends
@@ -258,6 +286,8 @@ export interface ResolvedTask {
   end: Date
   progress: number
   dependencies: string[]
+  /** Ids of the resources assigned to this task (empty when none). */
+  resourceIds: string[]
   type: GanttItemType
   /** Free-form category tag selecting a per-variant slot (absent when not set). */
   variant?: string
@@ -490,6 +520,12 @@ export interface GanttRootProps {
    * the `sprintPeriods` helper, or pass your own list.
    */
   periods?: GanttPeriod[]
+  /**
+   * Resources (people / equipment) tasks can be assigned to via
+   * `GanttTask.resourceIds`. A flat lookup table; the library resolves each task's
+   * resources into its bar/milestone slots (rendering is up to the consumer).
+   */
+  resources?: GanttResource[]
   /**
    * Working calendar: shade non-working time (weekends / holidays / custom off
    * periods) as a faint background band. `true` shades Sat/Sun; pass a
@@ -855,6 +891,10 @@ export interface GanttContext {
   conflicts: ComputedRef<GanttConflict[]>
   /** Positioned custom timeline periods (empty unless `periods` is set). */
   periods: ComputedRef<ResolvedPeriod[]>
+  /** Resolved resources (empty unless `resources` is set). */
+  resources: ComputedRef<ResolvedResource[]>
+  /** Resolve a task's assigned resources (unknown ids dropped). */
+  resourcesFor: (task: ResolvedTask) => ResolvedResource[]
   /** Positioned non-working bands (empty unless `nonWorking` is set). */
   nonWorking: ComputedRef<ResolvedNonWorkingBand[]>
   /** Ids of the critical-path tasks (empty unless `criticalPath` is on). */

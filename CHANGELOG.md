@@ -52,6 +52,16 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Added
 
+- **Resources & task assignment.** A new `resources` prop (`GanttResource[]` —
+  `{ id, name?, color?, meta? }`) declares a flat table of people/equipment, and
+  a task assigns to them via `GanttTask.resourceIds`. Each task's resolved
+  resources are surfaced into its bar/milestone slots (`#bar` now scopes
+  `{ task, progress, resources }`, `#milestone` `{ task, resources }`, likewise the
+  per-variant slots), and the context exposes `resources` + `resourcesFor(task)`
+  (unknown ids dropped). Rendering assignees (badges/avatars) is up to the consumer;
+  `GanttResource`/`ResolvedResource` are exported from the package root. Purely a
+  data model — resources add no lane of their own.
+
 - **Nested rows (WBS tree).** A `GanttRow.parentId` builds a collapsible tree of
   arbitrary depth: parent rows carry their own tasks *and* a rolled-up summary bar
   spanning their whole subtree (min start / max end / duration-weighted progress).

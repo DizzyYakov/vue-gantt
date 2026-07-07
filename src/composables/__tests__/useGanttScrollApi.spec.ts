@@ -12,6 +12,7 @@ function makeTask(overrides: Partial<ResolvedTask> = {}): ResolvedTask {
     end: new Date(2026, 0, 15),
     progress: 0,
     dependencies: [],
+    resourceIds: [],
     type: 'task',
     meta: {},
     rowId: 'r1',

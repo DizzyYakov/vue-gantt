@@ -157,6 +157,10 @@ export function useGanttItem(props: GanttItemProps, overrides: Partial<GanttTask
   const left = baseLeft
   const width = computed(() => ctx.widthBetween(resolved.value.start, resolved.value.end))
 
+  // The task's assigned resources, resolved from its `resourceIds` — surfaced into
+  // the bar/milestone slots so a consumer can render assignees (badges/avatars).
+  const resources = computed(() => ctx.resourcesFor(resolved.value))
+
   // Geometry of the drag ghost (precise x; row-snapped y), or null when idle.
   const ghost = computed(() => {
     const p = preview.value
@@ -194,5 +198,6 @@ export function useGanttItem(props: GanttItemProps, overrides: Partial<GanttTask
     previewLabel,
     overlapping,
     hidden,
+    resources,
   }
 }
