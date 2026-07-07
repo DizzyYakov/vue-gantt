@@ -29,6 +29,7 @@ const task: ResolvedTask = {
   end: new Date(2026, 0, 5),
   progress: 40,
   dependencies: [],
+  resourceIds: [],
   type: 'task',
   meta: {},
   rowId: 'r1',

@@ -26,6 +26,7 @@ const {
   ghost,
   previewLabel,
   hidden,
+  resources,
 } = useGanttItem(props, { type: 'milestone' })
 
 // Click fires after a drag's pointerup; skip it so a drag isn't read as a click.
@@ -106,7 +107,7 @@ function onMarkerUp(event: PointerEvent): void {
       @dblclick="onDblclick"
       @contextmenu="onContextmenu"
     >
-      <slot :task="resolved">
+      <slot :task="resolved" :resources="resources">
         <div class="gantt-milestone__diamond" />
       </slot>
     </div>

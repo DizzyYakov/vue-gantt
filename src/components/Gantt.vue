@@ -103,8 +103,8 @@ defineSlots<{
   'period-bands'?: (props: { periods: unknown }) => unknown
   period?: (props: { period: unknown }) => unknown
   'non-working'?: (props: { bands: unknown }) => unknown
-  bar?: (props: { task: unknown; progress: number }) => unknown
-  milestone?: (props: { task: unknown }) => unknown
+  bar?: (props: { task: unknown; progress: number; resources: unknown }) => unknown
+  milestone?: (props: { task: unknown; resources: unknown }) => unknown
   tooltip?: (props: { task: unknown }) => unknown
   bars?: (props: { tasks: unknown }) => unknown
   grid?: (props: { columns: unknown; rows: unknown }) => unknown
@@ -120,9 +120,9 @@ defineSlots<{
   marker?: (props: { marker: unknown }) => unknown
   'body-extra'?: (props: { contentWidth: number; contentHeight: number }) => unknown
   /** Per-variant bar slot: used for a task whose `variant` matches (falls back to `bar`). */
-  [name: `task-${string}`]: (props: { task: unknown; progress: number }) => unknown
+  [name: `task-${string}`]: (props: { task: unknown; progress: number; resources: unknown }) => unknown
   /** Per-variant marker slot: used for a milestone whose `variant` matches (falls back to `milestone`). */
-  [name: `milestone-${string}`]: (props: { task: unknown }) => unknown
+  [name: `milestone-${string}`]: (props: { task: unknown; resources: unknown }) => unknown
 }>()
 
 // Consumer-provided per-variant item slots (`task-*` / `milestone-*`) — forwarded
