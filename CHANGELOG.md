@@ -4,6 +4,16 @@ All notable changes to this project are documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [1.8.0](https://github.com/LavaYasha/vue-gantt/compare/vue-gantt-v1.7.0...vue-gantt-v1.8.0) (2026-07-07)
+
+
+### Features
+
+* reference markers (labelled full-height date lines) ([c5cd9ff](https://github.com/LavaYasha/vue-gantt/commit/c5cd9ff912b03415cf1ae0abdbe74529057f013d))
+* reference markers (labelled full-height date lines) ([bafe81c](https://github.com/LavaYasha/vue-gantt/commit/bafe81cf87c01cdb18e2ceda7dc86efd06ec42ca))
+* resources & task assignment ([8a73ec5](https://github.com/LavaYasha/vue-gantt/commit/8a73ec57cd51cfda6b15c1f9dd39b5cb3d56e4b1))
+* resources & task assignment ([cd8334c](https://github.com/LavaYasha/vue-gantt/commit/cd8334c5e26871abd8ffc5af015e16b1a2d42a4a))
+
 ## [1.7.0](https://github.com/LavaYasha/vue-gantt/compare/vue-gantt-v1.6.0...vue-gantt-v1.7.0) (2026-07-07)
 
 
