@@ -218,6 +218,38 @@ export interface ResolvedPeriod {
 }
 
 /**
+ * A reference marker: a single labelled, full-height vertical line at a given
+ * date (a quarter boundary, a shared release date, a go-live). Unlike `GanttToday`
+ * (pinned to the live clock) it sits on any date, and unlike `GanttDeadlines`
+ * (bounded to a task's row) it spans the whole body. Pass a list to the `markers`
+ * prop; `GanttMarkers` draws them.
+ */
+export interface GanttMarker {
+  /** Stable unique identifier. */
+  id: string
+  /** Date the line sits on. */
+  date: Date | string | number
+  /** Label rendered beside the line. Omit for a bare line. */
+  label?: string
+  /** Arbitrary extra data forwarded to slots untouched. */
+  meta?: Record<string, unknown>
+}
+
+/** A marker after its date is coerced and positioned in pixels. */
+export interface ResolvedMarker {
+  id: string
+  /** Label text, or `''` when the marker is a bare line. */
+  label: string
+  date: Date
+  /** Left offset in pixels. */
+  x: number
+  /** Zero-based index in order. */
+  index: number
+  /** Arbitrary extra data forwarded to slots untouched. */
+  meta: Record<string, unknown>
+}
+
+/**
  * A working calendar: which weekdays / dates / spans count as non-working. Passed
  * to the `nonWorking` prop to shade weekends, holidays and custom off periods as a
  * faint background band. Unlike `periods`, it never adds a header row or extends
@@ -490,6 +522,12 @@ export interface GanttRootProps {
    * the `sprintPeriods` helper, or pass your own list.
    */
   periods?: GanttPeriod[]
+  /**
+   * Reference markers: labelled full-height vertical lines at arbitrary dates
+   * (quarter boundaries, release dates). Rendered by `GanttMarkers`. Purely
+   * decorative — markers never extend the axis or add a header row.
+   */
+  markers?: GanttMarker[]
   /**
    * Working calendar: shade non-working time (weekends / holidays / custom off
    * periods) as a faint background band. `true` shades Sat/Sun; pass a
@@ -855,6 +893,8 @@ export interface GanttContext {
   conflicts: ComputedRef<GanttConflict[]>
   /** Positioned custom timeline periods (empty unless `periods` is set). */
   periods: ComputedRef<ResolvedPeriod[]>
+  /** Positioned reference markers (empty unless `markers` is set). */
+  markers: ComputedRef<ResolvedMarker[]>
   /** Positioned non-working bands (empty unless `nonWorking` is set). */
   nonWorking: ComputedRef<ResolvedNonWorkingBand[]>
   /** Ids of the critical-path tasks (empty unless `criticalPath` is on). */

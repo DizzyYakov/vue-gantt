@@ -154,6 +154,7 @@ slots for overriding any part. Every slot is scoped — its props give you the s
 | `slack`        | `{ slack }`                       | `<GanttSlack>` (free-float bars)    |
 | `deadlines`    | `{ tasks }`                       | `<GanttDeadlines>` (deadline lines) |
 | `dependencies` | `{ tasks }`                       | `<GanttDependencies>`               |
+| `marker-lines` | `{ markers }`                     | `<GanttMarkers>` (reference marker lines) |
 | `today`        | `{ today, dateToX }`              | `<GanttToday>`                      |
 | `body-extra`   | `{ contentWidth, contentHeight }` | (extra layer over the body)         |
 
@@ -165,8 +166,9 @@ is `(date: Date \| string \| number) => number`, `rows`/`groups` are the visible
 unless the `nonWorking` prop is set), `tasks` are `ResolvedTask[]` (all of them for
 `dependencies`, the plotted/visible ones for `bars`, `baselines` and `deadlines`),
 `today` is the configured reference `Date`, `conflicts` is `GanttConflict[]` (empty
-unless `overlap: 'conflict'`), and `slack` is a `Map<string, number>` of free-float
-days by task id (empty unless `slack` is on).
+unless `overlap: 'conflict'`), `markers` is the resolved `ResolvedMarker[]` (empty
+unless the `markers` prop is set), and `slack` is a `Map<string, number>` of
+free-float days by task id (empty unless `slack` is on).
 
 **Leaf slots** customize a single repeated item: `row`
 (`{ row, index, depth, collapsed, hasChildren, toggle }`), `row-suffix`
@@ -174,9 +176,11 @@ days by task id (empty unless `slack` is on).
 replacing `row`; see [Row decoration](#row-decoration)), `group`
 (`{ group, collapsed, toggle }`), `groupBar` (`{ group }`), `summaryBar`
 (`{ row }` — a WBS parent row, see [row tree](#row-tree-wbs)), `column`
-(`{ column, tier }`), `period` (`{ period }`), `bar` (`{ task, progress }`), `milestone` (`{ task }`),
-`tooltip` (`{ task }`), `rowEditor` (`{ row, value, commit, cancel }`) and
-`taskEditor` (`{ task, value, commit, cancel }`).
+(`{ column, tier }`), `period` (`{ period }`), `marker` (`{ marker }` — a
+`ResolvedMarker`, see [Reference markers](#reference-markers)), `bar`
+(`{ task, progress }`), `milestone` (`{ task }`), `tooltip` (`{ task }`),
+`rowEditor` (`{ row, value, commit, cancel }`) and `taskEditor`
+(`{ task, value, commit, cancel }`).
 
 **Per-variant item slots.** Tag an item with a free-form `variant` and the
 prop-driven render picks a slot by it: a bar looks for `task-${variant}`
@@ -265,6 +269,7 @@ every [chart event](#events); the rest are the building blocks.
 | `<GanttDeadlines>`    | — (default slot `{ taskId, deadline }`)          | —                                                |
 | `<GanttBaselines>`    | — (default slot `{ task }`)                      | —                                                |
 | `<GanttPeriods>`      | — (default slot `{ period }`)                    | —                                                |
+| `<GanttMarkers>`      | — (default slot `{ marker }`)                    | —                                                |
 | `<GanttToday>`        | `interval?: number` (ms, default `1000`)         | —                                                |
 | `<GanttZoom>`         | — (reads context; default slot for custom UI)    | — (calls `setZoom`/`zoomIn`/`zoomOut` on root)   |
 
@@ -291,6 +296,7 @@ parent collapses to the content height and simply grows to fit (as before).
 | `columnWidth`           | `number`                                          | `40`            | Width of one base-unit cell, px.                                                                                                                                                                                                                              |
 | `zoomLevels`            | `GanttZoomLevel[]`                                | `DEFAULT_ZOOM_LEVELS` | Named view-mode presets the `zoom` prop / `GanttZoom` switch between; each bundles `tiers` + `columnWidth` (year → hour).                                                                                                                                |
 | `periods`               | `GanttPeriod[]`                                   | —               | Custom timeline periods (sprints): a background band over the body + a labelled header row. Build a cadence with `sprintPeriods` or pass your own list. See [Timeline period bands](#timeline-period-bands-sprints).                                            |
+| `markers`               | `GanttMarker[]`                                   | —               | Reference markers: labelled full-height vertical lines at arbitrary dates (quarter boundaries, release dates). Purely decorative — never extends the axis or adds a header row. See [Reference markers](#reference-markers).                                    |
 | `nonWorking`            | `boolean \| NonWorkingCalendar`                   | —               | Working calendar: shade non-working time (weekends/holidays/custom off periods) as a background band. `true` shades Sat/Sun. Purely decorative — never extends the axis or adds a header row. See [Non-working calendar](#non-working-calendar).              |
 | `zoom`                  | `string`                                          | —               | Active zoom level id; supports `v-model:zoom`. When set, the matching level's `tiers`/`columnWidth` override those props. Omit for the classic `tiers`/`columnWidth`/`unit` behavior.                                                                          |
 | `rowHeight`             | `number`                                          | `36`            | Row height, px.                                                                                                                                                                                                                                               |
@@ -989,6 +995,49 @@ nonWorkingBands(true, { start, end }) // Sat/Sun shaded
 nonWorkingBands({ holidays: ['2026-07-04'] }, { start, end }) // + a holiday
 ```
 
+## Reference markers
+
+**Reference markers** draw labelled, full-height vertical lines at arbitrary
+dates — quarter boundaries, a shared release date, a go-live. Unlike
+[`<GanttToday>`](#components), which is pinned to the live clock, a marker sits on
+any date you choose; unlike a task's [`deadline`](#deadlines--constraints), which
+is bounded to that task's row, a marker spans the whole chart body. Pass a
+`markers` list; each is purely decorative — like `periods`/`nonWorking`, markers
+never extend the auto date range or add a header row.
+
+```vue
+<script setup>
+import { Gantt } from '@dizzy_yakov/vue-gantt'
+import type { GanttMarker } from '@dizzy_yakov/vue-gantt'
+
+const markers: GanttMarker[] = [
+  { id: 'q3', date: '2026-07-01', label: 'Q3' },
+  { id: 'q4', date: '2026-10-01', label: 'Q4' },
+  { id: 'release', date: '2026-08-15', label: 'Release', meta: { kind: 'release' } },
+]
+</script>
+
+<template>
+  <Gantt :rows="rows" :markers="markers" :tiers="['month', 'week', 'day']" />
+</template>
+```
+
+`GanttMarker` is `{ id: string; date: Date | string | number; label?: string;
+meta?: Record<string, unknown> }` — omit `label` for a bare line. The lines are
+rendered by `<GanttMarkers>` (auto-mounted; override the whole overlay via the
+`marker-lines` section slot, or customize each line via its own default slot — the
+`marker` leaf slot, scoped `{ marker }` where `marker` is a `ResolvedMarker`:
+`{ id, label, date, x, index, meta }`, `label` defaulting to `''`). Style with the
+`--gantt-marker-*` [variables](#css-variables).
+
+```vue
+<Gantt :rows="rows" :markers="markers">
+  <template #marker="{ marker }">
+    <strong>{{ marker.label || marker.id }}</strong>
+  </template>
+</Gantt>
+```
+
 ## Zoom / view-mode
 
 A zoom level is a **view-mode preset** — a named bundle of `tiers` + `columnWidth`.
@@ -1377,6 +1426,18 @@ hatched look.
 | ---------------------- | ------------------ | -------------------- |
 | `--gantt-today-color`  | `#ef4444`          | "Today" line colour. |
 | `--gantt-today-border` | `2px solid …color` | "Today" line border. |
+
+**Reference markers** — see [Reference markers](#reference-markers)
+
+| Variable                        | Default            | Purpose                                |
+| -------------------------------- | ------------------ | --------------------------------------- |
+| `--gantt-marker-color`           | `#6b7280`           | Marker line colour (and label default). |
+| `--gantt-marker-border`          | `1px dashed …color` | Marker line border shorthand.           |
+| `--gantt-marker-font-size`       | header font size    | Marker label font size.                 |
+| `--gantt-marker-label-color`     | marker colour       | Marker label text colour.               |
+| `--gantt-marker-label-bg`        | `transparent`       | Marker label background.                |
+| `--gantt-marker-label-offset`    | `4px`               | Label offset from the line.             |
+| `--gantt-marker-label-padding`   | `0 2px`             | Marker label padding.                   |
 
 **Deadlines & constraints**
 
