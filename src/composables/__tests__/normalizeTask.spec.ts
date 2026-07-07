@@ -141,6 +141,20 @@ describe('normalizeTask', () => {
     const task = normalizeTask({ id: 'a', start: '2026-01-01', end: '2026-01-05' }, 'r1', 0)
     expect(task.segments).toBeUndefined()
   })
+
+  it('carries `resourceIds` through', () => {
+    const task = normalizeTask(
+      { id: 'a', start: '2026-01-01', end: '2026-01-05', resourceIds: ['u1', 'u2'] },
+      'r',
+      0,
+    )
+    expect(task.resourceIds).toEqual(['u1', 'u2'])
+  })
+
+  it('defaults `resourceIds` to an empty array when absent', () => {
+    const task = normalizeTask({ id: 'a', start: '2026-01-01', end: '2026-01-05' }, 'r', 0)
+    expect(task.resourceIds).toEqual([])
+  })
 })
 
 describe('normalizeRow', () => {

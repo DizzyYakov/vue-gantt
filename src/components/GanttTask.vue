@@ -34,6 +34,7 @@ const {
   previewLabel,
   overlapping,
   hidden,
+  resources,
 } = useGanttItem(props, { type: 'task' })
 
 const resizable = computed(() => ctx.config.value.resizable)
@@ -172,7 +173,7 @@ function onBarUp(event: PointerEvent): void {
       @dblclick="onDblclick"
       @contextmenu="onContextmenu"
     >
-      <slot :task="resolved" :progress="liveProgress">
+      <slot :task="resolved" :progress="liveProgress" :resources="resources">
         <!-- Split task: work segments with paused gaps, progress flowing through them. -->
         <template v-if="segmentBars.length">
           <div class="gantt-bar__split-line" />

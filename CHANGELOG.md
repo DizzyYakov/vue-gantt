@@ -176,6 +176,35 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Added
 
+- **Resources & task assignment.** A new `resources` prop (`GanttResource[]` —
+  `{ id, name?, color?, meta? }`) declares a flat table of people/equipment, and
+  a task assigns to them via `GanttTask.resourceIds`. Each task's resolved
+  resources are surfaced into its bar/milestone slots (`#bar` now scopes
+  `{ task, progress, resources }`, `#milestone` `{ task, resources }`, likewise the
+  per-variant slots), and the context exposes `resources` + `resourcesFor(task)`
+  (unknown ids dropped). Rendering assignees (badges/avatars) is up to the consumer;
+  `GanttResource`/`ResolvedResource` are exported from the package root. Purely a
+  data model — resources add no lane of their own.
+
+- **Reference markers.** A new `markers` prop (`GanttMarker[]` —
+  `{ id, date, label?, meta? }`) draws labelled, full-height vertical lines at
+  arbitrary dates (quarter boundaries, release dates, go-lives). Unlike
+  `GanttToday` (pinned to the live clock) a marker sits on any date, and unlike a
+  task's `deadline` (bounded to its row) it spans the whole body. Ships the
+  `GanttMarkers` overlay component, a `marker-lines` section slot (`{ markers }`)
+  and a per-marker `marker` slot (`{ marker }`), the `--gantt-marker-*` theme
+  tokens, and `GanttMarker`/`ResolvedMarker` types exported from the package root.
+  Purely decorative — markers never extend the axis or add a header row.
+
+- **Row decoration.** Mark or highlight a sidebar row without replacing its render:
+  a new `#row-suffix` slot appends a badge/marker after the row name (scope
+  `{ row, index, depth, collapsed, hasChildren }`), and any primitive
+  (`string`/`number`/`boolean`) entry in `row.meta` is surfaced as a `data-*`
+  attribute on `.gantt-task-list__row` for pure-CSS styling (e.g.
+  `.gantt-task-list__row[data-ppr]`). The reserved
+  `data-id`/`data-group`/`data-depth`/`data-has-children`/`data-collapsed`
+  attributes can't be clobbered by `meta`.
+
 - **Nested rows (WBS tree).** A `GanttRow.parentId` builds a collapsible tree of
   arbitrary depth: parent rows carry their own tasks *and* a rolled-up summary bar
   spanning their whole subtree (min start / max end / duration-weighted progress).

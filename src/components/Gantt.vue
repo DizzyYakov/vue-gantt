@@ -103,8 +103,8 @@ defineSlots<{
   'period-bands'?: (props: { periods: unknown }) => unknown
   period?: (props: { period: unknown }) => unknown
   'non-working'?: (props: { bands: unknown }) => unknown
-  bar?: (props: { task: unknown; progress: number }) => unknown
-  milestone?: (props: { task: unknown }) => unknown
+  bar?: (props: { task: unknown; progress: number; resources: unknown }) => unknown
+  milestone?: (props: { task: unknown; resources: unknown }) => unknown
   tooltip?: (props: { task: unknown }) => unknown
   bars?: (props: { tasks: unknown }) => unknown
   grid?: (props: { columns: unknown; rows: unknown }) => unknown
@@ -113,11 +113,16 @@ defineSlots<{
   deadlines?: (props: { tasks: unknown }) => unknown
   dependencies?: (props: { tasks: unknown }) => unknown
   today?: (props: { today: unknown; dateToX: unknown }) => unknown
+  /** Overrides the reference-marker overlay wholesale (`{ markers }`). Named apart
+   *  from the `markers` prop so `ComponentProps & ComponentSlots` typings don't clash. */
+  'marker-lines'?: (props: { markers: unknown }) => unknown
+  /** Per-marker render inside the default overlay (`{ marker }`). */
+  marker?: (props: { marker: unknown }) => unknown
   'body-extra'?: (props: { contentWidth: number; contentHeight: number }) => unknown
   /** Per-variant bar slot: used for a task whose `variant` matches (falls back to `bar`). */
-  [name: `task-${string}`]: (props: { task: unknown; progress: number }) => unknown
+  [name: `task-${string}`]: (props: { task: unknown; progress: number; resources: unknown }) => unknown
   /** Per-variant marker slot: used for a milestone whose `variant` matches (falls back to `milestone`). */
-  [name: `milestone-${string}`]: (props: { task: unknown }) => unknown
+  [name: `milestone-${string}`]: (props: { task: unknown; resources: unknown }) => unknown
 }>()
 
 // Consumer-provided per-variant item slots (`task-*` / `milestone-*`) — forwarded
@@ -235,6 +240,12 @@ defineExpose({
       <template v-if="$slots.today" #today="slotProps"
         ><slot name="today" v-bind="slotProps"
       /></template>
+      <template v-if="$slots['marker-lines']" #marker-lines="slotProps">
+        <slot name="marker-lines" v-bind="slotProps" />
+      </template>
+      <template v-if="$slots.marker" #marker="slotProps">
+        <slot name="marker" v-bind="slotProps" />
+      </template>
       <template v-if="$slots['body-extra']" #body-extra="slotProps">
         <slot name="body-extra" v-bind="slotProps" />
       </template>

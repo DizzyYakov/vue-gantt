@@ -76,6 +76,7 @@ export function normalizeTask(task: GanttTask, rowId: string, order: number): Re
     end,
     progress: clampProgress(task.progress),
     dependencies: task.dependencies ?? [],
+    resourceIds: task.resourceIds ?? [],
     type,
     variant: task.variant,
     segments: task.segments?.map(s => ({ start: toDate(s.start), end: toDate(s.end) })),

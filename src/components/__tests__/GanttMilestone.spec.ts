@@ -21,6 +21,7 @@ describe('GanttMilestone (presentational)', () => {
       end: new Date(2026, 0, 5),
       progress: 0,
       dependencies: [],
+      resourceIds: [],
       type: 'milestone',
       meta: {},
       rowId: 'r',

@@ -139,6 +139,15 @@
   --gantt-today-color: #ef4444;
   --gantt-today-border: 2px solid var(--gantt-today-color);
 
+  /* Reference markers (quarter boundaries, release dates) */
+  --gantt-marker-color: #6b7280;
+  --gantt-marker-border: 1px dashed var(--gantt-marker-color);
+  --gantt-marker-font-size: var(--gantt-header-font-size, 0.8em);
+  --gantt-marker-label-color: var(--gantt-marker-color);
+  --gantt-marker-label-bg: transparent;
+  --gantt-marker-label-offset: 4px;
+  --gantt-marker-label-padding: 0 2px;
+
   /* Deadlines & constraints */
   --gantt-deadline-color: #dc2626;
   --gantt-deadline-width: 2px;

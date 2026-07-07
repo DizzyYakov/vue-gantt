@@ -57,7 +57,9 @@ import type {
   GanttZoomEvent,
   ResolvedGroup,
   ResolvedNonWorkingBand,
+  ResolvedMarker,
   ResolvedPeriod,
+  ResolvedResource,
   ResolvedRow,
   ResolvedTask,
 } from '../types'
@@ -99,6 +101,8 @@ const props = withDefaults(defineProps<GanttRootProps>(), {
   zoomLevels: () => DEFAULT_ZOOM_LEVELS,
   zoom: undefined,
   periods: undefined,
+  resources: undefined,
+  markers: undefined,
   nonWorking: undefined,
 })
 
@@ -445,6 +449,43 @@ const periods = computed<ResolvedPeriod[]>(() =>
   }),
 )
 
+// Resources (people/equipment) tasks can be assigned to. A flat lookup table; the
+// `resourcesFor` helper resolves a task's `resourceIds` into these objects.
+const resources = computed<ResolvedResource[]>(() =>
+  (props.resources ?? []).map(resource => ({
+    id: resource.id,
+    name: resource.name ?? resource.id,
+    color: resource.color,
+    meta: resource.meta ?? {},
+  })),
+)
+const resourceById = computed(() => new Map(resources.value.map(resource => [resource.id, resource])))
+function resourcesFor(task: ResolvedTask): ResolvedResource[] {
+  const byId = resourceById.value
+  const out: ResolvedResource[] = []
+  for (const id of task.resourceIds) {
+    const resource = byId.get(id)
+    if (resource) out.push(resource)
+  }
+  return out
+}
+
+// Reference markers (quarter boundaries, release dates), positioned in pixels via
+// the scale. Purely decorative — like `nonWorking`, they never extend the axis.
+const markers = computed<ResolvedMarker[]>(() =>
+  (props.markers ?? []).map((marker, index) => {
+    const date = toDate(marker.date)
+    return {
+      id: marker.id,
+      label: marker.label ?? '',
+      date,
+      x: scale.dateToX(date),
+      index,
+      meta: marker.meta ?? {},
+    }
+  }),
+)
+
 // Non-working bands (weekends/holidays/off periods), positioned in pixels. Unlike
 // `periods` these never extend the axis or add a header row — pure body shading.
 const nonWorking = computed<ResolvedNonWorkingBand[]>(() =>
@@ -617,6 +658,9 @@ const context: GanttContext = {
   taskBand,
   conflicts,
   periods,
+  resources,
+  resourcesFor,
+  markers,
   nonWorking,
   criticalTasks,
   slack: slackMap,

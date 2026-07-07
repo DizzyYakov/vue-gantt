@@ -11,6 +11,7 @@ import GanttGrid from './GanttGrid.vue'
 import GanttGroupBar from './GanttGroupBar.vue'
 import GanttMilestone from './GanttMilestone.vue'
 import GanttNonWorking from './GanttNonWorking.vue'
+import GanttMarkers from './GanttMarkers.vue'
 import GanttPeriods from './GanttPeriods.vue'
 import GanttSlack from './GanttSlack.vue'
 import GanttSummaryBar from './GanttSummaryBar.vue'
@@ -36,6 +37,7 @@ const {
   config,
   conflicts,
   periods,
+  markers,
   nonWorking,
   slack,
   visibleColumnsFor,
@@ -203,6 +205,13 @@ const scrollStyle = computed(() => {
 
         <slot name="dependencies" :tasks="tasks">
           <GanttDependencies />
+        </slot>
+        <slot name="marker-lines" :markers="markers">
+          <GanttMarkers>
+            <template v-if="$slots.marker" #default="markerProps">
+              <slot name="marker" v-bind="markerProps" />
+            </template>
+          </GanttMarkers>
         </slot>
         <slot name="today" :today="config.today" :dateToX="dateToX">
           <GanttToday />
