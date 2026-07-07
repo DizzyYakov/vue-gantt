@@ -22,6 +22,8 @@ design system. One runtime dependency (`date-fns`), fully typed.
 - 🧩 **Two APIs** — a prop-driven `<Gantt :rows>` or composable primitives.
 - 🗂️ Collapsible **row groups** with rolled-up summary bars, and a deep
   **row tree (WBS)** via `parentId` with per-parent rollup bars.
+- 🏷️ **Row decoration** — an add-on `row-suffix` slot for badges, plus a
+  `meta` → `data-*` passthrough for CSS-only row highlighting.
 - ✋ **Drag interactions** (all opt-in, controlled): move, resize an edge, set
   progress, and create/edit dependencies — with a live, formattable tooltip and
   edge **auto-scroll** to reach drop targets off-screen.
@@ -167,7 +169,9 @@ unless `overlap: 'conflict'`), and `slack` is a `Map<string, number>` of free-fl
 days by task id (empty unless `slack` is on).
 
 **Leaf slots** customize a single repeated item: `row`
-(`{ row, index, depth, collapsed, hasChildren, toggle }`), `group`
+(`{ row, index, depth, collapsed, hasChildren, toggle }`), `row-suffix`
+(same scope minus `toggle` — an add-on rendered *after* the row name without
+replacing `row`; see [Row decoration](#row-decoration)), `group`
 (`{ group, collapsed, toggle }`), `groupBar` (`{ group }`), `summaryBar`
 (`{ row }` — a WBS parent row, see [row tree](#row-tree-wbs)), `column`
 (`{ column, tier }`), `period` (`{ period }`), `bar` (`{ task, progress }`), `milestone` (`{ task }`),
@@ -833,6 +837,43 @@ just its rollup content via the `summaryBar` leaf slot, `{ row }`). Customize
 the sidebar row itself — chevron, indent, name — via the `row` slot
 (`{ row, index, depth, collapsed, hasChildren, toggle }`). Style with the
 `--gantt-row-indent` / `--gantt-summary-bar-*` [variables](#css-variables).
+
+## Row decoration
+
+Two lightweight, additive hooks let you mark up a sidebar row without
+overriding its whole render:
+
+- **`row-suffix` slot** — rendered *after* the row name (`{ row, index, depth,
+  collapsed, hasChildren }`, same scope as `row` minus `toggle`). Use it to
+  append a badge/marker while keeping the default name rendering (and the
+  `row` slot, if you also use one) untouched:
+
+  ```vue
+  <Gantt :rows="rows">
+    <template #row-suffix="{ row }">
+      <span v-if="row.meta.ppr" class="badge">PPR</span>
+    </template>
+  </Gantt>
+  ```
+
+- **`meta` → `data-*` passthrough** — primitive (`string`/`number`/`boolean`)
+  entries of a row's `meta` are forwarded as `data-<key>` attributes on its
+  `.gantt-task-list__row` element, so you can highlight/mark the row with
+  plain CSS, no slot needed:
+
+  ```ts
+  const rows: GanttRowData[] = [{ id: 'task', name: 'Task', meta: { ppr: true } }]
+  ```
+
+  ```css
+  .gantt-task-list__row[data-ppr] {
+    background: var(--gantt-critical-color, #ef4444);
+  }
+  ```
+
+  Only primitive values are forwarded (objects/arrays are skipped), and the
+  reserved `data-id` / `data-group` / `data-depth` / `data-has-children` /
+  `data-collapsed` attributes are never overwritten by `meta`.
 
 ## Baselines (planned vs actual)
 
