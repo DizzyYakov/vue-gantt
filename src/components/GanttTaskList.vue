@@ -15,6 +15,20 @@ function rowIndent(row: ResolvedRow): string | undefined {
   return `calc(var(--gantt-row-indent, 16px) * ${row.depth})`
 }
 
+// Row decoration hook: primitive `meta` entries surface as `data-*` on the row so a
+// consumer can highlight/mark it via CSS (e.g. `.gantt-task-list__row[data-attr1]`)
+// without overriding the `#row` render. Bound *before* the reserved data attributes
+// below, so `meta` can never clobber `data-id`/`data-group`/`data-depth`/etc.
+function rowDataAttrs(row: ResolvedRow): Record<string, string> {
+  const attrs: Record<string, string> = {}
+  for (const [key, value] of Object.entries(row.meta)) {
+    if (typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean') {
+      attrs[`data-${key}`] = String(value)
+    }
+  }
+  return attrs
+}
+
 const emit = defineEmits<{
   'row-click': [event: GanttRowEvent]
   'row-dblclick': [event: GanttRowEvent]
@@ -104,6 +118,7 @@ function onRowContextmenu(row: ResolvedRow, event: MouseEvent): void {
       v-for="row in visibleRows"
       :key="row.id"
       class="gantt-task-list__row"
+      v-bind="rowDataAttrs(row)"
       :data-id="row.id"
       :data-group="row.groupId || undefined"
       :data-depth="row.depth || undefined"
@@ -158,6 +173,15 @@ function onRowContextmenu(row: ResolvedRow, event: MouseEvent): void {
         </slot>
         <span v-else class="gantt-task-list__name">{{ row.name }}</span>
       </slot>
+      <!-- Add-on slot: append a badge/marker after the name without replacing `#row`. -->
+      <slot
+        name="row-suffix"
+        :row="row"
+        :index="row.order"
+        :depth="row.depth"
+        :collapsed="row.collapsed"
+        :has-children="row.hasChildren"
+      />
     </div>
   </div>
 </template>

@@ -120,6 +120,9 @@ const scrollStyle = computed(() => {
             <template v-if="$slots.row" #row="rowProps">
               <slot name="row" v-bind="rowProps" />
             </template>
+            <template v-if="$slots['row-suffix']" #row-suffix="suffixProps">
+              <slot name="row-suffix" v-bind="suffixProps" />
+            </template>
             <template v-if="$slots.rowEditor" #rowEditor="editorProps">
               <slot name="rowEditor" v-bind="editorProps" />
             </template>

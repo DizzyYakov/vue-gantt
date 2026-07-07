@@ -71,6 +71,14 @@ defineSlots<{
     hasChildren: boolean
     toggle: () => void
   }) => unknown
+  /** Add-on slot rendered after the row name — for a badge/marker without replacing `#row`. */
+  'row-suffix'?: (props: {
+    row: unknown
+    index: number
+    depth: number
+    collapsed: boolean
+    hasChildren: boolean
+  }) => unknown
   rowEditor?: (props: {
     row: unknown
     value: string
@@ -231,6 +239,9 @@ defineExpose({
         <slot name="body-extra" v-bind="slotProps" />
       </template>
       <template v-if="$slots.row" #row="slotProps"><slot name="row" v-bind="slotProps" /></template>
+      <template v-if="$slots['row-suffix']" #row-suffix="slotProps">
+        <slot name="row-suffix" v-bind="slotProps" />
+      </template>
       <template v-if="$slots.rowEditor" #rowEditor="slotProps">
         <slot name="rowEditor" v-bind="slotProps" />
       </template>
