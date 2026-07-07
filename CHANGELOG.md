@@ -52,6 +52,16 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Added
 
+- **Reference markers.** A new `markers` prop (`GanttMarker[]` —
+  `{ id, date, label?, meta? }`) draws labelled, full-height vertical lines at
+  arbitrary dates (quarter boundaries, release dates, go-lives). Unlike
+  `GanttToday` (pinned to the live clock) a marker sits on any date, and unlike a
+  task's `deadline` (bounded to its row) it spans the whole body. Ships the
+  `GanttMarkers` overlay component, a `marker-lines` section slot (`{ markers }`)
+  and a per-marker `marker` slot (`{ marker }`), the `--gantt-marker-*` theme
+  tokens, and `GanttMarker`/`ResolvedMarker` types exported from the package root.
+  Purely decorative — markers never extend the axis or add a header row.
+
 - **Row decoration.** Mark or highlight a sidebar row without replacing its render:
   a new `#row-suffix` slot appends a badge/marker after the row name (scope
   `{ row, index, depth, collapsed, hasChildren }`), and any primitive

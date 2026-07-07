@@ -22,6 +22,7 @@ export { default as GanttSlack } from './components/GanttSlack.vue'
 export { default as GanttDeadlines } from './components/GanttDeadlines.vue'
 export { default as GanttBaselines } from './components/GanttBaselines.vue'
 export { default as GanttPeriods } from './components/GanttPeriods.vue'
+export { default as GanttMarkers } from './components/GanttMarkers.vue'
 export { default as GanttToday } from './components/GanttToday.vue'
 export { default as GanttZoom } from './components/GanttZoom.vue'
 
@@ -125,6 +126,7 @@ export type {
   GanttItemType,
   GanttLinkDraft,
   GanttLinkMode,
+  GanttMarker,
   GanttMoveEvent,
   GanttOverlapMode,
   GanttPeriod,
@@ -148,6 +150,7 @@ export type {
   NonWorkingBand,
   NonWorkingCalendar,
   ResolvedGroup,
+  ResolvedMarker,
   ResolvedNonWorkingBand,
   ResolvedPeriod,
   ResolvedRow,
