@@ -278,6 +278,11 @@ const scrollStyle = computed(() => {
 
 .gantt__body {
   position: relative;
+  /* Own stacking context (stays at z-auto, below the sticky sidebar's z-index:2
+     and header's z-index:3) so the body's contents — the full-width dependency
+     SVG and bars/tooltips with local z-index up to 6 — can't paint over the
+     frozen sidebar when scrolled horizontally. */
+  isolation: isolate;
   flex: none;
   width: var(--gantt-content-width);
   height: var(--gantt-content-height);

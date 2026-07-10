@@ -52,6 +52,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Added
 
+- **Headless milestone-label clamping.** The `#milestone` slot now also receives
+  `labelMaxWidth` — the adaptive horizontal gap (px) to the next item on the same
+  row — so a consumer-rendered label can bind `:style="{ maxWidth: labelMaxWidth +
+  'px' }"` and never overlap a neighbouring milestone. Ships a
+  `--gantt-milestone-label-max-width` token (default `none`) and a global
+  `.gantt-milestone__label` helper class (max-width + ellipsis) for a pure-CSS
+  clamp.
+
 - **`summaryStyle` prop for rolled-up rows (`'bracket' | 'bar'`, default
   `'bracket'`).** WBS tree parents (`GanttSummaryBar`) and row groups
   (`GanttGroupBar`) now render a meaningful summary instead of a plain full-width
@@ -259,6 +267,16 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   and `GanttZoomEvent` types are exported.
 
 ### Fixed
+
+- **Dependency arrows / bars no longer paint over the frozen sidebar.** The chart
+  body now forms its own stacking context (`isolation: isolate`), so the
+  full-width dependency SVG and any bars/tooltips (which use local `z-index` up to
+  6) stay beneath the sticky sidebar and header when scrolled horizontally.
+- **Theme tokens are reliably overridable from an outer `:root`/ancestor.** The
+  default `--gantt-*` declarations are now zero-specificity (`:where(:root)` and
+  `:where(.gantt-root…)` for the touch overrides), so a consumer override wins
+  regardless of stylesheet load order — no need to bump selector specificity.
+  (Layout vars like `--gantt-sidebar-width` remain prop-driven, set inline.)
 
 - Hover tooltip / milestone interaction polish:
   - A dependency arrow crossing a milestone marker no longer swallows the marker's

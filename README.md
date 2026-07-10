@@ -29,7 +29,9 @@ design system. One runtime dependency (`date-fns`), fully typed.
   edge **auto-scroll** to reach drop targets off-screen.
 - 🧊 Frozen header + sidebar, sticky period labels, **row/column
   virtualization** (kicks in whenever the scroll viewport is height-constrained —
-  by a `height` cap or a fixed-height parent).
+  by a `height` cap or a fixed-height parent). The scrolling body is its own
+  stacking context, so bars/dependency arrows never paint over the frozen
+  sidebar/header while scrolling.
 - 🎨 **Themeable** through `--gantt-*` CSS variables; ships typed `.d.ts`.
 
 ## Install
@@ -179,11 +181,16 @@ replacing `row`; see [Row decoration](#row-decoration)), `group`
 [row tree](#row-tree-wbs)), `column`
 (`{ column, tier }`), `period` (`{ period }`), `marker` (`{ marker }` — a
 `ResolvedMarker`, see [Reference markers](#reference-markers)), `bar`
-(`{ task, progress, resources }`), `milestone` (`{ task, resources }`),
-`tooltip` (`{ task }`), `rowEditor` (`{ row, value, commit, cancel }`) and
-`taskEditor` (`{ task, value, commit, cancel }`). `resources` is the task's
-assigned `ResolvedResource[]` (resolved from `resourceIds`, unknown ids dropped;
-empty unless `resources` is set) — see [Resources](#resources).
+(`{ task, progress, resources }`), `milestone`
+(`{ task, resources, labelMaxWidth }`), `tooltip` (`{ task }`), `rowEditor`
+(`{ row, value, commit, cancel }`) and `taskEditor`
+(`{ task, value, commit, cancel }`). `resources` is the task's assigned
+`ResolvedResource[]` (resolved from `resourceIds`, unknown ids dropped; empty
+unless `resources` is set) — see [Resources](#resources). `labelMaxWidth` is
+the adaptive gap in px to the next item on the same row — bind it as an inline
+style (`:style="{ maxWidth: labelMaxWidth + 'px' }"`) on a `.gantt-milestone__label`
+element rendered in the `milestone` slot to ellipsize a label instead of
+letting it overlap a neighbouring milestone.
 
 **Per-variant item slots.** Tag an item with a free-form `variant` and the
 prop-driven render picks a slot by it: a bar looks for `task-${variant}`
@@ -1267,7 +1274,9 @@ localized prefix isn't what you want.
 ![Custom theme via CSS variables](https://raw.githubusercontent.com/LavaYasha/vue-gantt/main/docs/theming.png)
 
 Override any `--gantt-*` property on `.gantt-root` **or any ancestor** (defaults
-live on `:root`, so the nearest override wins):
+live on `:where(:root)` — zero-specificity, so a plain `:root { --gantt-* }`
+override always wins regardless of whether your stylesheet loads before or
+after this library's):
 
 ```css
 .gantt-root,
@@ -1276,9 +1285,13 @@ live on `:root`, so the nearest override wins):
   --gantt-progress-bg: #10b981;
   --gantt-milestone-bg: #8b5cf6;
   --gantt-today-color: #0ea5e9;
-  --gantt-row-height: 44px;
 }
 ```
+
+> Layout variables (`--gantt-sidebar-width`, `--gantt-row-height`,
+> `--gantt-column-width`, `--gantt-header-*`, `--gantt-content-*`) are set
+> inline per-instance by `GanttRoot` from its props — control them via props
+> (e.g. `row-height`), not by overriding the CSS variable.
 
 ### CSS variables
 
@@ -1345,11 +1358,12 @@ live on `:root`, so the nearest override wins):
 
 **Milestones**
 
-| Variable                   | Default   | Purpose                |
-| -------------------------- | --------- | ---------------------- |
-| `--gantt-milestone-size`   | `14px`    | Diamond size (grows on touch). |
-| `--gantt-milestone-bg`     | `#f59e0b` | Diamond colour.        |
-| `--gantt-milestone-radius` | `2px`     | Diamond corner radius. |
+| Variable                             | Default   | Purpose                |
+| ------------------------------------ | --------- | ---------------------- |
+| `--gantt-milestone-size`             | `14px`    | Diamond size (grows on touch). |
+| `--gantt-milestone-bg`               | `#f59e0b` | Diamond colour.        |
+| `--gantt-milestone-radius`           | `2px`     | Diamond corner radius. |
+| `--gantt-milestone-label-max-width`  | `none`    | Clamp width for the `.gantt-milestone__label` helper class (used to ellipsize a consumer-rendered label in the `milestone` slot; `none` = no clamp). |
 
 **Dependencies**
 
