@@ -135,6 +135,7 @@ export type {
   GanttResizeEvent,
   GanttResource,
   GanttRowEditEvent,
+  GanttSummaryStyle,
   GanttTaskEditEvent,
   GanttRootProps,
   GanttRow as GanttRowData,
