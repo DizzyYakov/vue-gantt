@@ -104,7 +104,7 @@ defineSlots<{
   period?: (props: { period: unknown }) => unknown
   'non-working'?: (props: { bands: unknown }) => unknown
   bar?: (props: { task: unknown; progress: number; resources: unknown }) => unknown
-  milestone?: (props: { task: unknown; resources: unknown }) => unknown
+  milestone?: (props: { task: unknown; resources: unknown; labelMaxWidth?: number }) => unknown
   tooltip?: (props: { task: unknown }) => unknown
   bars?: (props: { tasks: unknown }) => unknown
   grid?: (props: { columns: unknown; rows: unknown }) => unknown
@@ -122,7 +122,11 @@ defineSlots<{
   /** Per-variant bar slot: used for a task whose `variant` matches (falls back to `bar`). */
   [name: `task-${string}`]: (props: { task: unknown; progress: number; resources: unknown }) => unknown
   /** Per-variant marker slot: used for a milestone whose `variant` matches (falls back to `milestone`). */
-  [name: `milestone-${string}`]: (props: { task: unknown; resources: unknown }) => unknown
+  [name: `milestone-${string}`]: (props: {
+    task: unknown
+    resources: unknown
+    labelMaxWidth?: number
+  }) => unknown
 }>()
 
 // Consumer-provided per-variant item slots (`task-*` / `milestone-*`) — forwarded

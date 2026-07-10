@@ -5,12 +5,15 @@
  * override any `--gantt-*` property to match your design system — on `.gantt-root`
  * itself or on ANY ancestor (e.g. a wrapper, `:root`, or a design-system class).
  *
- * The defaults are declared on `:root` (not `.gantt-root`) on purpose: a custom
- * property set on an element always beats a value inherited from an ancestor, so
- * if the defaults lived on `.gantt-root` they would shadow your overrides. On
- * `:root` they are inherited, and the nearest overriding ancestor wins.
+ * The defaults are declared on `:where(:root)` on purpose. `:root` alone would
+ * tie a consumer's own `:root { --gantt-* }` on specificity, so whichever
+ * stylesheet loads last would win — forcing consumers to bump specificity when
+ * this library's CSS happens to load after theirs. `:where()` drops the
+ * defaults to zero specificity, so ANY consumer override (on `:root`, a wrapper,
+ * or `.gantt-root`) wins regardless of load order, while inheritance still makes
+ * the nearest overriding ancestor win.
  */
-:root {
+:where(:root) {
   /* Layout (most are also set per-instance by GanttRoot from props) */
   --gantt-column-width: 40px;
   --gantt-row-height: 36px;
@@ -110,6 +113,10 @@
   --gantt-milestone-size: 14px;
   --gantt-milestone-bg: #f59e0b;
   --gantt-milestone-radius: 2px;
+  /* Max width of a consumer-rendered milestone label (via the `.gantt-milestone__label`
+     helper class). `none` = no clamp; set a length, or bind the slot's adaptive
+     `labelMaxWidth`, so labels of adjacent milestones don't overlap. */
+  --gantt-milestone-label-max-width: none;
 
   /* Interactive hit areas (enlarged automatically on coarse pointers / [data-touch]) */
   --gantt-resize-handle-width: 7px;
@@ -165,8 +172,12 @@
  * These set the tokens on `.gantt-root`, so a consumer can still shrink them by
  * overriding the individual `--gantt-*` values on `.gantt-root` or a token directly.
  */
+/* Enlarged hit targets on touch/coarse pointers. Wrapped in `:where()` (zero
+   specificity, like the base tokens above) so a consumer override still wins;
+   these come after the base block, so at equal (zero) specificity source order
+   makes them override the defaults. */
 @media (pointer: coarse) {
-  .gantt-root {
+  :where(.gantt-root) {
     --gantt-resize-handle-width: 20px;
     --gantt-progress-handle-width: 22px;
     --gantt-connector-size: 18px;
@@ -176,11 +187,23 @@
   }
 }
 
-.gantt-root[data-touch] {
+:where(.gantt-root[data-touch]) {
   --gantt-resize-handle-width: 20px;
   --gantt-progress-handle-width: 22px;
   --gantt-connector-size: 18px;
   --gantt-milestone-size: 22px;
   --gantt-dependency-handle-radius: 9px;
   --gantt-dependency-hit-width: 24px;
+}
+
+/* Optional helper for a consumer-rendered milestone label (in the `#milestone`
+   slot): clamps its width and ellipsizes so labels of nearby milestones don't
+   overlap. Width comes from `--gantt-milestone-label-max-width`, or bind the
+   slot's adaptive `labelMaxWidth` inline (`:style="{ maxWidth: labelMaxWidth + 'px' }"`). */
+.gantt-milestone__label {
+  display: block;
+  max-width: var(--gantt-milestone-label-max-width, none);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }

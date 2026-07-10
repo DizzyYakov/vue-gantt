@@ -49,6 +49,26 @@ function onContextmenu(event: MouseEvent): void {
 
 const overlapMode = computed(() => ctx.config.value.overlap)
 const markerStyle = computed(() => ({ left: `${left.value}px` }))
+
+// Adaptive max width for a consumer-rendered label (exposed in the default slot):
+// the horizontal gap to the next item on the same row, so labels of nearby
+// milestones don't overlap. Falls back to the remaining content width when this
+// is the last item on its row.
+const LABEL_GUTTER = 8
+const labelMaxWidth = computed(() => {
+  const self = resolved.value
+  const selfX = left.value
+  // Only this milestone's own row can crowd its label (rows are indexed by
+  // `order`); scanning the whole `tasks` list would be O(all tasks) per marker.
+  const rowTasks = ctx.rows.value[self.order]?.tasks ?? []
+  let nextX = ctx.contentWidth.value
+  for (const task of rowTasks) {
+    if (task.id === self.id) continue
+    const x = ctx.dateToX(task.start)
+    if (x > selfX && x < nextX) nextX = x
+  }
+  return Math.max(0, nextX - selfX - LABEL_GUTTER)
+})
 // Tooltip date formatter, localized via the `locale` config.
 const fmtDate = (d: Date): string => format(d, 'd MMM yyyy', { locale: ctx.config.value.locale })
 // Highlight while a dependency drag hovers this milestone as a drop target.
@@ -107,7 +127,7 @@ function onMarkerUp(event: PointerEvent): void {
       @dblclick="onDblclick"
       @contextmenu="onContextmenu"
     >
-      <slot :task="resolved" :resources="resources">
+      <slot :task="resolved" :resources="resources" :label-max-width="labelMaxWidth">
         <div class="gantt-milestone__diamond" />
       </slot>
     </div>
