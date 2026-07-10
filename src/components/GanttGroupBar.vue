@@ -3,23 +3,35 @@ import { computed } from 'vue'
 import { useGanttContext } from '../composables/useGanttContext'
 import type { ResolvedGroup } from '../types'
 
-const { visibleGroups, rows, dateToX, widthBetween } = useGanttContext()
+const { visibleGroups, rows, dateToX, widthBetween, config } = useGanttContext()
 
 interface GroupBar {
   group: ResolvedGroup
   left: number
   width: number
+  collapsed: boolean
+  /** Draw a filled bar (legacy `bar` style, or a collapsed `bracket`) vs a bracket line. */
+  filled: boolean
 }
 
 // One rolled-up bar per group that actually has tasks, spanning the earliest
-// start to the latest end of its members across the group's header band.
+// start to the latest end of its members across the group's header band. In
+// `bracket` style an expanded group draws a thin span line (its member rows carry
+// the detail below); a collapsed group keeps a filled accent bar.
 const bars = computed<GroupBar[]>(() => {
+  const style = config.value.summaryStyle
   const byId = new Map(rows.value.map(r => [r.id, r]))
   const out: GroupBar[] = []
   for (const group of visibleGroups.value) {
     const hasTasks = group.rowIds.some(id => (byId.get(id)?.tasks.length ?? 0) > 0)
     if (!hasTasks) continue
-    out.push({ group, left: dateToX(group.start), width: widthBetween(group.start, group.end) })
+    out.push({
+      group,
+      left: dateToX(group.start),
+      width: widthBetween(group.start, group.end),
+      collapsed: group.collapsed,
+      filled: style === 'bar' || group.collapsed,
+    })
   }
   return out
 })
@@ -32,10 +44,12 @@ const bars = computed<GroupBar[]>(() => {
       :key="bar.group.id"
       class="gantt-group-bar"
       :data-id="bar.group.id"
+      :data-collapsed="bar.collapsed || undefined"
       :style="{ top: `${bar.group.top}px`, height: `${bar.group.height}px` }"
     >
-      <slot :group="bar.group">
+      <slot :group="bar.group" :collapsed="bar.collapsed" :left="bar.left" :width="bar.width">
         <div
+          v-if="bar.filled"
           class="gantt-group-bar__track"
           :style="{ left: `${bar.left}px`, width: `${bar.width}px` }"
         >
@@ -45,6 +59,11 @@ const bars = computed<GroupBar[]>(() => {
             :aria-label="`${Math.round(bar.group.progress)}%`"
           />
         </div>
+        <div
+          v-else
+          class="gantt-group-bar__bracket"
+          :style="{ left: `${bar.left}px`, width: `${bar.width}px` }"
+        />
       </slot>
     </div>
   </div>
@@ -81,5 +100,34 @@ const bars = computed<GroupBar[]>(() => {
   top: 0;
   bottom: 0;
   background: var(--gantt-group-bar-progress-bg, #94a3b8);
+}
+
+/* Expanded-group bracket: a thin span line with downward end caps that "bracket"
+   the member rows below. No progress fill — the members carry the detail. */
+.gantt-group-bar__bracket {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  height: var(--gantt-group-bracket-thickness, 2px);
+  min-width: 1px;
+  background: var(--gantt-group-bracket-color, var(--gantt-group-bar-progress-bg, #94a3b8));
+}
+
+.gantt-group-bar__bracket::before,
+.gantt-group-bar__bracket::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  width: var(--gantt-group-bracket-thickness, 2px);
+  height: var(--gantt-group-bracket-cap, 6px);
+  background: inherit;
+}
+
+.gantt-group-bar__bracket::before {
+  left: 0;
+}
+
+.gantt-group-bar__bracket::after {
+  right: 0;
 }
 </style>

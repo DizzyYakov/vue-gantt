@@ -176,8 +176,9 @@ free-float days by task id (empty unless `slack` is on).
 (`{ row, index, depth, collapsed, hasChildren, toggle }`), `row-suffix`
 (same scope minus `toggle` — an add-on rendered *after* the row name without
 replacing `row`; see [Row decoration](#row-decoration)), `group`
-(`{ group, collapsed, toggle }`), `groupBar` (`{ group }`), `summaryBar`
-(`{ row }` — a WBS parent row, see [row tree](#row-tree-wbs)), `column`
+(`{ group, collapsed, toggle }`), `groupBar` (`{ group, collapsed, left, width }`),
+`summaryBar` (`{ row, collapsed, left, width }` — a WBS parent row, see
+[row tree](#row-tree-wbs)), `column`
 (`{ column, tier }`), `period` (`{ period }`), `marker` (`{ marker }` — a
 `ResolvedMarker`, see [Reference markers](#reference-markers)), `bar`
 (`{ task, progress, resources }`), `milestone`
@@ -315,6 +316,7 @@ parent collapses to the content height and simply grows to fit (as before).
 | `groupHeaderHeight`     | `number`                                          | `36`            | Group header band height, px.                                                                                                                                                                                                                                 |
 | `sidebarWidth`          | `number`                                          | `200`           | Frozen task-list width, px.                                                                                                                                                                                                                                   |
 | `overlap`               | `'lanes' \| 'overlap' \| 'cascade' \| 'conflict'` | `'lanes'`       | How time-overlapping tasks in a row are shown.                                                                                                                                                                                                                |
+| `summaryStyle`          | `'bracket' \| 'bar'`                              | `'bracket'`     | How rolled-up rows (WBS tree parents, row groups) draw their summary. `bracket`: expanded → a thin span line with downward end caps (no progress fill); collapsed → a filled accent bar. `bar` (legacy): a filled progress bar in both states.                 |
 | `draggable`             | `boolean`                                         | `false`         | Drag bars along their row to change start/end.                                                                                                                                                                                                                |
 | `rowMovable`            | `boolean`                                         | `false`         | Drag a task into another row (implies `draggable`).                                                                                                                                                                                                           |
 | `resizable`             | `boolean`                                         | `false`         | Resize bars by dragging an edge (sides flip past each other).                                                                                                                                                                                                 |
@@ -785,7 +787,9 @@ Default columns: `Row Id`, `Row`, `Task Id`, `Task`, `Type`, `Start`, `End`,
 
 Rows that reference the same `groupId` render under a collapsible header band
 with a rolled-up summary bar. Provide group labels via the `groups` prop (or the
-declarative `<GanttGroup>`).
+declarative `<GanttGroup>`). The `summaryStyle` root prop controls how that
+rollup renders — see [Row tree (WBS)](#row-tree-wbs) for details (it applies to
+both groups and tree parents).
 
 ![Row grouping](https://raw.githubusercontent.com/LavaYasha/vue-gantt/main/docs/grouping.png)
 
@@ -850,10 +854,19 @@ enclosing one (like `<GanttTask>` inherits its row):
 
 The rollup bar is rendered by `<GanttSummaryBar>` (auto-mounted by
 `<GanttView>` / `<Gantt>`; override it via the `summary-bars` section slot, or
-just its rollup content via the `summaryBar` leaf slot, `{ row }`). Customize
-the sidebar row itself — chevron, indent, name — via the `row` slot
+just its rollup content via the `summaryBar` leaf slot,
+`{ row, collapsed, left, width }`). Customize the sidebar row itself —
+chevron, indent, name — via the `row` slot
 (`{ row, index, depth, collapsed, hasChildren, toggle }`). Style with the
-`--gantt-row-indent` / `--gantt-summary-bar-*` [variables](#css-variables).
+`--gantt-row-indent` / `--gantt-summary-bar-*` / `--gantt-summary-bracket-*`
+[variables](#css-variables).
+
+The `summaryStyle` root prop (`'bracket'` default, or `'bar'` for the legacy
+look) controls how both this summary bar and `<GanttGroupBar>`'s group rollup
+render: `bracket` draws an **expanded** parent/group as a thin span line with
+downward end caps toward its children (no progress fill — the children carry
+the detail), and a **collapsed** one as a filled accent bar with progress,
+same as `bar` always renders in both states.
 
 ## Row decoration
 
@@ -1409,6 +1422,9 @@ default slot (`<slot :links>`).
 | `--gantt-group-bar-progress-bg`    | `#94a3b8` | Rollup bar progress fill.            |
 | `--gantt-group-bar-height`         | `40%`     | Rollup bar height.                   |
 | `--gantt-group-bar-radius`         | `3px`     | Rollup bar radius.                   |
+| `--gantt-group-bracket-color`      | group bar progress bg | Expanded-group bracket line colour (`summaryStyle: 'bracket'`). |
+| `--gantt-group-bracket-thickness`  | `2px`     | Bracket line thickness.              |
+| `--gantt-group-bracket-cap`        | `6px`     | Height of the bracket's downward end caps. |
 
 **Row tree (WBS)** — see [Row tree](#row-tree-wbs)
 
@@ -1419,6 +1435,9 @@ default slot (`<slot :links>`).
 | `--gantt-summary-bar-progress-bg`  | `#94a3b8` | Parent-row rollup bar progress fill.       |
 | `--gantt-summary-bar-height`       | `40%`     | Rollup bar height.                         |
 | `--gantt-summary-bar-radius`       | `3px`     | Rollup bar radius.                         |
+| `--gantt-summary-bracket-color`    | summary bar progress bg | Expanded-parent bracket line colour (`summaryStyle: 'bracket'`). |
+| `--gantt-summary-bracket-thickness` | `2px`    | Bracket line thickness.                    |
+| `--gantt-summary-bracket-cap`      | `6px`     | Height of the bracket's downward end caps. |
 
 **Overlap modes**
 

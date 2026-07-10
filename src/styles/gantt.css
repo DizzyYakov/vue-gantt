@@ -31,6 +31,10 @@
   --gantt-group-bar-progress-bg: #94a3b8;
   --gantt-group-bar-height: 40%;
   --gantt-group-bar-radius: 3px;
+  /* Expanded-group bracket line (default `summaryStyle: bracket`). */
+  --gantt-group-bracket-color: var(--gantt-group-bar-progress-bg, #94a3b8);
+  --gantt-group-bracket-thickness: 2px;
+  --gantt-group-bracket-cap: 6px;
 
   /* Per-level indent of tree (WBS) rows, multiplied by the row's depth. */
   --gantt-row-indent: 16px;
@@ -39,6 +43,10 @@
   --gantt-summary-bar-progress-bg: #94a3b8;
   --gantt-summary-bar-height: 40%;
   --gantt-summary-bar-radius: 3px;
+  /* Expanded-parent bracket line (default `summaryStyle: bracket`). */
+  --gantt-summary-bracket-color: var(--gantt-summary-bar-progress-bg, #94a3b8);
+  --gantt-summary-bracket-thickness: 2px;
+  --gantt-summary-bracket-cap: 6px;
 
   /* Opaque background for the frozen header / sidebar / corner panels so the
      scrolling body doesn't show through them. */

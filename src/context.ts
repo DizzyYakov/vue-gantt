@@ -29,6 +29,7 @@ export const GANTT_DEFAULTS = {
   groupHeaderHeight: 36,
   sidebarWidth: 200,
   overlap: 'lanes',
+  summaryStyle: 'bracket',
   draggable: false,
   rowMovable: false,
   resizable: false,

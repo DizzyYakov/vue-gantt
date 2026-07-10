@@ -82,6 +82,14 @@ export interface GanttConstraint {
 export type GanttOverlapMode = 'lanes' | 'overlap' | 'cascade' | 'conflict'
 
 /**
+ * How rolled-up rows (WBS tree parents and row groups) draw their summary:
+ * - `bracket` — a thin span line with downward end caps toward the children
+ *   when expanded, and a filled accent bar (with progress) when collapsed;
+ * - `bar` — a plain filled bar with a progress fill in both states (legacy).
+ */
+export type GanttSummaryStyle = 'bracket' | 'bar'
+
+/**
  * How the timeline axis reacts at its horizontal edges:
  * - `fixed` (default): the axis spans the derived (or explicit) range and never
  *   grows on its own.
@@ -463,6 +471,8 @@ export interface GanttRootProps {
   sidebarWidth?: number
   /** How tasks overlapping in time on the same row are displayed. */
   overlap?: GanttOverlapMode
+  /** How rolled-up rows (tree parents, groups) draw their summary. Defaults to `bracket`. */
+  summaryStyle?: GanttSummaryStyle
   /** Allow dragging bars along their row to change start/end. */
   draggable?: boolean
   /** Also allow dragging a task into another row (implies dragging). */
@@ -594,6 +604,8 @@ export interface GanttConfig {
   sidebarWidth: number
   /** How tasks overlapping on the same row are displayed. */
   overlap: GanttOverlapMode
+  /** How rolled-up rows (tree parents, groups) draw their summary. */
+  summaryStyle: GanttSummaryStyle
   /** Whether bars can be dragged along their row. */
   draggable: boolean
   /** Whether bars can be dragged between rows. */

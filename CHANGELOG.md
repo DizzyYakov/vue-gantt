@@ -60,6 +60,18 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   `.gantt-milestone__label` helper class (max-width + ellipsis) for a pure-CSS
   clamp.
 
+- **`summaryStyle` prop for rolled-up rows (`'bracket' | 'bar'`, default
+  `'bracket'`).** WBS tree parents (`GanttSummaryBar`) and row groups
+  (`GanttGroupBar`) now render a meaningful summary instead of a plain full-width
+  bar. In the new default `bracket` style an **expanded** rollup row draws a thin
+  span line with downward end caps bracketing its children (no progress fill,
+  since the children carry the detail), while a **collapsed** row keeps a filled
+  accent bar with progress. Pass `summaryStyle="bar"` for the previous plain-bar
+  look. New theming tokens `--gantt-summary-bracket-*` / `--gantt-group-bracket-*`
+  (`-color` / `-thickness` / `-cap`). The `#summaryBar` / `#groupBar` slots now
+  also receive `collapsed`, `left` and `width`. **Note:** this changes the default
+  appearance of summary/group bars.
+
 - **Resources & task assignment.** A new `resources` prop (`GanttResource[]` —
   `{ id, name?, color?, meta? }`) declares a flat table of people/equipment, and
   a task assigns to them via `GanttTask.resourceIds`. Each task's resolved
