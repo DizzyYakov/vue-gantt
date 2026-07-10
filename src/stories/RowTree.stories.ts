@@ -18,14 +18,27 @@ import type { GanttRow } from '../types'
  * summary bar keeps covering the full extent, and `row-toggle` fires on every
  * toggle.
  *
+ * The `summaryStyle` root prop controls how that rollup renders: `bracket`
+ * (default) draws an **expanded** parent as a thin span line with downward end
+ * caps toward its children (no progress fill); `bar` (legacy) always draws a
+ * filled progress bar. A **collapsed** parent is always a filled bar in both
+ * styles.
+ *
  * Customize the sidebar row with the `row` slot
  * (`{ row, index, depth, collapsed, hasChildren, toggle }`) and the rollup bar
- * with the `summaryBar` slot (`{ row }`).
+ * with the `summaryBar` slot (`{ row, collapsed, left, width }`).
  */
 const meta: Meta<typeof Gantt> = {
   title: 'Guides/Row tree (WBS)',
   component: Gantt,
   tags: ['autodocs'],
+  argTypes: {
+    summaryStyle: {
+      control: 'inline-radio',
+      options: ['bracket', 'bar'],
+      description: 'How the rolled-up summary bar renders when the parent is expanded.',
+    },
+  },
 }
 export default meta
 
@@ -74,7 +87,8 @@ const rows: GanttRow[] = [
   },
 ]
 
-/** A 3-level WBS tree: each parent shows its own tasks plus a rolled-up summary bar. */
+/** A 3-level WBS tree: each parent shows its own tasks plus a rolled-up summary bar,
+ * drawn as a `bracket` (the default `summaryStyle`) since every parent is expanded. */
 export const Default: Story = {
   args: {
     rows,
@@ -85,12 +99,24 @@ export const Default: Story = {
 
 /** The mid-level `phase-build` starts `collapsed`: its two child rows fold away
  * (recursively), while its summary bar keeps spanning the whole (still-collapsed)
- * subtree. */
+ * subtree — collapsed parents always draw a filled accent bar, in either `summaryStyle`. */
 export const Collapsed: Story = {
   args: {
     rows: rows.map(row => (row.id === 'phase-build' ? { ...row, collapsed: true } : row)),
     tiers: ['month', 'week', 'day'],
     height: 360,
+  },
+}
+
+/** `summaryStyle: 'bar'` (legacy): expanded parents draw a filled progress bar
+ * instead of the default bracket line — same as `Default`'s data, different style.
+ * Compare with `Default` above. */
+export const LegacyBarStyle: Story = {
+  args: {
+    rows,
+    tiers: ['month', 'week', 'day'],
+    height: 360,
+    summaryStyle: 'bar',
   },
 }
 

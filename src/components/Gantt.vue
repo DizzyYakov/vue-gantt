@@ -92,9 +92,9 @@ defineSlots<{
     cancel: () => void
   }) => unknown
   group?: (props: { group: unknown; collapsed: boolean; toggle: () => void }) => unknown
-  groupBar?: (props: { group: unknown }) => unknown
+  groupBar?: (props: { group: unknown; collapsed: boolean; left: number; width: number }) => unknown
   'group-bars'?: (props: { groups: unknown }) => unknown
-  summaryBar?: (props: { row: unknown }) => unknown
+  summaryBar?: (props: { row: unknown; collapsed: boolean; left: number; width: number }) => unknown
   'summary-bars'?: (props: { rows: unknown }) => unknown
   baselines?: (props: { tasks: unknown }) => unknown
   corner?: (props: { config: unknown }) => unknown

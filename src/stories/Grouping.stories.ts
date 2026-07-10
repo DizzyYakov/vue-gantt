@@ -16,8 +16,13 @@ import type { GanttGroup, GanttRow } from '../types'
  * rollup bar remains, and `group-toggle` fires on every toggle. Declaratively, wrap
  * `<GanttRow>`s in a `<GanttGroup id name>`.
  *
+ * The `summaryStyle` root prop controls how that rollup renders: `bracket` (default)
+ * draws an **expanded** group as a thin span line with downward end caps toward its
+ * member rows (no progress fill); `bar` (legacy) always draws a filled progress bar.
+ * A **collapsed** group is always a filled bar in both styles.
+ *
  * Customize the header with the `group` slot (`{ group, collapsed, toggle }`) and the
- * rollup bar with the `groupBar` slot (`{ group }`).
+ * rollup bar with the `groupBar` slot (`{ group, collapsed, left, width }`).
  *
  * For a deep, collapsible hierarchy instead of flat groups, see
  * [Row tree (WBS)](/docs/guides-row-tree-wbs--docs) (`GanttRow.parentId`) — the two
@@ -27,6 +32,13 @@ const meta: Meta<typeof Gantt> = {
   title: 'Guides/Row grouping',
   component: Gantt,
   tags: ['autodocs'],
+  argTypes: {
+    summaryStyle: {
+      control: 'inline-radio',
+      options: ['bracket', 'bar'],
+      description: 'How the rolled-up group bar renders when the group is expanded.',
+    },
+  },
 }
 export default meta
 
@@ -66,7 +78,8 @@ const rows: GanttRow[] = [
   },
 ]
 
-/** Two groups, each with a header band + a rolled-up summary bar over its rows. */
+/** Two groups, each with a header band + a rolled-up summary bar over its rows,
+ * drawn as a `bracket` (the default `summaryStyle`) since both groups are expanded. */
 export const Default: Story = {
   args: {
     groups,
@@ -76,7 +89,8 @@ export const Default: Story = {
   },
 }
 
-/** The Frontend group starts `collapsed`: its rows fold away, the rollup bar stays. */
+/** The Frontend group starts `collapsed`: its rows fold away, the rollup bar stays —
+ * collapsed groups always draw a filled accent bar, in either `summaryStyle`. */
 export const Collapsed: Story = {
   args: {
     groups: [
@@ -86,6 +100,19 @@ export const Collapsed: Story = {
     rows,
     tiers: ['month', 'week', 'day'],
     height: 320,
+  },
+}
+
+/** `summaryStyle: 'bar'` (legacy): expanded groups draw a filled progress bar
+ * instead of the default bracket line — same data as `Default`, different style.
+ * Compare with `Default` above. */
+export const LegacyBarStyle: Story = {
+  args: {
+    groups,
+    rows,
+    tiers: ['month', 'week', 'day'],
+    height: 320,
+    summaryStyle: 'bar',
   },
 }
 

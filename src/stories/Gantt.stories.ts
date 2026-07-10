@@ -53,6 +53,14 @@ const meta: Meta<typeof Gantt> = {
       options: ['lanes', 'overlap', 'cascade', 'conflict'],
       description: 'How tasks overlapping on the same row are displayed.',
     },
+    summaryStyle: {
+      control: 'inline-radio',
+      options: ['bracket', 'bar'],
+      description:
+        'How rolled-up rows (WBS tree parents, row groups) draw their summary when ' +
+        'expanded: `bracket` (default) is a thin span line, `bar` (legacy) a filled ' +
+        'progress bar. Collapsed rows are always a filled bar. See the `Grouping` story.',
+    },
     columnWidth: { control: { type: 'number', min: 4, max: 200 } },
     rowHeight: { control: { type: 'number', min: 16, max: 80 } },
     headerRowHeight: { control: { type: 'number', min: 16, max: 60 } },
