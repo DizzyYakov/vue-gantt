@@ -64,12 +64,16 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   single tab stop, and Arrow Left/Right step through tasks by time within a row,
   Arrow Up/Down jump to the nearest task (by start) in the adjacent row, and
   Home/End go to the row's first/last task — the target scrolls into view and
-  focuses. Accessible sidebar: with `keyboard` the row list is a `tree`/`list` of
-  `treeitem`/`listitem` rows (`aria-level`/`aria-expanded`/`aria-selected`) with
-  roving focus — Arrow Up/Down move between rows, Arrow Left/Right expand/collapse
-  a branch, Enter/Space activate (`row-click`), Home/End jump. (The time body
-  keeps bars as `role="button"` in the labelled landmark rather than forcing a
-  `role="grid"` mapping over time-positioned bars.)
+  focuses. Keyboard editing: on the focused task, Shift + Arrow Left/Right nudge it
+  one base unit earlier/later (emits `move`, needs `draggable`) and Alt + Arrow
+  Left/Right resize its end (emits `resize`, needs `resizable`, tasks only) — the
+  library stays controlled. Accessible sidebar: with `keyboard` the row list is a
+  `tree`/`list` of `treeitem`/`listitem` rows
+  (`aria-level`/`aria-expanded`/`aria-selected`) with roving focus — Arrow Up/Down
+  move between rows, Arrow Left/Right expand/collapse a branch, Enter/Space activate
+  (`row-click`), Home/End jump. (The time body keeps bars as `role="button"` in the
+  labelled landmark rather than forcing a `role="grid"` mapping over time-positioned
+  bars.)
 
 - **Drag-to-create.** New opt-in `cellCreatable` prop: dragging across an empty
   grid row draws a ghost bar and, on release past the drag threshold, emits a

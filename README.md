@@ -34,9 +34,9 @@ design system. One runtime dependency (`date-fns`), fully typed.
   stacking context, so bars/dependency arrows never paint over the frozen
   sidebar/header while scrolling.
 - ⌨️ **Keyboard & a11y** (opt-in via `keyboard`) — focusable bars/milestones with
-  ARIA labels, a visible focus ring, Enter/Space activation, and a roving
-  arrow-key navigation between bars/rows, plus an accessible sidebar
-  (`tree`/`list` roles, arrow-key row navigation, expand/collapse).
+  ARIA labels, a visible focus ring, Enter/Space activation, roving arrow-key
+  navigation between bars, Shift/Alt+arrow keyboard move/resize, and an accessible
+  sidebar (`tree`/`list` roles, arrow-key row navigation, expand/collapse).
 - 🎨 **Themeable** through `--gantt-*` CSS variables; ships typed `.d.ts`.
 
 ## Install
@@ -332,7 +332,7 @@ parent collapses to the content height and simply grows to fit (as before).
 | `criticalPath`          | `boolean`                                         | `false`         | Highlight the tasks on the critical path (`data-critical` on their bars/markers; styled via `--gantt-critical-*`).                                                                                                                                            |
 | `slack`                 | `boolean`                                         | `false`         | Draw each task's free-float slack as a translucent bar after its end (the `<GanttSlack>` overlay; styled via `--gantt-slack-*`).                                                                                                                               |
 | `linkable`              | `boolean`                                         | `false`         | Create/edit dependencies by dragging between tasks.                                                                                                                                                                                                           |
-| `keyboard`              | `boolean`                                         | `false`         | Make task bars and milestones keyboard-operable via a roving tab stop: `role="button"`, a descriptive `aria-label`, a visible focus ring, Enter/Space activation (fires the same `task-click`/`milestone-click` as a mouse click), and arrow-key navigation (Left/Right/Up/Down/Home/End) between bars/rows. Also makes the sidebar an accessible `tree`/`list` with its own roving row navigation. The chart root also gets a labelled landmark. See [Keyboard & accessibility](#keyboard--accessibility).       |
+| `keyboard`              | `boolean`                                         | `false`         | Make task bars and milestones keyboard-operable via a roving tab stop: `role="button"`, a descriptive `aria-label`, a visible focus ring, Enter/Space activation (fires the same `task-click`/`milestone-click` as a mouse click), arrow-key navigation (Left/Right/Up/Down/Home/End) between bars, and Shift/Alt+Left/Right keyboard move/resize (gated by `draggable`/`resizable`). Also makes the sidebar an accessible `tree`/`list` with its own roving row navigation. The chart root also gets a labelled landmark. See [Keyboard & accessibility](#keyboard--accessibility).       |
 | `ariaLabel`             | `string`                                          | `'Gantt chart'` | Accessible name for the chart landmark (used when `keyboard` is on).                                                                                                                                                                                          |
 | `cellCreatable`         | `boolean`                                         | `false`         | Create a task by dragging across an empty grid row (emits `create`). Below the drag threshold a plain click still falls through to `cell-click`. Lives in the default `<GanttGrid>` — a custom `grid` slot takes over creation yourself.                     |
 | `dependencyShape`       | `(tail, head) => string`                          | `elbowPath`     | Connector path builder. Pass `elbowPath`/`straightPath`/`bezierPath` or your own.                                                                                                                                                                             |
@@ -1338,6 +1338,21 @@ arrow keys move focus without leaving the tab order:
 The target auto-scrolls into view (rows/columns can be virtualized) and receives
 focus once it mounts.
 
+### Keyboard move & resize
+
+From the active (focused) bar, holding a modifier with the left/right arrows edits
+the task instead of moving focus — one base `unit` (the finest configured `tiers`
+step) per key press, preserving the library's controlled-component contract (the
+consumer applies the change, same as a mouse drag):
+
+| Key                              | Effect                                                                 | Requires    |
+| -------------------------------- | ----------------------------------------------------------------------| ----------- |
+| **Shift + ArrowLeft/ArrowRight**  | Move the whole task one unit earlier/later (duration unchanged); emits `move` (`GanttMoveEvent`). | `draggable` |
+| **Alt + ArrowLeft/ArrowRight**    | Resize the task's end by one unit; emits `resize` (`GanttResizeEvent`). Tasks only (not milestones), and never collapses/inverts past the start. | `resizable` |
+
+If the required prop (`draggable`/`resizable`) isn't set, the key press is a no-op —
+it doesn't fall back to moving focus.
+
 ### Sidebar navigation
 
 The task list (`GanttTaskList`) also becomes keyboard-navigable under `keyboard`.
@@ -1365,15 +1380,14 @@ focused row:
 | **Enter / Space**         | Activate the row, firing the same `row-click` event a click would.   |
 | **Home / End**            | Jump to the first/last visible row.                                  |
 
-> **Accessibility scope (complete).** Bars/milestones (roving focus + ARIA
-> labels + activation, slice 1), arrow-key navigation between bars (slice 2),
-> and this accessible sidebar (tree/list roles + row navigation) together cover
-> the library's keyboard/screen-reader layer. `role="grid"`/`gridcell` on the
+> **Accessibility scope (complete).** Bars/milestones (roving focus + ARIA labels +
+> activation), arrow-key navigation between bars, keyboard move/resize (Shift/Alt +
+> arrows), and this accessible sidebar (tree/list roles + row navigation) together
+> cover the library's keyboard/screen-reader layer. `role="grid"`/`gridcell` on the
 > timeline body is a deliberate non-goal, not a gap: bars already expose a
-> `role="button"` landmark model in the body, and layering grid/gridcell
-> semantics on top of free-form, overlapping time bars would misrepresent
-> their structure to assistive tech rather than clarify it. Keyboard-driven
-> move/resize of a task is not implemented.
+> `role="button"` landmark model, and layering grid/gridcell semantics on top of
+> free-form, overlapping time bars would misrepresent their structure to assistive
+> tech rather than clarify it.
 
 ## Localization (i18n)
 

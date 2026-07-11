@@ -87,8 +87,10 @@ const meta: Meta<typeof Gantt> = {
       control: 'boolean',
       description:
         'Make bars/milestones keyboard-focusable (`role="button"`, `tabindex="0"`, ' +
-        'a descriptive `aria-label`, a focus ring) and operable with Enter/Space. ' +
-        'Also labels the chart root as a landmark (slice 1: no arrow-key navigation yet).',
+        'a descriptive `aria-label`, a focus ring), operable with Enter/Space, and ' +
+        'arrow-key navigable (roving focus). With `draggable`/`resizable`, ' +
+        'Shift/Alt+Left/Right also move/resize the focused task. ' +
+        'Also labels the chart root as a landmark.',
     },
     ariaLabel: {
       control: 'text',
@@ -571,16 +573,21 @@ export const Tooltip: Story = {
  * first/last task in the row — auto-scrolling the target into view. The chart
  * root also gets a labelled landmark (`ariaLabel`, defaults to `'Gantt chart'`).
  *
+ * From the active item, **Shift + Left/Right** nudges the whole task one unit
+ * earlier/later (gated by `draggable`, this story enables it) and
+ * **Alt + Left/Right** resizes its end by one unit (gated by `resizable`, tasks
+ * only) — both emit the same `move`/`resize` events a mouse drag would.
+ *
  * The sidebar (task list) is keyboard-navigable too: it becomes a `tree`
  * (WBS rows) or `list` (flat/grouped rows) of `treeitem`/`listitem` rows with
  * their own roving tab stop — Up/Down move between rows, Left/Right
  * collapse/expand a branch, Enter/Space fires `row-click`, Home/End jump to
  * the ends. See the README's "Keyboard & accessibility" section for the full
- * attribute/key reference — this is the final a11y slice; no keyboard
- * drag/resize or `grid`/`gridcell` roles on the timeline body.
+ * attribute/key reference — the time body keeps bars as `role="button"` rather
+ * than forcing `grid`/`gridcell` roles.
  */
 export const Keyboard: Story = {
-  args: { keyboard: true, ariaLabel: 'Project timeline' },
+  args: { keyboard: true, ariaLabel: 'Project timeline', draggable: true, resizable: true },
 }
 
 /**
