@@ -1,5 +1,6 @@
 import { computed, inject } from 'vue'
 import { GANTT_ROW, normalizeTask } from '../context'
+import { keyToNavDirection } from '../keyboardNav'
 import type { GanttConstraint, GanttSegment, GanttTask, ResolvedTask } from '../types'
 import { useGanttContext } from './useGanttContext'
 import { useGanttDrag } from './useGanttDrag'
@@ -191,6 +192,23 @@ export function useGanttItem(props: GanttItemProps, overrides: Partial<GanttTask
     }
   })
 
+  // Keyboard a11y layer (opt-in via `keyboard`), shared by GanttTask/GanttMilestone.
+  const keyboard = computed(() => ctx.config.value.keyboard)
+  // Roving tabindex: only the active item is a tab stop (0); the rest are -1.
+  const tabIndex = computed<number | undefined>(() => {
+    if (!keyboard.value) return undefined
+    return ctx.keyboardActiveId.value === resolved.value.id ? 0 : -1
+  })
+  // Enter/Space activate; arrows move roving focus (both gated by `keyboard`).
+  function onItemKeydown(event: KeyboardEvent): void {
+    if (!keyboard.value) return
+    onActivateKey(event)
+    const direction = keyToNavDirection(event.key)
+    if (!direction) return
+    event.preventDefault()
+    ctx.moveKeyboardFocus(direction)
+  }
+
   return {
     ctx,
     resolved,
@@ -210,5 +228,8 @@ export function useGanttItem(props: GanttItemProps, overrides: Partial<GanttTask
     overlapping,
     hidden,
     resources,
+    keyboard,
+    tabIndex,
+    onItemKeydown,
   }
 }

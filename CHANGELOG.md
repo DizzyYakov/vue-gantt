@@ -60,9 +60,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   activation firing the same `task-click`/`milestone-click` as a mouse click. The
   chart root becomes a labelled landmark (`role="group"` + `aria-label`, configurable
   via the new `ariaLabel` prop, default `'Gantt chart'`). Off by default (no
-  tab-order change). This first slice covers focus + activation + ARIA on
-  bars/milestones; 2-D arrow-key roving, keyboard task-move and grid/row roles are a
-  planned follow-up.
+  tab-order change). Arrow-key roving navigation: with `keyboard` on the chart is a
+  single tab stop, and Arrow Left/Right step through tasks by time within a row,
+  Arrow Up/Down jump to the nearest task (by start) in the adjacent row, and
+  Home/End go to the row's first/last task — the target scrolls into view and
+  focuses. Keyboard task-move/resize and grid/row roles are a planned follow-up.
 
 - **Headless milestone-label clamping.** The `#milestone` slot now also receives
   `labelMaxWidth` — the adaptive horizontal gap (px) to the next item on the same

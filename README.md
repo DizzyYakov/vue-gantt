@@ -33,7 +33,8 @@ design system. One runtime dependency (`date-fns`), fully typed.
   stacking context, so bars/dependency arrows never paint over the frozen
   sidebar/header while scrolling.
 - ⌨️ **Keyboard & a11y** (opt-in via `keyboard`) — focusable bars/milestones with
-  ARIA labels, a visible focus ring, and Enter/Space activation.
+  ARIA labels, a visible focus ring, Enter/Space activation, and a roving
+  arrow-key navigation between bars/rows.
 - 🎨 **Themeable** through `--gantt-*` CSS variables; ships typed `.d.ts`.
 
 ## Install
@@ -329,7 +330,7 @@ parent collapses to the content height and simply grows to fit (as before).
 | `criticalPath`          | `boolean`                                         | `false`         | Highlight the tasks on the critical path (`data-critical` on their bars/markers; styled via `--gantt-critical-*`).                                                                                                                                            |
 | `slack`                 | `boolean`                                         | `false`         | Draw each task's free-float slack as a translucent bar after its end (the `<GanttSlack>` overlay; styled via `--gantt-slack-*`).                                                                                                                               |
 | `linkable`              | `boolean`                                         | `false`         | Create/edit dependencies by dragging between tasks.                                                                                                                                                                                                           |
-| `keyboard`              | `boolean`                                         | `false`         | Make task bars and milestones keyboard-focusable and operable: `role="button"`, `tabindex="0"`, a descriptive `aria-label`, a visible focus ring, and Enter/Space activation (fires the same `task-click`/`milestone-click` as a mouse click). The chart root also gets a labelled landmark. See [Keyboard & accessibility](#keyboard--accessibility).       |
+| `keyboard`              | `boolean`                                         | `false`         | Make task bars and milestones keyboard-operable via a roving tab stop: `role="button"`, a descriptive `aria-label`, a visible focus ring, Enter/Space activation (fires the same `task-click`/`milestone-click` as a mouse click), and arrow-key navigation (Left/Right/Up/Down/Home/End) between bars/rows. The chart root also gets a labelled landmark. See [Keyboard & accessibility](#keyboard--accessibility).       |
 | `ariaLabel`             | `string`                                          | `'Gantt chart'` | Accessible name for the chart landmark (used when `keyboard` is on).                                                                                                                                                                                          |
 | `dependencyShape`       | `(tail, head) => string`                          | `elbowPath`     | Connector path builder. Pass `elbowPath`/`straightPath`/`bezierPath` or your own.                                                                                                                                                                             |
 | `arrowHead`             | `() => ArrowHeadShape \| null`                    | `triangleArrow` | Arrowhead builder. Pass `triangleArrow`/`openArrow`/`noArrow` or your own (`null` = no head).                                                                                                                                                                 |
@@ -1229,8 +1230,8 @@ Opt-in via `keyboard` (off by default — it doesn't change the tab order or add
 attributes unless enabled):
 
 - Every task bar (`.gantt-bar`) and milestone marker (`.gantt-milestone__marker`)
-  gets `role="button"`, `tabindex="0"`, and a descriptive `aria-label` — a task
-  reads as `"<name>, <start>–<end>, <progress>% complete"`, a milestone as
+  gets `role="button"` and a descriptive `aria-label` — a task reads as
+  `"<name>, <start>–<end>, <progress>% complete"`, a milestone as
   `"<name>, <date> (milestone)"`.
 - A visible focus ring (`--gantt-focus-outline` / `--gantt-focus-outline-offset`,
   see [CSS variables](#css-variables)) appears on `:focus-visible`.
@@ -1243,11 +1244,27 @@ attributes unless enabled):
 <Gantt :rows="rows" keyboard aria-label="Project timeline" />
 ```
 
-> **Slice 1 scope.** This is the first accessibility pass — it covers focus +
-> activation only. Not yet included (planned for a follow-up slice): 2D arrow-key
-> navigation between bars/rows, moving or resizing a task from the keyboard, and
-> `grid`/`row` ARIA roles for the body. Tab currently walks the **visible**
-> (virtualized) bars in DOM order, so bars scrolled out of view are skipped.
+### Roving focus & arrow-key navigation
+
+Bars/milestones share a single **roving tab stop**: only one item at a time has
+`tabindex="0"` (the rest are `tabindex="-1"`), so Tab enters the chart once — at
+the first task of the first row — instead of stopping at every bar. Clicking or
+focusing a bar/marker makes it the new roving anchor. From the active item, the
+arrow keys move focus without leaving the tab order:
+
+| Key                     | Moves focus to                                                      |
+| ----------------------- | --------------------------------------------------------------------|
+| **ArrowLeft/ArrowRight**| Previous/next task in the same row, ordered by start time.           |
+| **ArrowUp/ArrowDown**   | Closest-by-start task in the nearest non-empty row above/below.      |
+| **Home / End**          | First / last task in the active row.                                 |
+
+The target auto-scrolls into view (rows/columns can be virtualized) and receives
+focus once it mounts.
+
+> **Slice 2 scope.** This adds roving focus + arrow-key navigation on top of
+> slice 1's focus/activation layer. Not yet included (planned for a follow-up
+> slice): moving or resizing a task from the keyboard, `grid`/`row`/`gridcell`
+> ARIA roles for the body, and navigation across the sidebar's row labels.
 
 ## Localization (i18n)
 

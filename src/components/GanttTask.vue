@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { format } from 'date-fns'
-import { onActivateKey, useGanttItem, type GanttItemProps } from '../composables/useGanttItem'
+import { useGanttItem, type GanttItemProps } from '../composables/useGanttItem'
 import { useHoverTooltip } from '../composables/useHoverTooltip'
 import { useInlineEdit, vFocus } from '../composables/useInlineEdit'
 import { useLongPress } from '../composables/useLongPress'
@@ -35,14 +35,15 @@ const {
   overlapping,
   hidden,
   resources,
+  keyboard,
+  tabIndex,
+  onItemKeydown,
 } = useGanttItem(props, { type: 'task' })
 
 const resizable = computed(() => ctx.config.value.resizable)
 const progressDraggable = computed(() => ctx.config.value.progressDraggable)
 const linkable = computed(() => ctx.config.value.linkable)
 const editable = computed(() => ctx.config.value.editable)
-// Keyboard-operable a11y layer (opt-in via `keyboard`).
-const keyboard = computed(() => ctx.config.value.keyboard)
 // Tooltip date formatter, localized via the `locale` config.
 const fmtDate = (d: Date): string => format(d, 'd MMM yyyy', { locale: ctx.config.value.locale })
 
@@ -171,10 +172,12 @@ function onBarUp(event: PointerEvent): void {
       :data-constraint-violation="constraintViolation || undefined"
       :data-split="segmentBars.length ? '' : undefined"
       :role="keyboard ? 'button' : undefined"
-      :tabindex="keyboard ? 0 : undefined"
+      :tabindex="tabIndex"
       :aria-label="keyboard ? ariaLabel : undefined"
+      :data-gantt-focusable="keyboard ? '' : undefined"
       :style="barStyle"
-      @keydown="keyboard && onActivateKey($event)"
+      @keydown="onItemKeydown"
+      @focus="keyboard && ctx.setKeyboardActive(resolved.id)"
       @pointerdown="onBarDown"
       @pointermove="longPress.onPointermove"
       @pointerup="onBarUp"

@@ -527,11 +527,16 @@ export const Tooltip: Story = {
 }
 
 /**
- * `keyboard` makes every bar/milestone focusable and operable: Tab through them
- * (in DOM order, following the visible/virtualized set), see the focus ring, and
- * press Enter/Space to fire the same click event a mouse would. The chart root
- * also gets a labelled landmark (`ariaLabel`, defaults to `'Gantt chart'`). This
- * is slice 1 of the a11y layer — no arrow-key navigation or keyboard drag/resize yet.
+ * `keyboard` makes every bar/milestone focusable and operable via a roving tab
+ * stop: Tab into the chart once (the first task in the first row), see the
+ * focus ring, and press Enter/Space to fire the same click event a mouse would.
+ * From there the arrow keys move focus without re-tabbing — Left/Right step to
+ * the previous/next task in the same row, Up/Down jump to the closest-by-start
+ * task in the nearest non-empty row above/below, and Home/End jump to the
+ * first/last task in the row — auto-scrolling the target into view. The chart
+ * root also gets a labelled landmark (`ariaLabel`, defaults to `'Gantt chart'`).
+ * This is slice 2 of the a11y layer — no keyboard drag/resize or `grid`/`row`
+ * ARIA roles yet.
  */
 export const Keyboard: Story = {
   args: { keyboard: true, ariaLabel: 'Project timeline' },
