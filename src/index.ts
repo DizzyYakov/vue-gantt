@@ -99,6 +99,13 @@ export {
 
 // Data export (pure serializers + browser download helpers)
 export { toCSV, downloadCSV, type CSVColumn, type CSVOptions } from './export'
+export {
+  toExcel,
+  downloadExcel,
+  type ExcelColumn,
+  type ExcelOptions,
+  type ExcelCellType,
+} from './export'
 
 // Types
 export type {
@@ -111,6 +118,7 @@ export type {
   GanttConstraint,
   GanttConstraintType,
   GanttContext,
+  GanttCreateEvent,
   GanttDependencyChange,
   GanttDependencyEvent,
   GanttDependencyUpdate,

@@ -499,6 +499,8 @@ export interface GanttRootProps {
   slack?: boolean
   /** Allow creating/editing dependencies by dragging between tasks. */
   linkable?: boolean
+  /** Allow creating a task by dragging across an empty grid row (emits `create`). */
+  cellCreatable?: boolean
   /**
    * Make task bars and milestones keyboard-focusable and operable: each becomes a
    * `role="button"` with `tabindex="0"`, a descriptive `aria-label`, a focus ring,
@@ -640,6 +642,8 @@ export interface GanttConfig {
   keyboard: boolean
   /** Accessible name for the chart landmark (used when `keyboard` is on). */
   ariaLabel: string
+  /** Whether dragging across an empty grid row creates a task (emits `create`). */
+  cellCreatable: boolean
   /** Connector path builder `(tail, head) => string` (resolved, never undefined). */
   dependencyShape: DependencyPathBuilder
   /** Arrowhead builder `() => ArrowHeadShape | null` (resolved, never undefined). */
@@ -811,6 +815,17 @@ export interface GanttCellEvent {
   event: MouseEvent
 }
 
+/** Payload for a drag-to-create gesture on an empty body cell (`cellCreatable`). */
+export interface GanttCreateEvent {
+  /** The row the new task should belong to. */
+  row: ResolvedRow
+  /** Start of the dragged span (earlier edge). */
+  start: Date
+  /** End of the dragged span (later edge). */
+  end: Date
+  event: PointerEvent
+}
+
 /** Payload for pointer interactions on a timeline header column. */
 export interface GanttColumnEvent {
   column: GanttColumn
@@ -845,6 +860,7 @@ export interface GanttEventMap {
   'row-contextmenu': GanttRowEvent
   'cell-click': GanttCellEvent
   'cell-dblclick': GanttCellEvent
+  'create': GanttCreateEvent
   'column-click': GanttColumnEvent
   'dependency-click': GanttDependencyEvent
   'dependency-create': GanttDependencyChange
