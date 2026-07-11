@@ -40,6 +40,7 @@ export const GANTT_DEFAULTS = {
   criticalPath: false,
   slack: false,
   linkable: false,
+  cellCreatable: false,
   snapToGrid: false,
   autoSchedule: false,
   timelineMode: 'fixed',

@@ -52,6 +52,15 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Added
 
+- **Drag-to-create.** New opt-in `cellCreatable` prop: dragging across an empty
+  grid row draws a ghost bar and, on release past the drag threshold, emits a
+  `create` event (`GanttCreateEvent { row, start, end, event }`) — the consumer
+  applies it (e.g. via the `addTask` helper), keeping the library controlled. A
+  below-threshold press still fires `cell-click`. Honors `snapToGrid`, auto-scrolls
+  at the viewport edges, and themes the preview via `--gantt-create-preview-bg`.
+  `GanttCreateEvent` is exported from the package root. (Lives in the default
+  `GanttGrid`; a custom `#grid` slot owns creation itself.)
+
 - **Headless milestone-label clamping.** The `#milestone` slot now also receives
   `labelMaxWidth` — the adaptive horizontal gap (px) to the next item on the same
   row — so a consumer-rendered label can bind `:style="{ maxWidth: labelMaxWidth +

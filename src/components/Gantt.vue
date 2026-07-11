@@ -3,6 +3,7 @@ import { computed, ref, useSlots } from 'vue'
 import type {
   GanttCellEvent,
   GanttColumnEvent,
+  GanttCreateEvent,
   GanttDependencyChange,
   GanttDependencyEvent,
   GanttDependencyUpdate,
@@ -57,6 +58,7 @@ const emit = defineEmits<{
   'row-contextmenu': [event: GanttRowEvent]
   'cell-click': [event: GanttCellEvent]
   'cell-dblclick': [event: GanttCellEvent]
+  'create': [event: GanttCreateEvent]
   'column-click': [event: GanttColumnEvent]
   'dependency-click': [event: GanttDependencyEvent]
 }>()
@@ -189,6 +191,7 @@ defineExpose({
     @row-contextmenu="emit('row-contextmenu', $event)"
     @cell-click="emit('cell-click', $event)"
     @cell-dblclick="emit('cell-dblclick', $event)"
+    @create="emit('create', $event)"
     @column-click="emit('column-click', $event)"
     @dependency-click="emit('dependency-click', $event)"
   >

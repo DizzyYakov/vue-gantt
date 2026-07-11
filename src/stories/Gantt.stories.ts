@@ -4,8 +4,8 @@ import { ref } from 'vue'
 import Gantt from '../components/Gantt.vue'
 import GanttZoom from '../components/GanttZoom.vue'
 import { downloadCSV } from '../export'
-import type { GanttMoveEvent, GanttRow } from '../types'
-import { sprintPeriods } from '../utils'
+import type { GanttCreateEvent, GanttMoveEvent, GanttRow } from '../types'
+import { addTask, sprintPeriods } from '../utils'
 import { sampleRows } from './_shared'
 
 /**
@@ -83,6 +83,12 @@ const meta: Meta<typeof Gantt> = {
       control: 'boolean',
       description: 'Create/edit dependencies by dragging between tasks.',
     },
+    cellCreatable: {
+      control: 'boolean',
+      description:
+        'Drag across an empty grid row to create a task (emits `create`); a plain ' +
+        'click below the drag threshold still fires `cell-click`.',
+    },
     tooltip: {
       control: 'boolean',
       description: 'Show a hover tooltip on bars/milestones (tap toggles it on touch).',
@@ -151,6 +157,7 @@ const meta: Meta<typeof Gantt> = {
     'onRow-contextmenu': { action: 'row-contextmenu', table: { category: 'events' } },
     'onCell-click': { action: 'cell-click', table: { category: 'events' } },
     'onCell-dblclick': { action: 'cell-dblclick', table: { category: 'events' } },
+    onCreate: { action: 'create', table: { category: 'events' } },
     'onColumn-click': { action: 'column-click', table: { category: 'events' } },
     'onDependency-click': { action: 'dependency-click', table: { category: 'events' } },
   },
@@ -287,6 +294,34 @@ export const DragAndDrop: Story = {
       return { args, rows, onMove }
     },
     template: `<Gantt v-bind="args" :rows="rows" @move="onMove" />`,
+  }),
+}
+
+/**
+ * With `cellCreatable`, dragging across an empty row band draws a ghost preview
+ * and emits `create` on release (below the drag threshold it's still read as a
+ * plain `cell-click`). The chart stays controlled — this demo applies the intent
+ * with the `addTask` utility. Try it in the empty band below the last task of any
+ * row.
+ */
+export const CellCreatable: Story = {
+  args: { cellCreatable: true },
+  render: args => ({
+    components: { Gantt },
+    setup() {
+      const rows = ref<GanttRow[]>(JSON.parse(JSON.stringify(sampleRows)))
+      let nextId = 0
+      function onCreate(e: GanttCreateEvent) {
+        rows.value = addTask(rows.value, e.row.id, {
+          id: `created-${nextId++}`,
+          name: 'New task',
+          start: e.start,
+          end: e.end,
+        })
+      }
+      return { args, rows, onCreate }
+    },
+    template: `<Gantt v-bind="args" :rows="rows" @create="onCreate" />`,
   }),
 }
 
