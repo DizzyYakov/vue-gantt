@@ -52,6 +52,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Added
 
+- **Excel export.** New pure, zero-dependency `toExcel(rows, options?)` serializer
+  emitting a **SpreadsheetML 2003** workbook (the `.xls` XML dialect Excel opens
+  directly), mirroring `toCSV`: one row per task with typed cells (dates as real
+  Excel dates, progress as a number). Ships a `downloadExcel(rows, filename?,
+  options?)` browser helper (`application/vnd.ms-excel`), an `ExcelColumn` /
+  `ExcelOptions` (`columns` / `sheetName` / `header`) API and `ExcelCellType`,
+  all exported from the package root.
+
 - **Headless milestone-label clamping.** The `#milestone` slot now also receives
   `labelMaxWidth` — the adaptive horizontal gap (px) to the next item on the same
   row — so a consumer-rendered label can bind `:style="{ maxWidth: labelMaxWidth +

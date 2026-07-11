@@ -3,7 +3,7 @@ import { de } from 'date-fns/locale'
 import { ref } from 'vue'
 import Gantt from '../components/Gantt.vue'
 import GanttZoom from '../components/GanttZoom.vue'
-import { downloadCSV } from '../export'
+import { downloadCSV, downloadExcel } from '../export'
 import type { GanttMoveEvent, GanttRow } from '../types'
 import { sprintPeriods } from '../utils'
 import { sampleRows } from './_shared'
@@ -783,6 +783,25 @@ export const ExportCsv: Story = {
     template: `
       <div>
         <button type="button" style="margin-bottom:8px" @click="exportCsv">Export CSV</button>
+        <Gantt v-bind="args" />
+      </div>`,
+  }),
+}
+
+/**
+ * `downloadExcel(rows)` serializes the tasks to a SpreadsheetML 2003 (`.xls`)
+ * workbook and triggers a browser download — zero-dependency, with typed cells
+ * (real Excel dates, numeric progress). `toExcel(rows, options)` returns the
+ * string for custom handling — override the `columns` (with a per-column
+ * `type`) or `sheetName`.
+ */
+export const ExportExcel: Story = {
+  render: (args) => ({
+    components: { Gantt },
+    setup: () => ({ args, exportExcel: () => downloadExcel(args.rows ?? [], 'gantt.xls') }),
+    template: `
+      <div>
+        <button type="button" style="margin-bottom:8px" @click="exportExcel">Export to Excel</button>
         <Gantt v-bind="args" />
       </div>`,
   }),

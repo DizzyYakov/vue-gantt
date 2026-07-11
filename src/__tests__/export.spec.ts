@@ -1,7 +1,7 @@
 import { de } from 'date-fns/locale'
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { toCSV, downloadCSV, type CSVColumn } from '../export'
-import { toCSV as toCSVFromIndex } from '../index'
+import { toCSV, downloadCSV, type CSVColumn, toExcel, downloadExcel, type ExcelColumn } from '../export'
+import { toCSV as toCSVFromIndex, toExcel as toExcelFromIndex } from '../index'
 import type { GanttRow } from '../types'
 
 const rows: GanttRow[] = [
@@ -114,6 +114,96 @@ describe('downloadCSV', () => {
     downloadCSV(rows, 'tasks.csv')
 
     expect(createObjectURL).toHaveBeenCalledOnce()
+    expect(click).toHaveBeenCalledOnce()
+    expect(revokeObjectURL).toHaveBeenCalledWith('blob:mock')
+    expect(document.querySelector('a[download]')).toBeNull() // cleaned up
+  })
+})
+
+describe('toExcel', () => {
+  it('emits a SpreadsheetML workbook with one Row per task plus a header', () => {
+    const xml = toExcel(rows)
+    expect(xml).toContain('<?xml version="1.0"?>')
+    expect(xml).toContain('<Workbook')
+    expect(xml).toContain('<Worksheet ss:Name="Tasks">')
+    expect(xml).toContain('<Table>')
+    expect(xml.match(/<Row>/g)).toHaveLength(3) // header + 2 tasks
+  })
+
+  it('emits a header row of String cells matching the default columns', () => {
+    const xml = toExcel(rows)
+    const headerRow = xml.match(/<Row>(.*?)<\/Row>/)?.[1] ?? ''
+    expect(headerRow).toBe(
+      '<Cell><Data ss:Type="String">Row Id</Data></Cell>' +
+        '<Cell><Data ss:Type="String">Row</Data></Cell>' +
+        '<Cell><Data ss:Type="String">Task Id</Data></Cell>' +
+        '<Cell><Data ss:Type="String">Task</Data></Cell>' +
+        '<Cell><Data ss:Type="String">Type</Data></Cell>' +
+        '<Cell><Data ss:Type="String">Start</Data></Cell>' +
+        '<Cell><Data ss:Type="String">End</Data></Cell>' +
+        '<Cell><Data ss:Type="String">Progress</Data></Cell>' +
+        '<Cell><Data ss:Type="String">Dependencies</Data></Cell>' +
+        '<Cell><Data ss:Type="String">Deadline</Data></Cell>',
+    )
+  })
+
+  it('omits the header row when header is false', () => {
+    const xml = toExcel(rows, { header: false })
+    expect(xml.match(/<Row>/g)).toHaveLength(2) // only the 2 tasks
+    expect(xml).not.toContain('Row Id')
+  })
+
+  it('types Progress as Number and Start/End as DateTime with an ISO literal', () => {
+    const xml = toExcel(rows, { header: false })
+    expect(xml).toContain('<Cell><Data ss:Type="Number">50</Data></Cell>')
+    expect(xml).toContain('<Cell><Data ss:Type="DateTime">2026-01-01T00:00:00.000</Data></Cell>')
+    expect(xml).toContain('<Cell><Data ss:Type="DateTime">2026-01-05T00:00:00.000</Data></Cell>')
+  })
+
+  it('XML-escapes special characters in string cell values', () => {
+    const tricky: GanttRow[] = [
+      { id: 'r', tasks: [{ id: 't', name: 'A & B < C > D "E"', start: '2026-01-01' }] },
+    ]
+    const xml = toExcel(tricky, { header: false })
+    expect(xml).toContain('A &amp; B &lt; C &gt; D &quot;E&quot;')
+  })
+
+  it('renders an empty <Cell/> for a nullish value (no deadline)', () => {
+    const noDeadline: GanttRow[] = [
+      { id: 'r', tasks: [{ id: 't', name: 'No deadline', start: '2026-01-01' }] },
+    ]
+    const xml = toExcel(noDeadline, { header: false })
+    expect(xml).toContain('<Cell/>')
+  })
+
+  it('supports fully custom columns and a custom sheetName', () => {
+    const columns: ExcelColumn[] = [{ header: 'ID', value: (task) => task.id }]
+    const xml = toExcel(rows, { columns, sheetName: 'My Sheet' })
+    expect(xml).toContain('<Worksheet ss:Name="My Sheet">')
+    expect(xml).toContain('<Cell><Data ss:Type="String">ID</Data></Cell>')
+    expect(xml).toContain('<Cell><Data ss:Type="String">a</Data></Cell>')
+    expect(xml).toContain('<Cell><Data ss:Type="String">m</Data></Cell>')
+  })
+
+  it('is re-exported from the package entry point', () => {
+    expect(toExcelFromIndex).toBe(toExcel)
+  })
+})
+
+describe('downloadExcel', () => {
+  afterEach(() => vi.restoreAllMocks())
+
+  it('builds a blob URL with the Excel MIME type and clicks an <a download> with the given filename', () => {
+    const createObjectURL = vi.fn<(blob: Blob) => string>(() => 'blob:mock')
+    const revokeObjectURL = vi.fn<(url: string) => void>()
+    vi.stubGlobal('URL', { createObjectURL, revokeObjectURL })
+    const click = vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => {})
+
+    downloadExcel(rows, 'tasks.xls')
+
+    expect(createObjectURL).toHaveBeenCalledOnce()
+    const blobArg = createObjectURL.mock.calls[0]?.[0]
+    expect(blobArg?.type).toBe('application/vnd.ms-excel')
     expect(click).toHaveBeenCalledOnce()
     expect(revokeObjectURL).toHaveBeenCalledWith('blob:mock')
     expect(document.querySelector('a[download]')).toBeNull() // cleaned up
