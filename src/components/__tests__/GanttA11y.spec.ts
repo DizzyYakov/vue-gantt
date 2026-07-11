@@ -2,7 +2,7 @@ import { mount } from '@vue/test-utils'
 import { describe, expect, it } from 'vitest'
 import Gantt from '../Gantt.vue'
 import type { GanttRowData } from '../../index'
-import type { GanttTaskEvent } from '../../types'
+import type { GanttMoveEvent, GanttResizeEvent, GanttTaskEvent } from '../../types'
 
 const rows: GanttRowData[] = [
   { id: 'r1', name: 'R1', tasks: [{ id: 'a', name: 'A', start: '2026-01-01', end: '2026-01-05' }] },
@@ -232,6 +232,184 @@ describe('accessibility (opt-in via `keyboard`)', () => {
 
       expect(arrowKey.defaultPrevented).toBe(false)
       expect(tabIndexById(wrapper)).toEqual({ b: undefined, a: undefined, c: undefined })
+    })
+  })
+
+  describe('keyboard move/resize (Shift/Alt + ArrowLeft/ArrowRight)', () => {
+    // Single row/task, unit 'day': a 3-day task so a -1-day resize still leaves a
+    // positive span, distinct from the clamp fixture below.
+    const editRows: GanttRowData[] = [
+      { id: 'r1', name: 'R1', tasks: [{ id: 'a', name: 'A', start: '2026-01-05', end: '2026-01-08' }] },
+    ]
+    // A single-day task: resizing its end back by 1 day would collapse it onto
+    // its own start, so this is the fixture for the clamp/no-emit case.
+    const oneDayRows: GanttRowData[] = [
+      { id: 'r1', name: 'R1', tasks: [{ id: 'a', name: 'A', start: '2026-01-05', end: '2026-01-06' }] },
+    ]
+    const milestoneRows: GanttRowData[] = [
+      { id: 'r1', name: 'R1', tasks: [{ id: 'm', name: 'M', type: 'milestone', start: '2026-01-05' }] },
+    ]
+
+    const dispatchArrow = (
+      element: Element,
+      key: 'ArrowRight' | 'ArrowLeft',
+      modifiers: Partial<Pick<KeyboardEventInit, 'shiftKey' | 'altKey'>>,
+    ) => element.dispatchEvent(new KeyboardEvent('keydown', { key, bubbles: true, ...modifiers }))
+
+    it('Shift+ArrowRight emits one `move` shifting start and end +1 day (duration preserved)', async () => {
+      const wrapper = mount(Gantt, {
+        props: { rows: editRows, unit: 'day', columnWidth: 40, keyboard: true, draggable: true },
+      })
+      const bar = wrapper.find('.gantt-bar[data-id="a"]')
+
+      dispatchArrow(bar.element, 'ArrowRight', { shiftKey: true })
+      await wrapper.vm.$nextTick()
+
+      expect(wrapper.emitted('move')).toHaveLength(1)
+      const event = wrapper.emitted('move')![0]![0] as GanttMoveEvent
+      expect(event.id).toBe('a')
+      expect(event.start.getTime()).toBe(new Date(2026, 0, 6).getTime())
+      expect(event.end.getTime()).toBe(new Date(2026, 0, 9).getTime())
+      expect(event.fromRowId).toBe('r1')
+      expect(event.toRowId).toBe('r1')
+      expect(wrapper.emitted('resize')).toBeUndefined()
+    })
+
+    it('Shift+ArrowLeft emits one `move` shifting start and end -1 day', async () => {
+      const wrapper = mount(Gantt, {
+        props: { rows: editRows, unit: 'day', columnWidth: 40, keyboard: true, draggable: true },
+      })
+      const bar = wrapper.find('.gantt-bar[data-id="a"]')
+
+      dispatchArrow(bar.element, 'ArrowLeft', { shiftKey: true })
+      await wrapper.vm.$nextTick()
+
+      expect(wrapper.emitted('move')).toHaveLength(1)
+      const event = wrapper.emitted('move')![0]![0] as GanttMoveEvent
+      expect(event.start.getTime()).toBe(new Date(2026, 0, 4).getTime())
+      expect(event.end.getTime()).toBe(new Date(2026, 0, 7).getTime())
+    })
+
+    it('Alt+ArrowRight emits one `resize` shifting only end +1 day (start unchanged)', async () => {
+      const wrapper = mount(Gantt, {
+        props: { rows: editRows, unit: 'day', columnWidth: 40, keyboard: true, resizable: true },
+      })
+      const bar = wrapper.find('.gantt-bar[data-id="a"]')
+
+      dispatchArrow(bar.element, 'ArrowRight', { altKey: true })
+      await wrapper.vm.$nextTick()
+
+      expect(wrapper.emitted('resize')).toHaveLength(1)
+      const event = wrapper.emitted('resize')![0]![0] as GanttResizeEvent
+      expect(event.id).toBe('a')
+      expect(event.start.getTime()).toBe(new Date(2026, 0, 5).getTime())
+      expect(event.end.getTime()).toBe(new Date(2026, 0, 9).getTime())
+      expect(wrapper.emitted('move')).toBeUndefined()
+    })
+
+    it('Alt+ArrowLeft emits one `resize` shrinking end -1 day while it stays after start', async () => {
+      const wrapper = mount(Gantt, {
+        props: { rows: editRows, unit: 'day', columnWidth: 40, keyboard: true, resizable: true },
+      })
+      const bar = wrapper.find('.gantt-bar[data-id="a"]')
+
+      dispatchArrow(bar.element, 'ArrowLeft', { altKey: true })
+      await wrapper.vm.$nextTick()
+
+      expect(wrapper.emitted('resize')).toHaveLength(1)
+      const event = wrapper.emitted('resize')![0]![0] as GanttResizeEvent
+      expect(event.start.getTime()).toBe(new Date(2026, 0, 5).getTime())
+      expect(event.end.getTime()).toBe(new Date(2026, 0, 7).getTime())
+    })
+
+    it('Alt+ArrowLeft on a 1-day task does not emit `resize` (would collapse end onto start)', async () => {
+      const wrapper = mount(Gantt, {
+        props: { rows: oneDayRows, unit: 'day', columnWidth: 40, keyboard: true, resizable: true },
+      })
+      const bar = wrapper.find('.gantt-bar[data-id="a"]')
+
+      dispatchArrow(bar.element, 'ArrowLeft', { altKey: true })
+      await wrapper.vm.$nextTick()
+
+      expect(wrapper.emitted('resize')).toBeUndefined()
+    })
+
+    it('gates move behind `draggable`: Shift+Arrow does not emit `move` when draggable is false', async () => {
+      const wrapper = mount(Gantt, {
+        props: { rows: editRows, unit: 'day', columnWidth: 40, keyboard: true, draggable: false },
+      })
+      const bar = wrapper.find('.gantt-bar[data-id="a"]')
+
+      dispatchArrow(bar.element, 'ArrowRight', { shiftKey: true })
+      await wrapper.vm.$nextTick()
+
+      expect(wrapper.emitted('move')).toBeUndefined()
+    })
+
+    it('gates resize behind `resizable`: Alt+Arrow does not emit `resize` when resizable is false', async () => {
+      const wrapper = mount(Gantt, {
+        props: { rows: editRows, unit: 'day', columnWidth: 40, keyboard: true, resizable: false },
+      })
+      const bar = wrapper.find('.gantt-bar[data-id="a"]')
+
+      dispatchArrow(bar.element, 'ArrowRight', { altKey: true })
+      await wrapper.vm.$nextTick()
+
+      expect(wrapper.emitted('resize')).toBeUndefined()
+    })
+
+    it('never emits `resize` on a milestone via Alt+Arrow, even when resizable is true', async () => {
+      const wrapper = mount(Gantt, {
+        props: {
+          rows: milestoneRows,
+          unit: 'day',
+          columnWidth: 40,
+          keyboard: true,
+          draggable: true,
+          resizable: true,
+        },
+      })
+      const marker = wrapper.find('.gantt-milestone__marker')
+
+      dispatchArrow(marker.element, 'ArrowRight', { altKey: true })
+      await wrapper.vm.$nextTick()
+
+      expect(wrapper.emitted('resize')).toBeUndefined()
+    })
+
+    it('emits `move` for a milestone via Shift+Arrow when draggable is true', async () => {
+      const wrapper = mount(Gantt, {
+        props: { rows: milestoneRows, unit: 'day', columnWidth: 40, keyboard: true, draggable: true },
+      })
+      const marker = wrapper.find('.gantt-milestone__marker')
+
+      dispatchArrow(marker.element, 'ArrowRight', { shiftKey: true })
+      await wrapper.vm.$nextTick()
+
+      expect(wrapper.emitted('move')).toHaveLength(1)
+      const event = wrapper.emitted('move')![0]![0] as GanttMoveEvent
+      expect(event.id).toBe('m')
+      expect(event.start.getTime()).toBe(new Date(2026, 0, 6).getTime())
+    })
+
+    it('a plain ArrowRight (no modifier) emits neither `move` nor `resize`', async () => {
+      const wrapper = mount(Gantt, {
+        props: {
+          rows: editRows,
+          unit: 'day',
+          columnWidth: 40,
+          keyboard: true,
+          draggable: true,
+          resizable: true,
+        },
+      })
+      const bar = wrapper.find('.gantt-bar[data-id="a"]')
+
+      dispatchArrow(bar.element, 'ArrowRight', {})
+      await wrapper.vm.$nextTick()
+
+      expect(wrapper.emitted('move')).toBeUndefined()
+      expect(wrapper.emitted('resize')).toBeUndefined()
     })
   })
 })

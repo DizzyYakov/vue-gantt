@@ -64,7 +64,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   single tab stop, and Arrow Left/Right step through tasks by time within a row,
   Arrow Up/Down jump to the nearest task (by start) in the adjacent row, and
   Home/End go to the row's first/last task — the target scrolls into view and
-  focuses. Keyboard task-move/resize and grid/row roles are a planned follow-up.
+  focuses. Keyboard editing: on the focused task, Shift + Arrow Left/Right nudge it
+  one base unit earlier/later (emits `move`, needs `draggable`) and Alt + Arrow
+  Left/Right resize its end (emits `resize`, needs `resizable`, tasks only) — the
+  library stays controlled. Grid/row ARIA roles are a planned follow-up.
 
 - **Drag-to-create.** New opt-in `cellCreatable` prop: dragging across an empty
   grid row draws a ghost bar and, on release past the drag threshold, emits a
