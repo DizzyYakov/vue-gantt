@@ -780,6 +780,8 @@ import {
   nonWorkingBands, // compute non-working (weekend/holiday/off-period) bands over a range
   toCSV,
   downloadCSV, // serialize tasks to CSV / trigger a browser download (see Export)
+  toExcel,
+  downloadExcel, // serialize tasks to a SpreadsheetML (.xls) workbook / trigger a download (see Export)
 } from '@dizzy_yakov/vue-gantt'
 ```
 
@@ -791,7 +793,7 @@ back the matching `criticalPath` / `slack` props: the prop visualizes what the
 utility computes, so you can also call the utility directly (e.g. to label or report
 the schedule).
 
-### Export (CSV)
+### Export (CSV / Excel)
 
 `toCSV(rows, options?)` serializes the tasks of your `rows` to an RFC-4180 CSV
 string — one line per task, with its owning row's id/name as leading columns. It's
@@ -819,6 +821,43 @@ const csv = toCSV(rows, {
 Default columns: `Row Id`, `Row`, `Task Id`, `Task`, `Type`, `Start`, `End`,
 `Progress`, `Dependencies`, `Deadline`. Options: `columns`, `delimiter` (`,`),
 `dateFormat` (`yyyy-MM-dd`), `locale`, `header` (`true`), `eol` (`\r\n`).
+
+`toExcel(rows, options?)` serializes the same tasks to a **SpreadsheetML 2003**
+workbook string — the `.xls` XML dialect Excel opens directly. It's pure,
+framework-free and **zero-dependency** (no `xlsx`/`exceljs`), and cells are
+typed: dates are real Excel dates (`ss:Type="DateTime"`) and progress is a
+`ss:Type="Number"` cell, so Excel sorts/filters them correctly instead of
+treating everything as text. `downloadExcel(rows, filename?, options?)` wraps
+it and triggers a browser download (`filename` defaults to `'gantt.xls'`, MIME
+`application/vnd.ms-excel`).
+
+```ts
+import { toExcel, downloadExcel } from '@dizzy_yakov/vue-gantt'
+
+downloadExcel(rows, 'schedule.xls')
+```
+
+```vue
+<button @click="downloadExcel(rows, 'schedule.xls')">Export to Excel</button>
+```
+
+```ts
+// Custom columns / sheet name — a Number/DateTime `type` drives the cell's
+// SpreadsheetML data type (defaults to 'String'):
+const xls = toExcel(rows, {
+  sheetName: 'Schedule',
+  columns: [
+    { header: 'ID', value: (task) => task.id },
+    { header: 'Start', type: 'DateTime', value: (task) => task.start },
+    { header: 'Progress %', type: 'Number', value: (task) => task.progress ?? 0 },
+  ],
+})
+```
+
+Default columns: same as CSV — `Row Id`, `Row`, `Task Id`, `Task`, `Type`,
+`Start` (`DateTime`), `End` (`DateTime`), `Progress` (`Number`),
+`Dependencies`, `Deadline` (`DateTime`). Options: `columns`, `sheetName`
+(`'Tasks'`), `header` (`true`).
 
 ## Row grouping
 
