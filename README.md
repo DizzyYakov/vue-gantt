@@ -25,8 +25,9 @@ design system. One runtime dependency (`date-fns`), fully typed.
 - 🏷️ **Row decoration** — an add-on `row-suffix` slot for badges, plus a
   `meta` → `data-*` passthrough for CSS-only row highlighting.
 - ✋ **Drag interactions** (all opt-in, controlled): move, resize an edge, set
-  progress, and create/edit dependencies — with a live, formattable tooltip and
-  edge **auto-scroll** to reach drop targets off-screen.
+  progress, create/edit dependencies, and drag out a new task on an empty row —
+  with a live, formattable tooltip and edge **auto-scroll** to reach drop
+  targets off-screen.
 - 🧊 Frozen header + sidebar, sticky period labels, **row/column
   virtualization** (kicks in whenever the scroll viewport is height-constrained —
   by a `height` cap or a fixed-height parent). The scrolling body is its own
@@ -327,6 +328,7 @@ parent collapses to the content height and simply grows to fit (as before).
 | `criticalPath`          | `boolean`                                         | `false`         | Highlight the tasks on the critical path (`data-critical` on their bars/markers; styled via `--gantt-critical-*`).                                                                                                                                            |
 | `slack`                 | `boolean`                                         | `false`         | Draw each task's free-float slack as a translucent bar after its end (the `<GanttSlack>` overlay; styled via `--gantt-slack-*`).                                                                                                                               |
 | `linkable`              | `boolean`                                         | `false`         | Create/edit dependencies by dragging between tasks.                                                                                                                                                                                                           |
+| `cellCreatable`         | `boolean`                                         | `false`         | Create a task by dragging across an empty grid row (emits `create`). Below the drag threshold a plain click still falls through to `cell-click`. Lives in the default `<GanttGrid>` — a custom `grid` slot takes over creation yourself.                     |
 | `dependencyShape`       | `(tail, head) => string`                          | `elbowPath`     | Connector path builder. Pass `elbowPath`/`straightPath`/`bezierPath` or your own.                                                                                                                                                                             |
 | `arrowHead`             | `() => ArrowHeadShape \| null`                    | `triangleArrow` | Arrowhead builder. Pass `triangleArrow`/`openArrow`/`noArrow` or your own (`null` = no head).                                                                                                                                                                 |
 | `snapToGrid`            | `boolean`                                         | `false`         | Snap dragged dates to the base unit (off = full precision).                                                                                                                                                                                                   |
@@ -413,6 +415,40 @@ are both exported. Style the split bits with the `--gantt-split-*`
 > target / draft arrow) keeps following the content, and scrolling stops on release.
 > This is automatic; there are no extra props.
 
+### Drag-to-create tasks
+
+With `cellCreatable`, dragging across an empty grid row (left mouse button) draws
+a translucent ghost preview and emits `create` on release — the chart stays
+controlled, so you add the task yourself (e.g. with the [`addTask`](#utilities)
+utility):
+
+```vue
+<script setup>
+import { ref } from 'vue'
+import { Gantt, addTask } from '@dizzy_yakov/vue-gantt'
+
+const rows = ref(initialRows)
+
+function onCreate({ row, start, end }) {
+  rows.value = addTask(rows.value, row.id, { id: crypto.randomUUID(), name: 'New task', start, end })
+}
+</script>
+
+<template>
+  <Gantt :rows="rows" cell-creatable @create="onCreate" />
+</template>
+```
+
+Below the drag threshold (same 3px mouse / 8px touch slop as `draggable`) the
+press is read as a plain click, so `cell-click` still fires as before. `snapToGrid`
+snaps the drafted `start`/`end` like any other drag. Style the ghost via
+`--gantt-create-preview-bg` (falls back to `--gantt-bar-bg`) plus the shared
+`--gantt-bar-height` / `--gantt-bar-radius` / `--gantt-ghost-opacity` tokens.
+
+> `cell-click`/`cell-dblclick` and drag-to-create both live in the default
+> `<GanttGrid>`; overriding the `grid` slot on `<GanttView>` / `<Gantt>` replaces
+> it entirely, so creation (and cell clicks) become your responsibility.
+
 ### Deadlines & constraints
 
 Give a task a `deadline` (a target date) or a scheduling `constraint` and the
@@ -480,6 +516,7 @@ your data (the [utilities](#utilities) make this one-liners).
 | `task-*` / `milestone-*`       | `GanttTaskEvent` `{ task, event }`           | `click` / `dblclick` / `contextmenu` on a bar/marker.  |
 | `row-*`                        | `GanttRowEvent` `{ row, event }`             | `click` / `dblclick` / `contextmenu` on a sidebar row. |
 | `cell-click` / `cell-dblclick` | `GanttCellEvent` `{ row, date, event }`      | an empty body cell is clicked.                         |
+| `create`                       | `GanttCreateEvent` `{ row, start, end, event }` | a new task is dragged out of an empty row (`cellCreatable`). |
 | `column-click`                 | `GanttColumnEvent` `{ column, tier, event }` | a timeline header cell is clicked.                     |
 | `dependency-click`             | `GanttDependencyEvent` `{ from, to, event }` | an arrow is clicked.                                   |
 
@@ -1365,6 +1402,7 @@ after this library's):
 | `--gantt-bar-font-size`   | `0.8em`   | Bar label font size.                            |
 | `--gantt-bar-text-shadow` | `none`    | Optional halo so the label reads over the fill. |
 | `--gantt-progress-bg`     | `#6366f1` | Progress fill colour.                           |
+| `--gantt-create-preview-bg` | bar bg (`#c7d2fe`) | Ghost preview background while drag-to-create is in progress (`cellCreatable`). |
 
 **Inline editing** (row/task name inputs — see [inline editing](#inline-editing))
 

@@ -66,6 +66,8 @@
   --gantt-bar-bg: #c7d2fe;
   --gantt-bar-color: #1e1b4b;
   --gantt-bar-font-size: 0.8em;
+  /* Ghost bar shown while dragging out a new task (cellCreatable). */
+  --gantt-create-preview-bg: var(--gantt-bar-bg, #c7d2fe);
 
   /* Baselines (planned vs actual) */
   --gantt-baseline-bg: #cbd5e1;

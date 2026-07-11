@@ -118,6 +118,7 @@ export type {
   GanttConstraint,
   GanttConstraintType,
   GanttContext,
+  GanttCreateEvent,
   GanttDependencyChange,
   GanttDependencyEvent,
   GanttDependencyUpdate,

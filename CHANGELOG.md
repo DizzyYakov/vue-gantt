@@ -52,6 +52,15 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Added
 
+- **Drag-to-create.** New opt-in `cellCreatable` prop: dragging across an empty
+  grid row draws a ghost bar and, on release past the drag threshold, emits a
+  `create` event (`GanttCreateEvent { row, start, end, event }`) — the consumer
+  applies it (e.g. via the `addTask` helper), keeping the library controlled. A
+  below-threshold press still fires `cell-click`. Honors `snapToGrid`, auto-scrolls
+  at the viewport edges, and themes the preview via `--gantt-create-preview-bg`.
+  `GanttCreateEvent` is exported from the package root. (Lives in the default
+  `GanttGrid`; a custom `#grid` slot owns creation itself.)
+
 - **Excel export.** New pure, zero-dependency `toExcel(rows, options?)` serializer
   emitting a **SpreadsheetML 2003** workbook (the `.xls` XML dialect Excel opens
   directly), mirroring `toCSV`: one row per task with typed cells (dates as real
