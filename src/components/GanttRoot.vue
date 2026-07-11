@@ -513,8 +513,15 @@ const headerHeight = computed(
 )
 
 // --- Imperative scroll API ------------------------------------------------
-const { scrollerEl, setScroller, applyScroll, scrollToDate, scrollToTask, scrollToToday } =
-  useGanttScrollApi({
+const {
+  scrollerEl,
+  setScroller,
+  applyScroll,
+  scrollToDate,
+  scrollToTask,
+  scrollToRow,
+  scrollToToday,
+} = useGanttScrollApi({
     dateToX: scale.dateToX,
     sidebarWidth: () => props.sidebarWidth,
     rowHeight: () => props.rowHeight,
@@ -658,6 +665,7 @@ useGanttTimelineEdges({
 const context: GanttContext = {
   config,
   rows,
+  isTree,
   visibleRows,
   groups,
   visibleGroups,
@@ -721,6 +729,7 @@ const context: GanttContext = {
   setScroller,
   scrollToDate,
   scrollToTask,
+  scrollToRow,
   scrollToToday,
   keyboardActiveId,
   setKeyboardActive,

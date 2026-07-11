@@ -570,8 +570,14 @@ export const Tooltip: Story = {
  * task in the nearest non-empty row above/below, and Home/End jump to the
  * first/last task in the row — auto-scrolling the target into view. The chart
  * root also gets a labelled landmark (`ariaLabel`, defaults to `'Gantt chart'`).
- * This is slice 2 of the a11y layer — no keyboard drag/resize or `grid`/`row`
- * ARIA roles yet.
+ *
+ * The sidebar (task list) is keyboard-navigable too: it becomes a `tree`
+ * (WBS rows) or `list` (flat/grouped rows) of `treeitem`/`listitem` rows with
+ * their own roving tab stop — Up/Down move between rows, Left/Right
+ * collapse/expand a branch, Enter/Space fires `row-click`, Home/End jump to
+ * the ends. See the README's "Keyboard & accessibility" section for the full
+ * attribute/key reference — this is the final a11y slice; no keyboard
+ * drag/resize or `grid`/`gridcell` roles on the timeline body.
  */
 export const Keyboard: Story = {
   args: { keyboard: true, ariaLabel: 'Project timeline' },

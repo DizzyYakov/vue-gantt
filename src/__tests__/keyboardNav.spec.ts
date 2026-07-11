@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { firstTaskId, keyToNavDirection, nextTaskId } from '../keyboardNav'
+import { firstRowId, firstTaskId, keyToNavDirection, nextRowId, nextTaskId } from '../keyboardNav'
 import type { ResolvedRow, ResolvedTask } from '../types'
 
 // Pure core (no Vue) — drive it directly, like `useGanttScrollApi.spec.ts`.
@@ -178,5 +178,86 @@ describe('firstTaskId', () => {
   it('returns null when there are no navigable tasks', () => {
     expect(firstTaskId([makeRow({ tasks: [] })])).toBeNull()
     expect(firstTaskId([])).toBeNull()
+  })
+})
+
+describe('nextRowId', () => {
+  it('up/down step by one among visible rows, clamping at the edges', () => {
+    const rows = [
+      makeRow({ id: 'r1', order: 0 }),
+      makeRow({ id: 'r2', order: 1 }),
+      makeRow({ id: 'r3', order: 2 }),
+    ]
+
+    expect(nextRowId(rows, 'r1', 'down')).toBe('r2')
+    expect(nextRowId(rows, 'r2', 'down')).toBe('r3')
+    // At the bottom edge, stays put.
+    expect(nextRowId(rows, 'r3', 'down')).toBe('r3')
+
+    expect(nextRowId(rows, 'r3', 'up')).toBe('r2')
+    expect(nextRowId(rows, 'r2', 'up')).toBe('r1')
+    // At the top edge, stays put.
+    expect(nextRowId(rows, 'r1', 'up')).toBe('r1')
+  })
+
+  it('first/last jump to the ends regardless of the active row', () => {
+    const rows = [
+      makeRow({ id: 'r1', order: 0 }),
+      makeRow({ id: 'r2', order: 1 }),
+      makeRow({ id: 'r3', order: 2 }),
+    ]
+
+    expect(nextRowId(rows, 'r2', 'first')).toBe('r1')
+    expect(nextRowId(rows, 'r2', 'last')).toBe('r3')
+  })
+
+  it('skips hidden rows entirely — they neither hold nor receive focus', () => {
+    const rows = [
+      makeRow({ id: 'r1', order: 0 }),
+      makeRow({ id: 'hidden', order: 1, hidden: true }),
+      makeRow({ id: 'r3', order: 2 }),
+    ]
+
+    // Down from r1 skips the hidden row and lands on r3.
+    expect(nextRowId(rows, 'r1', 'down')).toBe('r3')
+    // Up from r3 likewise skips the hidden row.
+    expect(nextRowId(rows, 'r3', 'up')).toBe('r1')
+    expect(nextRowId(rows, 'r1', 'last')).toBe('r3')
+    expect(nextRowId(rows, 'r3', 'first')).toBe('r1')
+  })
+
+  it('resolves to the first visible row when activeId is null or unknown', () => {
+    const rows = [
+      makeRow({ id: 'hidden', order: 0, hidden: true }),
+      makeRow({ id: 'r1', order: 1 }),
+      makeRow({ id: 'r2', order: 2 }),
+    ]
+
+    expect(nextRowId(rows, null, 'down')).toBe('r1')
+    expect(nextRowId(rows, 'nonexistent-id', 'up')).toBe('r1')
+  })
+
+  it('returns null when there are no visible rows', () => {
+    const rows = [makeRow({ id: 'r1', hidden: true }), makeRow({ id: 'r2', hidden: true })]
+
+    expect(nextRowId(rows, null, 'down')).toBeNull()
+    expect(nextRowId([], 'anything', 'up')).toBeNull()
+  })
+})
+
+describe('firstRowId', () => {
+  it('returns the id of the first visible row', () => {
+    const rows = [
+      makeRow({ id: 'hidden', order: 0, hidden: true }),
+      makeRow({ id: 'r1', order: 1 }),
+      makeRow({ id: 'r2', order: 2 }),
+    ]
+
+    expect(firstRowId(rows)).toBe('r1')
+  })
+
+  it('returns null when every row is hidden or there are no rows', () => {
+    expect(firstRowId([makeRow({ hidden: true })])).toBeNull()
+    expect(firstRowId([])).toBeNull()
   })
 })
