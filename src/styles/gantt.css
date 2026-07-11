@@ -78,6 +78,10 @@
   /* Progress */
   --gantt-progress-bg: #6366f1;
 
+  /* Keyboard focus ring (a11y layer, `keyboard` prop) */
+  --gantt-focus-outline: 2px solid var(--gantt-progress-bg, #6366f1);
+  --gantt-focus-outline-offset: 2px;
+
   /* Inline editing (row/task name inputs) */
   --gantt-edit-bg: var(--gantt-surface, #fff);
   --gantt-edit-color: inherit;

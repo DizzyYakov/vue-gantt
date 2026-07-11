@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { format } from 'date-fns'
-import { useGanttItem, type GanttItemProps } from '../composables/useGanttItem'
+import { onActivateKey, useGanttItem, type GanttItemProps } from '../composables/useGanttItem'
 import { useHoverTooltip } from '../composables/useHoverTooltip'
 import { useInlineEdit, vFocus } from '../composables/useInlineEdit'
 import { useLongPress } from '../composables/useLongPress'
@@ -41,8 +41,16 @@ const resizable = computed(() => ctx.config.value.resizable)
 const progressDraggable = computed(() => ctx.config.value.progressDraggable)
 const linkable = computed(() => ctx.config.value.linkable)
 const editable = computed(() => ctx.config.value.editable)
+// Keyboard-operable a11y layer (opt-in via `keyboard`).
+const keyboard = computed(() => ctx.config.value.keyboard)
 // Tooltip date formatter, localized via the `locale` config.
 const fmtDate = (d: Date): string => format(d, 'd MMM yyyy', { locale: ctx.config.value.locale })
+
+// Screen-reader label for the bar: name, span and progress.
+const ariaLabel = computed(
+  () =>
+    `${resolved.value.name}, ${fmtDate(resolved.value.start)}–${fmtDate(resolved.value.end)}, ${liveProgress.value}% complete`,
+)
 // Inline rename of the bar label (opt-in via `editable`, on double-click).
 const {
   editing: editingName,
@@ -162,7 +170,11 @@ function onBarUp(event: PointerEvent): void {
       :data-overdue="overdue || undefined"
       :data-constraint-violation="constraintViolation || undefined"
       :data-split="segmentBars.length ? '' : undefined"
+      :role="keyboard ? 'button' : undefined"
+      :tabindex="keyboard ? 0 : undefined"
+      :aria-label="keyboard ? ariaLabel : undefined"
       :style="barStyle"
+      @keydown="keyboard && onActivateKey($event)"
       @pointerdown="onBarDown"
       @pointermove="longPress.onPointermove"
       @pointerup="onBarUp"
@@ -296,6 +308,12 @@ function onBarUp(event: PointerEvent): void {
   background: var(--gantt-bar-bg, #c7d2fe);
   overflow: hidden;
   pointer-events: auto;
+}
+
+/* Keyboard focus ring (a11y layer, `keyboard` prop). */
+.gantt-bar:focus-visible {
+  outline: var(--gantt-focus-outline, 2px solid var(--gantt-progress-bg, #6366f1));
+  outline-offset: var(--gantt-focus-outline-offset, 2px);
 }
 
 /* Edge resize handles: thin strips at the bar's sides. */

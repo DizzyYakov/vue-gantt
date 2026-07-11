@@ -5,6 +5,17 @@ import { useGanttContext } from './useGanttContext'
 import { useGanttDrag } from './useGanttDrag'
 import { useRegisteredTask } from './useTaskRegistry'
 
+/**
+ * Enter/Space activate a keyboard-focused item like a click, by re-dispatching a
+ * real click on the focused element (so the existing `onClick` path runs). Shared
+ * by `GanttTask` and `GanttMilestone`.
+ */
+export function onActivateKey(event: KeyboardEvent): void {
+  if (event.key !== 'Enter' && event.key !== ' ') return
+  event.preventDefault()
+  if (event.currentTarget instanceof HTMLElement) event.currentTarget.click()
+}
+
 /** Props shared by `GanttTask` and `GanttMilestone` (both data modes). */
 export interface GanttItemProps {
   /** Presentational mode: render this already-resolved task without registering it. */

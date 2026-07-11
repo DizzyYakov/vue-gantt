@@ -40,6 +40,8 @@ export const GANTT_DEFAULTS = {
   criticalPath: false,
   slack: false,
   linkable: false,
+  keyboard: false,
+  ariaLabel: 'Gantt chart',
   cellCreatable: false,
   snapToGrid: false,
   autoSchedule: false,

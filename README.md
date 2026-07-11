@@ -33,6 +33,8 @@ design system. One runtime dependency (`date-fns`), fully typed.
   by a `height` cap or a fixed-height parent). The scrolling body is its own
   stacking context, so bars/dependency arrows never paint over the frozen
   sidebar/header while scrolling.
+- ⌨️ **Keyboard & a11y** (opt-in via `keyboard`) — focusable bars/milestones with
+  ARIA labels, a visible focus ring, and Enter/Space activation.
 - 🎨 **Themeable** through `--gantt-*` CSS variables; ships typed `.d.ts`.
 
 ## Install
@@ -328,6 +330,8 @@ parent collapses to the content height and simply grows to fit (as before).
 | `criticalPath`          | `boolean`                                         | `false`         | Highlight the tasks on the critical path (`data-critical` on their bars/markers; styled via `--gantt-critical-*`).                                                                                                                                            |
 | `slack`                 | `boolean`                                         | `false`         | Draw each task's free-float slack as a translucent bar after its end (the `<GanttSlack>` overlay; styled via `--gantt-slack-*`).                                                                                                                               |
 | `linkable`              | `boolean`                                         | `false`         | Create/edit dependencies by dragging between tasks.                                                                                                                                                                                                           |
+| `keyboard`              | `boolean`                                         | `false`         | Make task bars and milestones keyboard-focusable and operable: `role="button"`, `tabindex="0"`, a descriptive `aria-label`, a visible focus ring, and Enter/Space activation (fires the same `task-click`/`milestone-click` as a mouse click). The chart root also gets a labelled landmark. See [Keyboard & accessibility](#keyboard--accessibility).       |
+| `ariaLabel`             | `string`                                          | `'Gantt chart'` | Accessible name for the chart landmark (used when `keyboard` is on).                                                                                                                                                                                          |
 | `cellCreatable`         | `boolean`                                         | `false`         | Create a task by dragging across an empty grid row (emits `create`). Below the drag threshold a plain click still falls through to `cell-click`. Lives in the default `<GanttGrid>` — a custom `grid` slot takes over creation yourself.                     |
 | `dependencyShape`       | `(tail, head) => string`                          | `elbowPath`     | Connector path builder. Pass `elbowPath`/`straightPath`/`bezierPath` or your own.                                                                                                                                                                             |
 | `arrowHead`             | `() => ArrowHeadShape \| null`                    | `triangleArrow` | Arrowhead builder. Pass `triangleArrow`/`openArrow`/`noArrow` or your own (`null` = no head).                                                                                                                                                                 |
@@ -1295,6 +1299,32 @@ that:
 <Gantt :rows="rows" touch-targets draggable resizable editable tooltip />
 ```
 
+## Keyboard & accessibility
+
+Opt-in via `keyboard` (off by default — it doesn't change the tab order or add
+attributes unless enabled):
+
+- Every task bar (`.gantt-bar`) and milestone marker (`.gantt-milestone__marker`)
+  gets `role="button"`, `tabindex="0"`, and a descriptive `aria-label` — a task
+  reads as `"<name>, <start>–<end>, <progress>% complete"`, a milestone as
+  `"<name>, <date> (milestone)"`.
+- A visible focus ring (`--gantt-focus-outline` / `--gantt-focus-outline-offset`,
+  see [CSS variables](#css-variables)) appears on `:focus-visible`.
+- **Enter** / **Space** activates the focused bar/marker, firing the same
+  `task-click` / `milestone-click` event a mouse click would.
+- The chart root (`.gantt-root`) gets `role="group"` and an `aria-label` (defaults
+  to `'Gantt chart'`, override with the `ariaLabel` prop) as a landmark.
+
+```vue
+<Gantt :rows="rows" keyboard aria-label="Project timeline" />
+```
+
+> **Slice 1 scope.** This is the first accessibility pass — it covers focus +
+> activation only. Not yet included (planned for a follow-up slice): 2D arrow-key
+> navigation between bars/rows, moving or resizing a task from the keyboard, and
+> `grid`/`row` ARIA roles for the body. Tab currently walks the **visible**
+> (virtualized) bars in DOM order, so bars scrolled out of view are skipped.
+
 ## Localization (i18n)
 
 Date labels — the timeline **column headers**, the live **drag labels** and the
@@ -1403,6 +1433,13 @@ after this library's):
 | `--gantt-bar-text-shadow` | `none`    | Optional halo so the label reads over the fill. |
 | `--gantt-progress-bg`     | `#6366f1` | Progress fill colour.                           |
 | `--gantt-create-preview-bg` | bar bg (`#c7d2fe`) | Ghost preview background while drag-to-create is in progress (`cellCreatable`). |
+
+**Keyboard focus** (a11y layer — see [Keyboard & accessibility](#keyboard--accessibility))
+
+| Variable                          | Default                 | Purpose                                    |
+| ---------------------------------- | ------------------------ | ------------------------------------------- |
+| `--gantt-focus-outline`           | `2px solid` progress bg | Focus ring on a keyboard-focused bar/marker (`keyboard` prop). |
+| `--gantt-focus-outline-offset`    | `2px`                    | Offset of the focus ring from the bar/marker edge. |
 
 **Inline editing** (row/task name inputs — see [inline editing](#inline-editing))
 

@@ -83,6 +83,17 @@ const meta: Meta<typeof Gantt> = {
       control: 'boolean',
       description: 'Create/edit dependencies by dragging between tasks.',
     },
+    keyboard: {
+      control: 'boolean',
+      description:
+        'Make bars/milestones keyboard-focusable (`role="button"`, `tabindex="0"`, ' +
+        'a descriptive `aria-label`, a focus ring) and operable with Enter/Space. ' +
+        'Also labels the chart root as a landmark (slice 1: no arrow-key navigation yet).',
+    },
+    ariaLabel: {
+      control: 'text',
+      description: 'Accessible name for the chart landmark (used when `keyboard` is on).',
+    },
     cellCreatable: {
       control: 'boolean',
       description:
@@ -548,6 +559,17 @@ export const Localized: Story = {
  */
 export const Tooltip: Story = {
   args: { tooltip: true },
+}
+
+/**
+ * `keyboard` makes every bar/milestone focusable and operable: Tab through them
+ * (in DOM order, following the visible/virtualized set), see the focus ring, and
+ * press Enter/Space to fire the same click event a mouse would. The chart root
+ * also gets a labelled landmark (`ariaLabel`, defaults to `'Gantt chart'`). This
+ * is slice 1 of the a11y layer — no arrow-key navigation or keyboard drag/resize yet.
+ */
+export const Keyboard: Story = {
+  args: { keyboard: true, ariaLabel: 'Project timeline' },
 }
 
 /**

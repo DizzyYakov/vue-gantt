@@ -501,6 +501,15 @@ export interface GanttRootProps {
   /** Allow creating a task by dragging across an empty grid row (emits `create`). */
   cellCreatable?: boolean
   /**
+   * Make task bars and milestones keyboard-focusable and operable: each becomes a
+   * `role="button"` with `tabindex="0"`, a descriptive `aria-label`, a focus ring,
+   * and Enter/Space activation (fires the same `*-click` as a mouse click). The
+   * chart root also gets a labelled landmark. Off by default (no tab-order change).
+   */
+  keyboard?: boolean
+  /** Accessible name for the chart landmark (used when `keyboard` is on). Defaults to `'Gantt chart'`. */
+  ariaLabel?: string
+  /**
    * Connector path builder `(tail, head) => string` (SVG `d`). Pass a built-in
    * (`elbowPath` / `straightPath` / `bezierPath`) or your own. Defaults to
    * `elbowPath`.
@@ -628,6 +637,10 @@ export interface GanttConfig {
   slack: boolean
   /** Whether dependencies can be created/edited by dragging. */
   linkable: boolean
+  /** Whether bars/milestones are keyboard-focusable and operable (a11y layer). */
+  keyboard: boolean
+  /** Accessible name for the chart landmark (used when `keyboard` is on). */
+  ariaLabel: string
   /** Whether dragging across an empty grid row creates a task (emits `create`). */
   cellCreatable: boolean
   /** Connector path builder `(tail, head) => string` (resolved, never undefined). */
