@@ -18,6 +18,39 @@ const mountChart = (extraProps: Record<string, unknown> = {}) =>
     props: { rows, unit: 'day', columnWidth: 40, today: '2026-01-03', ...extraProps },
   })
 
+// Rows/tasks for roving-tabindex + arrow-key navigation: two rows, each with two
+// tasks declared out of chronological order (so sorting-by-start is exercised).
+const navRows: GanttRowData[] = [
+  {
+    id: 'r1',
+    name: 'R1',
+    tasks: [
+      { id: 'b', name: 'B', start: '2026-01-10', end: '2026-01-12' },
+      { id: 'a', name: 'A', start: '2026-01-01', end: '2026-01-05' },
+    ],
+  },
+  {
+    id: 'r2',
+    name: 'R2',
+    tasks: [{ id: 'c', name: 'C', start: '2026-01-03', end: '2026-01-06' }],
+  },
+]
+
+const mountNavChart = (extraProps: Record<string, unknown> = {}) =>
+  mount(Gantt, {
+    props: { rows: navRows, unit: 'day', columnWidth: 40, today: '2026-01-03', keyboard: true, ...extraProps },
+  })
+
+/** Map of task id -> its bar's rendered `tabindex` attribute. */
+function tabIndexById(wrapper: ReturnType<typeof mountNavChart>): Record<string, string | undefined> {
+  const out: Record<string, string | undefined> = {}
+  for (const bar of wrapper.findAll('.gantt-bar')) {
+    const id = bar.attributes('data-id')
+    if (id) out[id] = bar.attributes('tabindex')
+  }
+  return out
+}
+
 describe('accessibility (opt-in via `keyboard`)', () => {
   describe('keyboard: true', () => {
     it('gives the task bar a button role, tabindex and a descriptive aria-label', () => {
@@ -31,15 +64,20 @@ describe('accessibility (opt-in via `keyboard`)', () => {
       expect(label).toContain('complete')
     })
 
-    it('gives the milestone marker a button role, tabindex and a descriptive aria-label', () => {
+    it('gives the milestone marker a button role and a descriptive aria-label', async () => {
       const wrapper = mountChart({ keyboard: true })
       const marker = wrapper.find('.gantt-milestone__marker')
 
       expect(marker.attributes('role')).toBe('button')
-      expect(marker.attributes('tabindex')).toBe('0')
       const label = marker.attributes('aria-label')
       expect(label).toContain('M')
       expect(label).toContain('(milestone)')
+
+      // With roving tabindex, only the active item is a `0` tab stop (see the
+      // dedicated describe block below); this task bar isn't it by default, so
+      // focus it first to check it does get `0` once it becomes the anchor.
+      await marker.trigger('focus')
+      expect(marker.attributes('tabindex')).toBe('0')
     })
 
     it('activates the task bar with Enter and with Space', async () => {
@@ -66,7 +104,7 @@ describe('accessibility (opt-in via `keyboard`)', () => {
       expect((wrapper.emitted('milestone-click')![0]![0] as GanttTaskEvent).task.id).toBe('m')
     })
 
-    it('ignores other keys (no emit, no preventDefault)', async () => {
+    it('ignores non-activation, non-navigation keys (no emit, no preventDefault)', async () => {
       const wrapper = mountChart({ keyboard: true })
       const bar = wrapper.find('.gantt-bar[data-id="a"]')
 
@@ -75,16 +113,9 @@ describe('accessibility (opt-in via `keyboard`)', () => {
       await wrapper.vm.$nextTick()
       expect(wrapper.emitted('task-click')).toBeUndefined()
       expect(otherKey.defaultPrevented).toBe(false)
-
-      const arrowKey = new KeyboardEvent('keydown', {
-        key: 'ArrowRight',
-        bubbles: true,
-        cancelable: true,
-      })
-      bar.element.dispatchEvent(arrowKey)
-      await wrapper.vm.$nextTick()
-      expect(wrapper.emitted('task-click')).toBeUndefined()
-      expect(arrowKey.defaultPrevented).toBe(false)
+      // Arrow keys are a *navigation* key (roving focus), not an activation key —
+      // covered separately in the roving-tabindex describe block below, including
+      // their `preventDefault`.
     })
   })
 
@@ -134,6 +165,73 @@ describe('accessibility (opt-in via `keyboard`)', () => {
       const root = wrapper.find('.gantt-root')
 
       expect(root.attributes('aria-label')).toBe('My schedule')
+    })
+  })
+
+  describe('roving tabindex + arrow-key navigation (keyboard: true)', () => {
+    it('gives exactly one task tabindex=0 (the earliest by start, by default) and -1 to the rest', () => {
+      const wrapper = mountNavChart()
+      const tabIndexes = tabIndexById(wrapper)
+
+      // `a` (Jan 1) is the earliest task in the first navigable row, so it's the default anchor.
+      expect(tabIndexes).toEqual({ b: '-1', a: '0', c: '-1' })
+    })
+
+    it('moves the roving anchor to whichever bar receives focus', async () => {
+      const wrapper = mountNavChart()
+
+      await wrapper.find('.gantt-bar[data-id="c"]').trigger('focus')
+
+      expect(tabIndexById(wrapper)).toEqual({ b: '-1', a: '-1', c: '0' })
+    })
+
+    it('moves the roving anchor to the next-by-time task in the row on ArrowRight', async () => {
+      const wrapper = mountNavChart()
+      const barA = wrapper.find('.gantt-bar[data-id="a"]')
+
+      // `a` (Jan 1) is the default anchor; ArrowRight should move to `b` (Jan 10),
+      // the next task by start time in the same row (declared before `a` in props).
+      barA.element.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowRight', bubbles: true }))
+      await wrapper.vm.$nextTick()
+
+      expect(tabIndexById(wrapper)).toEqual({ b: '0', a: '-1', c: '-1' })
+    })
+
+    it('moves the roving anchor down into the other row on ArrowDown', async () => {
+      const wrapper = mountNavChart()
+      const barA = wrapper.find('.gantt-bar[data-id="a"]')
+
+      barA.element.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowDown', bubbles: true }))
+      await wrapper.vm.$nextTick()
+
+      expect(tabIndexById(wrapper)).toEqual({ b: '-1', a: '-1', c: '0' })
+    })
+
+    it('prevents the default action on a navigation key', async () => {
+      const wrapper = mountNavChart()
+      const barA = wrapper.find('.gantt-bar[data-id="a"]')
+
+      const arrowKey = new KeyboardEvent('keydown', { key: 'ArrowRight', bubbles: true, cancelable: true })
+      barA.element.dispatchEvent(arrowKey)
+      await wrapper.vm.$nextTick()
+
+      expect(arrowKey.defaultPrevented).toBe(true)
+    })
+  })
+
+  describe('roving tabindex + arrow-key navigation (keyboard: false)', () => {
+    it('renders no tabindex at all, and arrow keys are a no-op (no preventDefault, no anchor move)', async () => {
+      const wrapper = mountNavChart({ keyboard: false })
+      const barA = wrapper.find('.gantt-bar[data-id="a"]')
+
+      expect(tabIndexById(wrapper)).toEqual({ b: undefined, a: undefined, c: undefined })
+
+      const arrowKey = new KeyboardEvent('keydown', { key: 'ArrowRight', bubbles: true, cancelable: true })
+      barA.element.dispatchEvent(arrowKey)
+      await wrapper.vm.$nextTick()
+
+      expect(arrowKey.defaultPrevented).toBe(false)
+      expect(tabIndexById(wrapper)).toEqual({ b: undefined, a: undefined, c: undefined })
     })
   })
 })

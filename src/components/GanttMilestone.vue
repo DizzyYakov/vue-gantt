@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { format } from 'date-fns'
-import { onActivateKey, useGanttItem, type GanttItemProps } from '../composables/useGanttItem'
+import { useGanttItem, type GanttItemProps } from '../composables/useGanttItem'
 import { useHoverTooltip } from '../composables/useHoverTooltip'
 import type { GanttTaskEvent } from '../types'
 
@@ -27,6 +27,9 @@ const {
   previewLabel,
   hidden,
   resources,
+  keyboard,
+  tabIndex,
+  onItemKeydown,
 } = useGanttItem(props, { type: 'milestone' })
 
 // Click fires after a drag's pointerup; skip it so a drag isn't read as a click.
@@ -71,8 +74,6 @@ const labelMaxWidth = computed(() => {
 })
 // Tooltip date formatter, localized via the `locale` config.
 const fmtDate = (d: Date): string => format(d, 'd MMM yyyy', { locale: ctx.config.value.locale })
-// Keyboard-operable a11y layer (opt-in via `keyboard`).
-const keyboard = computed(() => ctx.config.value.keyboard)
 // Screen-reader label for the marker: name, date and that it's a milestone.
 const ariaLabel = computed(() => `${resolved.value.name}, ${fmtDate(resolved.value.start)} (milestone)`)
 // Highlight while a dependency drag hovers this milestone as a drop target.
@@ -119,14 +120,17 @@ function onMarkerUp(event: PointerEvent): void {
     <div
       ref="anchor"
       class="gantt-milestone__marker"
+      :data-id="resolved.id"
       :data-draggable="draggable || undefined"
       :data-link-target="linkTarget || undefined"
       :data-critical="critical || undefined"
       :role="keyboard ? 'button' : undefined"
-      :tabindex="keyboard ? 0 : undefined"
+      :tabindex="tabIndex"
       :aria-label="keyboard ? ariaLabel : undefined"
+      :data-gantt-focusable="keyboard ? '' : undefined"
       :style="markerStyle"
-      @keydown="keyboard && onActivateKey($event)"
+      @keydown="onItemKeydown"
+      @focus="keyboard && ctx.setKeyboardActive(resolved.id)"
       @pointerdown="onPointerDown"
       @pointerenter="onPointerEnter"
       @pointerleave="onPointerLeave"

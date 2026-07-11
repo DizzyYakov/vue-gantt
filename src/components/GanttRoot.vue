@@ -7,6 +7,7 @@ import { useGanttRows } from '../composables/useGanttRows'
 import { useGanttLink } from '../composables/useGanttLink'
 import { useGanttScale } from '../composables/useGanttScale'
 import { useGanttScrollApi } from '../composables/useGanttScrollApi'
+import { useGanttKeyboardNav } from '../composables/useGanttKeyboardNav'
 import { useGanttTimelineEdges } from '../composables/useGanttTimelineEdges'
 import { useGanttZoom } from '../composables/useGanttZoom'
 import { useGanttRegistry } from '../composables/useTaskRegistry'
@@ -522,6 +523,14 @@ const { scrollerEl, setScroller, applyScroll, scrollToDate, scrollToTask, scroll
     today: () => today.value,
   })
 
+// Roving keyboard focus across bars/milestones (a11y `keyboard` layer).
+const { keyboardActiveId, setKeyboardActive, moveKeyboardFocus } = useGanttKeyboardNav({
+  rows,
+  tasks,
+  scrollToTask,
+  scrollerEl,
+})
+
 // Edge auto-scroll during a drag (move/resize/link): scrolls the viewport toward
 // whichever edge the pointer approaches so off-screen destinations are reachable.
 // Clamp to the content extent (not `el.scrollWidth/Height`, which a dragged ghost
@@ -713,6 +722,9 @@ const context: GanttContext = {
   scrollToDate,
   scrollToTask,
   scrollToToday,
+  keyboardActiveId,
+  setKeyboardActive,
+  moveKeyboardFocus,
   zoomLevels,
   activeZoom,
   canZoomIn,

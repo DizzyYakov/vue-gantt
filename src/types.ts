@@ -2,6 +2,7 @@ import type { Day, Locale } from 'date-fns'
 import type { ComputedRef } from 'vue'
 import type { ArrowHeadBuilder } from './arrowHeads'
 import type { DependencyPathBuilder } from './dependencyPaths'
+import type { NavDirection } from './keyboardNav'
 
 /**
  * A time-axis granularity / "time group". Used both as the pixel-density base
@@ -1038,6 +1039,12 @@ export interface GanttContext {
   scrollToTask: (id: string, options?: GanttScrollOptions) => void
   /** Scroll to the current time (`today`). */
   scrollToToday: (options?: GanttScrollOptions) => void
+  /** Task holding roving keyboard focus (a11y `keyboard` layer), or `null`. */
+  keyboardActiveId: ComputedRef<string | null>
+  /** Make a task the roving keyboard-focus anchor (called on bar/marker `focus`). */
+  setKeyboardActive: (id: string) => void
+  /** Move roving keyboard focus in a direction (scrolls the target in + focuses it). */
+  moveKeyboardFocus: (direction: NavDirection) => void
   /** Available zoom levels (the `zoomLevels` prop or `DEFAULT_ZOOM_LEVELS`). */
   zoomLevels: ComputedRef<GanttZoomLevel[]>
   /** Id of the active zoom level, or `undefined` when no level is active. */
