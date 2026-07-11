@@ -30,6 +30,11 @@ export function firstTaskId(rows: ResolvedRow[]): string | null {
   return navigableRows(rows)[0]?.[0]?.id ?? null
 }
 
+/** First visible (non-hidden) row id, or `null` when every row is hidden. */
+export function firstRowId(rows: ResolvedRow[]): string | null {
+  return rows.find(row => !row.hidden)?.id ?? null
+}
+
 /** Index of the task closest in start time to `anchor` within `tasks` (min |Δstart|). */
 function closestByStart(tasks: ResolvedTask[], anchorStart: number): ResolvedTask {
   let best = tasks[0]!
@@ -86,4 +91,26 @@ export function nextTaskId(
   const targetRow = direction === 'up' ? grid[rowIndex - 1] : grid[rowIndex + 1]
   if (!targetRow) return currentRow[colIndex]!.id
   return closestByStart(targetRow, anchorStart).id
+}
+
+/**
+ * Compute the sidebar row id keyboard focus should move to across the visible
+ * (non-hidden) rows in order: up/down step by one (clamped at the ends), first/last
+ * jump to the ends. A `null`/absent `activeId` resolves to the first visible row.
+ * Returns `null` when there are no visible rows. (Left/Right — expand/collapse — is
+ * handled by the component, not here.)
+ */
+export function nextRowId(
+  rows: ResolvedRow[],
+  activeId: string | null,
+  direction: 'up' | 'down' | 'first' | 'last',
+): string | null {
+  const visible = rows.filter(row => !row.hidden)
+  if (visible.length === 0) return null
+  const index = visible.findIndex(row => row.id === activeId)
+  if (index === -1) return visible[0]!.id
+  if (direction === 'up') return visible[Math.max(0, index - 1)]!.id
+  if (direction === 'down') return visible[Math.min(visible.length - 1, index + 1)]!.id
+  if (direction === 'first') return visible[0]!.id
+  return visible[visible.length - 1]!.id
 }

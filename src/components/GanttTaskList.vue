@@ -1,12 +1,25 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
 import { useGanttContext } from '../composables/useGanttContext'
+import { onActivateKey } from '../composables/useGanttItem'
+import { useGanttSidebarNav } from '../composables/useGanttSidebarNav'
 import { useInlineEdit, vFocus } from '../composables/useInlineEdit'
 import { useLongPress } from '../composables/useLongPress'
+import { keyToNavDirection } from '../keyboardNav'
 import type { GanttRowEvent, ResolvedRow } from '../types'
 
-const { visibleRows, visibleGroups, toggleGroup, toggleRow, dispatch, config, editRow } =
-  useGanttContext()
+const {
+  visibleRows,
+  visibleGroups,
+  rows,
+  isTree,
+  toggleGroup,
+  toggleRow,
+  dispatch,
+  config,
+  editRow,
+  scrollToRow,
+} = useGanttContext()
 
 // Tree rows indent by depth; a plain (group/flat) row keeps depth 0 (no inline
 // pad, so the `[data-group]` indent still applies).
@@ -83,10 +96,60 @@ function onRowContextmenu(row: ResolvedRow, event: MouseEvent): void {
   emit('row-contextmenu', { row, event })
   dispatch('row-contextmenu', { row, event })
 }
+
+// ── Keyboard-accessible sidebar (opt-in via `keyboard`) ──────────────────────
+// The sidebar becomes a `tree` (WBS) / `list` of focusable rows with roving
+// tabindex: Up/Down move between rows (scrolling the target in), Left/Right
+// expand/collapse a branch, Enter/Space activate (`row-click`), Home/End jump.
+const keyboard = computed(() => config.value.keyboard)
+
+const listEl = ref<HTMLElement | null>(null)
+const { rovingRowId, setSidebarActive, moveSidebarFocus } = useGanttSidebarNav({
+  rows,
+  scrollToRow,
+  containerEl: listEl,
+})
+
+// Container / row ARIA role (guard-clause to avoid a nested ternary in the template).
+const sidebarRole = computed<'tree' | 'list' | undefined>(() => {
+  if (!keyboard.value) return undefined
+  return isTree.value ? 'tree' : 'list'
+})
+const rowRole = computed<'treeitem' | 'listitem' | undefined>(() => {
+  if (!keyboard.value) return undefined
+  return isTree.value ? 'treeitem' : 'listitem'
+})
+function rowTabIndex(row: ResolvedRow): number | undefined {
+  if (!keyboard.value) return undefined
+  return rovingRowId.value === row.id ? 0 : -1
+}
+function onRowKeydown(row: ResolvedRow, event: KeyboardEvent): void {
+  if (!keyboard.value) return
+  onActivateKey(event) // Enter/Space → a real click → `onRowClick`
+  const direction = keyToNavDirection(event.key)
+  if (!direction) return
+  event.preventDefault()
+  if (row.hasChildren && direction === 'right' && row.collapsed) {
+    toggleRow(row.id)
+    return
+  }
+  if (row.hasChildren && direction === 'left' && !row.collapsed) {
+    toggleRow(row.id)
+    return
+  }
+  // Left/Right on a leaf (or already in state) is a no-op inside moveSidebarFocus.
+  if (direction === 'left' || direction === 'right') return
+  moveSidebarFocus(direction)
+}
 </script>
 
 <template>
-  <div class="gantt-task-list" :style="{ height: 'var(--gantt-content-height)' }">
+  <div
+    ref="listEl"
+    class="gantt-task-list"
+    :role="sidebarRole"
+    :style="{ height: 'var(--gantt-content-height)' }"
+  >
     <!-- Collapsible group headers (a band above their member rows). -->
     <div
       v-for="group in visibleGroups"
@@ -124,7 +187,15 @@ function onRowContextmenu(row: ResolvedRow, event: MouseEvent): void {
       :data-depth="row.depth || undefined"
       :data-has-children="row.hasChildren || undefined"
       :data-collapsed="(row.hasChildren && row.collapsed) || undefined"
+      :role="rowRole"
+      :aria-level="keyboard && isTree ? row.depth + 1 : undefined"
+      :aria-expanded="keyboard && row.hasChildren ? !row.collapsed : undefined"
+      :aria-selected="keyboard ? rovingRowId === row.id : undefined"
+      :tabindex="rowTabIndex(row)"
+      :data-gantt-row-focusable="keyboard ? '' : undefined"
       :style="{ top: `${row.top}px`, height: `${row.height}px`, paddingLeft: rowIndent(row) }"
+      @keydown="onRowKeydown(row, $event)"
+      @focus="keyboard && setSidebarActive(row.id)"
       @pointerdown="onRowDown(row, $event)"
       @pointermove="longPress.onPointermove"
       @pointerup="longPress.onPointerup"
@@ -200,6 +271,12 @@ function onRowContextmenu(row: ResolvedRow, event: MouseEvent): void {
   align-items: center;
   overflow: hidden;
   border-bottom: var(--gantt-grid-border, 1px solid var(--gantt-grid-color, #e5e7eb));
+}
+
+/* Keyboard focus ring (a11y layer, `keyboard` prop). */
+.gantt-task-list__row:focus-visible {
+  outline: var(--gantt-focus-outline, 2px solid var(--gantt-progress-bg, #6366f1));
+  outline-offset: calc(-1 * var(--gantt-focus-outline-offset, 2px));
 }
 
 /* Member rows are indented under their group header. */

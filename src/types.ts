@@ -929,6 +929,8 @@ export interface GanttContext {
   config: ComputedRef<GanttConfig>
   /** All rows (from the `rows` prop or declarative registration), in render order. */
   rows: ComputedRef<ResolvedRow[]>
+  /** True when any row has a `parentId` (tree/WBS layout, not flat/group). */
+  isTree: ComputedRef<boolean>
   /** Rows intersecting the vertical viewport (all rows when unmeasured). */
   visibleRows: ComputedRef<ResolvedRow[]>
   /** All groups (header bands), in render order. Empty when nothing is grouped. */
@@ -1037,6 +1039,8 @@ export interface GanttContext {
   scrollToDate: (date: Date | string | number, options?: GanttScrollOptions) => void
   /** Scroll to a task by id (horizontal to its start, vertical to its row). */
   scrollToTask: (id: string, options?: GanttScrollOptions) => void
+  /** Vertically scroll a row's band into view (used by keyboard sidebar nav). */
+  scrollToRow: (id: string, options?: GanttScrollOptions) => void
   /** Scroll to the current time (`today`). */
   scrollToToday: (options?: GanttScrollOptions) => void
   /** Task holding roving keyboard focus (a11y `keyboard` layer), or `null`. */

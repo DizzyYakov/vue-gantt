@@ -67,7 +67,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   focuses. Keyboard editing: on the focused task, Shift + Arrow Left/Right nudge it
   one base unit earlier/later (emits `move`, needs `draggable`) and Alt + Arrow
   Left/Right resize its end (emits `resize`, needs `resizable`, tasks only) — the
-  library stays controlled. Grid/row ARIA roles are a planned follow-up.
+  library stays controlled. Accessible sidebar: with `keyboard` the row list is a
+  `tree`/`list` of `treeitem`/`listitem` rows
+  (`aria-level`/`aria-expanded`/`aria-selected`) with roving focus — Arrow Up/Down
+  move between rows, Arrow Left/Right expand/collapse a branch, Enter/Space activate
+  (`row-click`), Home/End jump. (The time body keeps bars as `role="button"` in the
+  labelled landmark rather than forcing a `role="grid"` mapping over time-positioned
+  bars.)
 
 - **Drag-to-create.** New opt-in `cellCreatable` prop: dragging across an empty
   grid row draws a ghost bar and, on release past the drag threshold, emits a
