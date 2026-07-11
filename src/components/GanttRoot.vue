@@ -86,6 +86,8 @@ const props = withDefaults(defineProps<GanttRootProps>(), {
   criticalPath: GANTT_DEFAULTS.criticalPath,
   slack: GANTT_DEFAULTS.slack,
   linkable: GANTT_DEFAULTS.linkable,
+  keyboard: GANTT_DEFAULTS.keyboard,
+  ariaLabel: GANTT_DEFAULTS.ariaLabel,
   dependencyShape: elbowPath,
   arrowHead: triangleArrow,
   snapToGrid: GANTT_DEFAULTS.snapToGrid,
@@ -378,6 +380,8 @@ const config = computed<GanttConfig>(() => ({
   criticalPath: props.criticalPath,
   slack: props.slack,
   linkable: props.linkable,
+  keyboard: props.keyboard,
+  ariaLabel: props.ariaLabel,
   dependencyShape: props.dependencyShape,
   arrowHead: props.arrowHead,
   snapToGrid: props.snapToGrid,
@@ -749,6 +753,8 @@ defineExpose({
     class="gantt-root"
     :data-unit="config.unit"
     :data-touch="config.touchTargets || undefined"
+    :role="config.keyboard ? 'group' : undefined"
+    :aria-label="config.keyboard ? config.ariaLabel : undefined"
     :style="rootStyle"
   >
     <slot :rows="rows" :tasks="tasks" :columns="scale.columns.value" :config="config" />

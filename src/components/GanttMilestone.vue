@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { format } from 'date-fns'
-import { useGanttItem, type GanttItemProps } from '../composables/useGanttItem'
+import { onActivateKey, useGanttItem, type GanttItemProps } from '../composables/useGanttItem'
 import { useHoverTooltip } from '../composables/useHoverTooltip'
 import type { GanttTaskEvent } from '../types'
 
@@ -71,6 +71,10 @@ const labelMaxWidth = computed(() => {
 })
 // Tooltip date formatter, localized via the `locale` config.
 const fmtDate = (d: Date): string => format(d, 'd MMM yyyy', { locale: ctx.config.value.locale })
+// Keyboard-operable a11y layer (opt-in via `keyboard`).
+const keyboard = computed(() => ctx.config.value.keyboard)
+// Screen-reader label for the marker: name, date and that it's a milestone.
+const ariaLabel = computed(() => `${resolved.value.name}, ${fmtDate(resolved.value.start)} (milestone)`)
 // Highlight while a dependency drag hovers this milestone as a drop target.
 const linkTarget = computed(() => ctx.linkDraft.value?.over === resolved.value.id)
 // Whether this milestone is on the critical path (only when `criticalPath` is on).
@@ -118,7 +122,11 @@ function onMarkerUp(event: PointerEvent): void {
       :data-draggable="draggable || undefined"
       :data-link-target="linkTarget || undefined"
       :data-critical="critical || undefined"
+      :role="keyboard ? 'button' : undefined"
+      :tabindex="keyboard ? 0 : undefined"
+      :aria-label="keyboard ? ariaLabel : undefined"
       :style="markerStyle"
+      @keydown="keyboard && onActivateKey($event)"
       @pointerdown="onPointerDown"
       @pointerenter="onPointerEnter"
       @pointerleave="onPointerLeave"
@@ -181,6 +189,12 @@ function onMarkerUp(event: PointerEvent): void {
      hover/click/drag where a connector crosses it. */
   z-index: 1;
   pointer-events: auto;
+}
+
+/* Keyboard focus ring (a11y layer, `keyboard` prop). */
+.gantt-milestone__marker:focus-visible {
+  outline: var(--gantt-focus-outline, 2px solid var(--gantt-progress-bg, #6366f1));
+  outline-offset: var(--gantt-focus-outline-offset, 2px);
 }
 
 .gantt-milestone__marker[data-draggable] {

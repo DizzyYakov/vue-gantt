@@ -52,6 +52,18 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Added
 
+- **Keyboard & screen-reader accessibility (opt-in `keyboard`).** A new `keyboard`
+  prop makes task bars and milestones focusable and operable: each becomes a
+  `role="button"` with `tabindex="0"`, a descriptive `aria-label` (task: name,
+  span, progress; milestone: name, date), a visible focus ring
+  (`--gantt-focus-outline` / `--gantt-focus-outline-offset` tokens), and Enter/Space
+  activation firing the same `task-click`/`milestone-click` as a mouse click. The
+  chart root becomes a labelled landmark (`role="group"` + `aria-label`, configurable
+  via the new `ariaLabel` prop, default `'Gantt chart'`). Off by default (no
+  tab-order change). This first slice covers focus + activation + ARIA on
+  bars/milestones; 2-D arrow-key roving, keyboard task-move and grid/row roles are a
+  planned follow-up.
+
 - **Headless milestone-label clamping.** The `#milestone` slot now also receives
   `labelMaxWidth` — the adaptive horizontal gap (px) to the next item on the same
   row — so a consumer-rendered label can bind `:style="{ maxWidth: labelMaxWidth +
