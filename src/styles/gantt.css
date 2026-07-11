@@ -156,6 +156,13 @@
   /* Non-working shading (weekends / holidays / off periods) */
   --gantt-nonworking-bg: rgb(100 116 139 / 8%);
 
+  /* Resource workload histogram (GanttWorkload) */
+  --gantt-workload-row-height: 44px;
+  --gantt-workload-bar-bg: #6366f1;
+  --gantt-workload-bar-radius: 2px 2px 0 0;
+  --gantt-workload-bar-opacity: 0.85;
+  --gantt-workload-label-font-size: 0.8em;
+
   /* Today marker */
   --gantt-today-color: #ef4444;
   --gantt-today-border: 2px solid var(--gantt-today-color);

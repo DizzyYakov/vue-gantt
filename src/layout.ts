@@ -310,3 +310,75 @@ export function conflictSegments(tasks: ResolvedTask[]): { start: Date; end: Dat
   }
   return segments
 }
+
+/** A time interval and how many of a resource's tasks are active across it. */
+export interface WorkloadSegment {
+  start: Date
+  end: Date
+  /** Concurrent task count over this interval (≥1). */
+  count: number
+}
+
+/** A resource's workload histogram: its piecewise-constant load + its peak. */
+export interface ResourceWorkload {
+  resourceId: string
+  /** Contiguous load segments (only where `count ≥ 1`), in time order. */
+  segments: WorkloadSegment[]
+  /** Highest concurrent count over the whole timeline (0 when idle). */
+  peak: number
+}
+
+export interface WorkloadOptions {
+  /** Resources to report, in this order. Defaults to every resource with tasks. */
+  resourceIds?: string[]
+}
+
+/**
+ * Concurrent-load histogram per resource: for each resource, the piecewise
+ * intervals where 1+ of its assigned tasks run at once, carrying the running
+ * count (a task assigned to N resources contributes to each). A sweep-line like
+ * `conflictSegments`, but emitting a segment on every coverage change and keyed by
+ * resource. Zero-length tasks (milestones) are ignored. Pure and framework-free.
+ */
+/** A sweep-line boundary: `+1` at a task's start, `-1` at its end. */
+type SweepEvent = { t: number; delta: 1 | -1 }
+
+export function resourceWorkload(
+  tasks: ResolvedTask[],
+  options: WorkloadOptions = {},
+): ResourceWorkload[] {
+  // Bucket each task's [start, end) boundary events by the resources it's assigned to.
+  const eventsByResource = new Map<string, SweepEvent[]>()
+  for (const task of tasks) {
+    const start = task.start.getTime()
+    const end = task.end.getTime()
+    if (end <= start) continue
+    for (const resourceId of task.resourceIds) {
+      const events = eventsByResource.get(resourceId) ?? []
+      events.push({ t: start, delta: 1 }, { t: end, delta: -1 })
+      eventsByResource.set(resourceId, events)
+    }
+  }
+
+  const resourceIds = options.resourceIds ?? [...eventsByResource.keys()]
+  return resourceIds.map(resourceId => {
+    const events = eventsByResource.get(resourceId) ?? []
+    // At equal times close (-1) before open (+1) so touching tasks don't stack.
+    events.sort((a, b) => a.t - b.t || a.delta - b.delta)
+
+    const segments: WorkloadSegment[] = []
+    let coverage = 0
+    let peak = 0
+    let segmentStart = 0
+    for (const event of events) {
+      // Emit the interval that just ended at this boundary (if anything ran).
+      if (coverage > 0 && event.t > segmentStart) {
+        segments.push({ start: new Date(segmentStart), end: new Date(event.t), count: coverage })
+      }
+      coverage += event.delta
+      if (coverage > peak) peak = coverage
+      segmentStart = event.t
+    }
+    return { resourceId, segments, peak }
+  })
+}

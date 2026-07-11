@@ -286,6 +286,7 @@ every [chart event](#events); the rest are the building blocks.
 | `<GanttBaselines>`    | — (default slot `{ task }`)                      | —                                                |
 | `<GanttPeriods>`      | — (default slot `{ period }`)                    | —                                                |
 | `<GanttMarkers>`      | — (default slot `{ marker }`)                    | —                                                |
+| `<GanttWorkload>`     | — (slots `label` `{ resource, workload }` · default `{ workload, peak, bars }`) | — |
 | `<GanttToday>`        | `interval?: number` (ms, default `1000`)         | —                                                |
 | `<GanttZoom>`         | — (reads context; default slot for custom UI)    | — (calls `setZoom`/`zoomIn`/`zoomOut` on root)   |
 
@@ -784,6 +785,7 @@ import {
   validateRows,
   sprintPeriods, // build a run of equal-length timeline periods (sprints; see SprintPeriodsOptions)
   nonWorkingBands, // compute non-working (weekend/holiday/off-period) bands over a range
+  resourceWorkload, // sweep-line concurrent-load histogram per resource (see Resource workload; types: WorkloadSegment, ResourceWorkload, WorkloadOptions)
   toCSV,
   downloadCSV, // serialize tasks to CSV / trigger a browser download (see Export)
   toExcel,
@@ -1103,6 +1105,67 @@ assigns it via the presentational `<GanttTask :task>` / `<GanttMilestone :task>`
 mode rather than a dedicated prop. In the shared context, `ctx.resources` holds
 every resolved resource and `ctx.resourcesFor(task)` resolves one task's
 assignees (unknown ids dropped).
+
+## Resource workload
+
+`<GanttWorkload>` is a standalone, headless **load histogram** you mount BELOW
+the chart body — one row per resource showing how many of its assigned tasks run
+concurrently over time. It reads the shared context, so it must be a descendant
+of `GanttRoot`, but it is **not** part of `GanttView`'s layout (no dedicated slot
+there): place it as a sibling underneath, inside the same `GanttRoot`.
+
+```vue
+<script setup>
+import { GanttRoot, GanttView, GanttWorkload } from '@dizzy_yakov/vue-gantt'
+
+const resources = [
+  { id: 'alice', name: 'Alice', color: '#6366f1' },
+  { id: 'bob', name: 'Bob', color: '#f59e0b' },
+]
+
+const rows = [
+  {
+    id: 'dev',
+    name: 'Development',
+    tasks: [
+      { id: 'spec', name: 'Spec', start: '2026-06-01', end: '2026-06-12', resourceIds: ['alice'] },
+      { id: 'build', name: 'Build', start: '2026-06-08', end: '2026-06-20', resourceIds: ['alice', 'bob'] },
+    ],
+  },
+]
+</script>
+
+<template>
+  <GanttRoot :rows="rows" :resources="resources">
+    <GanttView height="240" />
+    <GanttWorkload />
+  </GanttRoot>
+</template>
+```
+
+Resources come from the `resources` prop + each task's `resourceIds` — same data
+as [Resources](#resources). Its label gutter is the same width as
+`--gantt-sidebar-width` and its track mirrors the chart body's horizontal scroll
+via `viewport.scrollLeft` (a `transform: translateX`), so bars stay aligned with
+the timeline above as you scroll — the sync is one-directional (the strip
+follows the chart, not the other way around); mount its container at the same
+width as the chart above it.
+
+Rendering is driven by the exported sweep-line helper `resourceWorkload(tasks,
+options?)` (in `src/layout.ts`): for each resource it returns a `{ resourceId,
+segments, peak }` where `segments` are the piecewise `{ start, end, count }`
+intervals where 1+ of its tasks overlap (milestones ignored) and `peak` is the
+highest concurrent count — used to scale every bar's height so rows are
+comparable. `WorkloadOptions.resourceIds` picks/orders which resources to
+report (defaults to every resource with tasks). Each bar uses its resource's own
+`color` when set, falling back to `--gantt-workload-bar-bg`.
+
+Two slots: `label` (`{ resource, workload }`) replaces the per-row label gutter;
+the default slot (`{ workload, peak, bars }`) replaces the whole bar track for a
+fully custom render. Each `bars` entry carries a pre-computed
+`{ segment, left, width, heightRatio }` (px `left`/`width` off the axis, `heightRatio`
+= `count / peak`), so a custom render positions its own bars without needing the
+chart context inside the slot.
 
 ## Non-working calendar
 
@@ -1677,6 +1740,19 @@ hatched look.
 | `--gantt-period-color`        | `inherit`            | Header period label colour.                     |
 | `--gantt-period-font-weight`  | `600`                | Header period label weight.                     |
 | `--gantt-period-font-size`    | header font size     | Header period label size.                       |
+
+**Resource workload** (`GanttWorkload`) — see [Resource workload](#resource-workload)
+
+| Variable                             | Default   | Purpose                                                     |
+| ------------------------------------- | --------- | ------------------------------------------------------------- |
+| `--gantt-workload-row-height`         | `44px`    | Height of one resource's histogram row.                       |
+| `--gantt-workload-bar-bg`             | `#6366f1` | Bar background (a resource's own `color` takes priority).     |
+| `--gantt-workload-bar-radius`         | `2px 2px 0 0` | Bar corner radius.                                         |
+| `--gantt-workload-bar-opacity`        | `0.85`    | Bar opacity.                                                   |
+| `--gantt-workload-label-font-size`    | `0.8em`   | Label gutter font size.                                        |
+
+`<GanttWorkload>` also reads an un-defaulted hook, `--gantt-workload-bg` (falls
+back to `--gantt-surface`), for the whole widget's background.
 
 **Non-working calendar**
 

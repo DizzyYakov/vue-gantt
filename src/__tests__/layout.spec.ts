@@ -6,12 +6,25 @@ import {
   layoutGroups,
   layoutRows,
   layoutTree,
+  resourceWorkload,
   type GroupMeta,
 } from '../layout'
 import type { GanttRow, ResolvedTask } from '../types'
 
 const task = (id: string, start: string, end: string): ResolvedTask => {
   const row = normalizeRow({ id: 'r', tasks: [{ id, start, end }] }, 0)
+  return row.tasks[0]!
+}
+
+/** Like `task`, but assignable to one or more resources for `resourceWorkload`. */
+const resourceTask = (
+  id: string,
+  start: string,
+  end: string,
+  resourceIds: string[],
+  type: 'task' | 'milestone' = 'task',
+): ResolvedTask => {
+  const row = normalizeRow({ id: 'r', tasks: [{ id, start, end, resourceIds, type }] }, 0)
   return row.tasks[0]!
 }
 
@@ -335,5 +348,76 @@ describe('conflictSegments', () => {
         task('b', '2026-06-05', '2026-06-09'),
       ]),
     ).toHaveLength(0)
+  })
+})
+
+describe('resourceWorkload', () => {
+  it('emits count 1 → 2 → 1 segments for two overlapping tasks on one resource, with peak=2', () => {
+    const tasks = [
+      resourceTask('a', '2026-06-01', '2026-06-10', ['u1']),
+      resourceTask('b', '2026-06-05', '2026-06-15', ['u1']),
+    ]
+    const [workload] = resourceWorkload(tasks)
+    expect(workload!.resourceId).toBe('u1')
+    expect(workload!.peak).toBe(2)
+    expect(workload!.segments.map(s => [s.start.getDate(), s.end.getDate(), s.count])).toEqual([
+      [1, 5, 1],
+      [5, 10, 2],
+      [10, 15, 1],
+    ])
+  })
+
+  it('does not stack touching (non-overlapping) tasks: two count=1 segments, peak=1', () => {
+    const tasks = [
+      resourceTask('a', '2026-06-01', '2026-06-05', ['u1']),
+      resourceTask('b', '2026-06-05', '2026-06-09', ['u1']),
+    ]
+    const [workload] = resourceWorkload(tasks)
+    expect(workload!.peak).toBe(1)
+    expect(workload!.segments.map(s => [s.start.getDate(), s.end.getDate(), s.count])).toEqual([
+      [1, 5, 1],
+      [5, 9, 1],
+    ])
+  })
+
+  it('counts a task assigned to two resources in both resources\' workloads', () => {
+    const tasks = [resourceTask('a', '2026-06-01', '2026-06-05', ['u1', 'u2'])]
+    const result = resourceWorkload(tasks)
+    expect(result.map(w => w.resourceId)).toEqual(['u1', 'u2'])
+    expect(result[0]!.segments).toHaveLength(1)
+    expect(result[0]!.segments[0]!.count).toBe(1)
+    expect(result[1]!.segments).toHaveLength(1)
+    expect(result[1]!.segments[0]!.count).toBe(1)
+  })
+
+  it('ignores a milestone (zero-length task): contributes no segments/events at all', () => {
+    const tasks = [resourceTask('m', '2026-06-01', '2026-06-01', ['u1'], 'milestone')]
+    // With no `resourceIds` option, a resource that only has a milestone never
+    // enters the sweep-line at all (no events), so it's absent from the result.
+    expect(resourceWorkload(tasks)).toEqual([])
+    // Forcing the resource via `options.resourceIds` still yields no segments/peak.
+    expect(resourceWorkload(tasks, { resourceIds: ['u1'] })).toEqual([
+      { resourceId: 'u1', segments: [], peak: 0 },
+    ])
+  })
+
+  it('honors options.resourceIds for the reported set and order, including idle resources', () => {
+    const tasks = [resourceTask('a', '2026-06-01', '2026-06-05', ['u1'])]
+    const result = resourceWorkload(tasks, { resourceIds: ['u2', 'u1', 'u3'] })
+    expect(result.map(w => w.resourceId)).toEqual(['u2', 'u1', 'u3'])
+    expect(result[0]).toEqual({ resourceId: 'u2', segments: [], peak: 0 })
+    expect(result[2]).toEqual({ resourceId: 'u3', segments: [], peak: 0 })
+    expect(result[1]!.peak).toBe(1)
+  })
+
+  it('returns an empty array for empty tasks with no resourceIds option', () => {
+    expect(resourceWorkload([])).toEqual([])
+  })
+
+  it('returns idle entries for every requested resource when tasks is empty', () => {
+    expect(resourceWorkload([], { resourceIds: ['u1', 'u2'] })).toEqual([
+      { resourceId: 'u1', segments: [], peak: 0 },
+      { resourceId: 'u2', segments: [], peak: 0 },
+    ])
   })
 })

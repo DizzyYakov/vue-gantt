@@ -52,6 +52,17 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Added
 
+- **Resource workload histogram.** A new pure `resourceWorkload(tasks, options?)`
+  aggregates each resource's concurrent task load over time (a `conflictSegments`-style
+  sweep-line → `{ resourceId, segments: { start, end, count }[], peak }[]`), and a
+  headless `GanttWorkload` component renders it as a per-resource histogram strip
+  meant to sit below the chart. It shares the chart context and mirrors the body's
+  horizontal scroll (via `viewport.scrollLeft`) to stay axis-aligned — a standalone
+  overlay, not a `GanttView` footer. Themed via `--gantt-workload-*` tokens (bars use
+  `resource.color` when set); `#label`/default slots customize the render.
+  `resourceWorkload`/`GanttWorkload` and `WorkloadSegment`/`ResourceWorkload`/
+  `WorkloadOptions` are exported from the package root.
+
 - **Keyboard & screen-reader accessibility (opt-in `keyboard`).** A new `keyboard`
   prop makes task bars and milestones focusable and operable: each becomes a
   `role="button"` with `tabindex="0"`, a descriptive `aria-label` (task: name,
