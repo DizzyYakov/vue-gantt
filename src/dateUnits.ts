@@ -1,4 +1,5 @@
 import {
+  add,
   endOfDay,
   endOfHour,
   endOfMinute,
@@ -16,6 +17,27 @@ import {
 } from 'date-fns'
 import type { Day, Locale } from 'date-fns'
 import type { GanttUnit } from './types'
+
+/** Shift `date` by `amount` whole `unit`s (negative moves earlier). A quarter is
+ *  three months; the fallback unit is a day. Used for keyboard nudge move/resize. */
+export function addUnits(date: Date, unit: GanttUnit, amount: number): Date {
+  switch (unit) {
+    case 'year':
+      return add(date, { years: amount })
+    case 'quarter':
+      return add(date, { months: amount * 3 })
+    case 'month':
+      return add(date, { months: amount })
+    case 'week':
+      return add(date, { weeks: amount })
+    case 'hour':
+      return add(date, { hours: amount })
+    case 'minute':
+      return add(date, { minutes: amount })
+    default:
+      return add(date, { days: amount })
+  }
+}
 
 /** Week-boundary options: an explicit `weekStartsOn` wins over the locale. */
 export interface WeekBoundaryOptions {

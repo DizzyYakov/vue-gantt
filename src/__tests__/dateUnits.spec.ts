@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { ceilToUnit, floorToUnit } from '../dateUnits'
+import { addUnits, ceilToUnit, floorToUnit } from '../dateUnits'
 import type { GanttUnit } from '../types'
 
 // A date deliberately not aligned to any unit boundary, so every case actually
@@ -55,5 +55,71 @@ describe('ceilToUnit', () => {
     // 2026-05-17 instead of the default Sat 2026-05-16.
     const result = ceilToUnit(mid, 'week', { weekStartsOn: 1 })
     expect(result.getTime()).toBe(new Date(2026, 4, 17, 23, 59, 59, 999).getTime())
+  })
+})
+
+describe('addUnits', () => {
+  // A plain reference date not on any special boundary, so shifts are easy to reason about.
+  const base = new Date(2026, 4, 15, 13, 42, 30, 500) // 2026-05-15 13:42:30.500 (Fri)
+
+  it('shifts by +1 day', () => {
+    expect(addUnits(base, 'day', 1).getTime()).toBe(new Date(2026, 4, 16, 13, 42, 30, 500).getTime())
+  })
+
+  it('shifts by -1 day', () => {
+    expect(addUnits(base, 'day', -1).getTime()).toBe(new Date(2026, 4, 14, 13, 42, 30, 500).getTime())
+  })
+
+  it('shifts by +1 week', () => {
+    expect(addUnits(base, 'week', 1).getTime()).toBe(new Date(2026, 4, 22, 13, 42, 30, 500).getTime())
+  })
+
+  it('shifts by -1 week', () => {
+    expect(addUnits(base, 'week', -1).getTime()).toBe(new Date(2026, 4, 8, 13, 42, 30, 500).getTime())
+  })
+
+  it('shifts by +1 month', () => {
+    expect(addUnits(base, 'month', 1).getTime()).toBe(new Date(2026, 5, 15, 13, 42, 30, 500).getTime())
+  })
+
+  it('shifts by -1 month', () => {
+    expect(addUnits(base, 'month', -1).getTime()).toBe(new Date(2026, 3, 15, 13, 42, 30, 500).getTime())
+  })
+
+  it('shifts a quarter by +3 months', () => {
+    expect(addUnits(base, 'quarter', 1).getTime()).toBe(new Date(2026, 7, 15, 13, 42, 30, 500).getTime())
+  })
+
+  it('shifts a quarter by -3 months', () => {
+    expect(addUnits(base, 'quarter', -1).getTime()).toBe(new Date(2026, 1, 15, 13, 42, 30, 500).getTime())
+  })
+
+  it('shifts by +1 year', () => {
+    expect(addUnits(base, 'year', 1).getTime()).toBe(new Date(2027, 4, 15, 13, 42, 30, 500).getTime())
+  })
+
+  it('shifts by -1 year', () => {
+    expect(addUnits(base, 'year', -1).getTime()).toBe(new Date(2025, 4, 15, 13, 42, 30, 500).getTime())
+  })
+
+  it('shifts by +1 hour', () => {
+    expect(addUnits(base, 'hour', 1).getTime()).toBe(new Date(2026, 4, 15, 14, 42, 30, 500).getTime())
+  })
+
+  it('shifts by -1 hour', () => {
+    expect(addUnits(base, 'hour', -1).getTime()).toBe(new Date(2026, 4, 15, 12, 42, 30, 500).getTime())
+  })
+
+  it('shifts by +1 minute', () => {
+    expect(addUnits(base, 'minute', 1).getTime()).toBe(new Date(2026, 4, 15, 13, 43, 30, 500).getTime())
+  })
+
+  it('shifts by -1 minute', () => {
+    expect(addUnits(base, 'minute', -1).getTime()).toBe(new Date(2026, 4, 15, 13, 41, 30, 500).getTime())
+  })
+
+  it('falls back to day for an unrecognized unit', () => {
+    const result = addUnits(base, 'not-a-unit' as GanttUnit, 1)
+    expect(result.getTime()).toBe(new Date(2026, 4, 16, 13, 42, 30, 500).getTime())
   })
 })
