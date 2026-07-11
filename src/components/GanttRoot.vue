@@ -30,6 +30,7 @@ import { DEFAULT_ZOOM_LEVELS } from '../zoom'
 import type {
   GanttBand,
   GanttCellEvent,
+  GanttCreateEvent,
   GanttColumn,
   GanttColumnEvent,
   GanttConfig,
@@ -88,6 +89,7 @@ const props = withDefaults(defineProps<GanttRootProps>(), {
   linkable: GANTT_DEFAULTS.linkable,
   keyboard: GANTT_DEFAULTS.keyboard,
   ariaLabel: GANTT_DEFAULTS.ariaLabel,
+  cellCreatable: GANTT_DEFAULTS.cellCreatable,
   dependencyShape: elbowPath,
   arrowHead: triangleArrow,
   snapToGrid: GANTT_DEFAULTS.snapToGrid,
@@ -137,6 +139,7 @@ const emit = defineEmits<{
   'row-contextmenu': [event: GanttRowEvent]
   'cell-click': [event: GanttCellEvent]
   'cell-dblclick': [event: GanttCellEvent]
+  'create': [event: GanttCreateEvent]
   'column-click': [event: GanttColumnEvent]
   'dependency-click': [event: GanttDependencyEvent]
 }>()
@@ -382,6 +385,7 @@ const config = computed<GanttConfig>(() => ({
   linkable: props.linkable,
   keyboard: props.keyboard,
   ariaLabel: props.ariaLabel,
+  cellCreatable: props.cellCreatable,
   dependencyShape: props.dependencyShape,
   arrowHead: props.arrowHead,
   snapToGrid: props.snapToGrid,

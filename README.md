@@ -25,8 +25,9 @@ design system. One runtime dependency (`date-fns`), fully typed.
 - 🏷️ **Row decoration** — an add-on `row-suffix` slot for badges, plus a
   `meta` → `data-*` passthrough for CSS-only row highlighting.
 - ✋ **Drag interactions** (all opt-in, controlled): move, resize an edge, set
-  progress, and create/edit dependencies — with a live, formattable tooltip and
-  edge **auto-scroll** to reach drop targets off-screen.
+  progress, create/edit dependencies, and drag out a new task on an empty row —
+  with a live, formattable tooltip and edge **auto-scroll** to reach drop
+  targets off-screen.
 - 🧊 Frozen header + sidebar, sticky period labels, **row/column
   virtualization** (kicks in whenever the scroll viewport is height-constrained —
   by a `height` cap or a fixed-height parent). The scrolling body is its own
@@ -331,6 +332,7 @@ parent collapses to the content height and simply grows to fit (as before).
 | `linkable`              | `boolean`                                         | `false`         | Create/edit dependencies by dragging between tasks.                                                                                                                                                                                                           |
 | `keyboard`              | `boolean`                                         | `false`         | Make task bars and milestones keyboard-focusable and operable: `role="button"`, `tabindex="0"`, a descriptive `aria-label`, a visible focus ring, and Enter/Space activation (fires the same `task-click`/`milestone-click` as a mouse click). The chart root also gets a labelled landmark. See [Keyboard & accessibility](#keyboard--accessibility).       |
 | `ariaLabel`             | `string`                                          | `'Gantt chart'` | Accessible name for the chart landmark (used when `keyboard` is on).                                                                                                                                                                                          |
+| `cellCreatable`         | `boolean`                                         | `false`         | Create a task by dragging across an empty grid row (emits `create`). Below the drag threshold a plain click still falls through to `cell-click`. Lives in the default `<GanttGrid>` — a custom `grid` slot takes over creation yourself.                     |
 | `dependencyShape`       | `(tail, head) => string`                          | `elbowPath`     | Connector path builder. Pass `elbowPath`/`straightPath`/`bezierPath` or your own.                                                                                                                                                                             |
 | `arrowHead`             | `() => ArrowHeadShape \| null`                    | `triangleArrow` | Arrowhead builder. Pass `triangleArrow`/`openArrow`/`noArrow` or your own (`null` = no head).                                                                                                                                                                 |
 | `snapToGrid`            | `boolean`                                         | `false`         | Snap dragged dates to the base unit (off = full precision).                                                                                                                                                                                                   |
@@ -417,6 +419,40 @@ are both exported. Style the split bits with the `--gantt-split-*`
 > target / draft arrow) keeps following the content, and scrolling stops on release.
 > This is automatic; there are no extra props.
 
+### Drag-to-create tasks
+
+With `cellCreatable`, dragging across an empty grid row (left mouse button) draws
+a translucent ghost preview and emits `create` on release — the chart stays
+controlled, so you add the task yourself (e.g. with the [`addTask`](#utilities)
+utility):
+
+```vue
+<script setup>
+import { ref } from 'vue'
+import { Gantt, addTask } from '@dizzy_yakov/vue-gantt'
+
+const rows = ref(initialRows)
+
+function onCreate({ row, start, end }) {
+  rows.value = addTask(rows.value, row.id, { id: crypto.randomUUID(), name: 'New task', start, end })
+}
+</script>
+
+<template>
+  <Gantt :rows="rows" cell-creatable @create="onCreate" />
+</template>
+```
+
+Below the drag threshold (same 3px mouse / 8px touch slop as `draggable`) the
+press is read as a plain click, so `cell-click` still fires as before. `snapToGrid`
+snaps the drafted `start`/`end` like any other drag. Style the ghost via
+`--gantt-create-preview-bg` (falls back to `--gantt-bar-bg`) plus the shared
+`--gantt-bar-height` / `--gantt-bar-radius` / `--gantt-ghost-opacity` tokens.
+
+> `cell-click`/`cell-dblclick` and drag-to-create both live in the default
+> `<GanttGrid>`; overriding the `grid` slot on `<GanttView>` / `<Gantt>` replaces
+> it entirely, so creation (and cell clicks) become your responsibility.
+
 ### Deadlines & constraints
 
 Give a task a `deadline` (a target date) or a scheduling `constraint` and the
@@ -484,6 +520,7 @@ your data (the [utilities](#utilities) make this one-liners).
 | `task-*` / `milestone-*`       | `GanttTaskEvent` `{ task, event }`           | `click` / `dblclick` / `contextmenu` on a bar/marker.  |
 | `row-*`                        | `GanttRowEvent` `{ row, event }`             | `click` / `dblclick` / `contextmenu` on a sidebar row. |
 | `cell-click` / `cell-dblclick` | `GanttCellEvent` `{ row, date, event }`      | an empty body cell is clicked.                         |
+| `create`                       | `GanttCreateEvent` `{ row, start, end, event }` | a new task is dragged out of an empty row (`cellCreatable`). |
 | `column-click`                 | `GanttColumnEvent` `{ column, tier, event }` | a timeline header cell is clicked.                     |
 | `dependency-click`             | `GanttDependencyEvent` `{ from, to, event }` | an arrow is clicked.                                   |
 
@@ -747,6 +784,8 @@ import {
   nonWorkingBands, // compute non-working (weekend/holiday/off-period) bands over a range
   toCSV,
   downloadCSV, // serialize tasks to CSV / trigger a browser download (see Export)
+  toExcel,
+  downloadExcel, // serialize tasks to a SpreadsheetML (.xls) workbook / trigger a download (see Export)
 } from '@dizzy_yakov/vue-gantt'
 ```
 
@@ -758,7 +797,7 @@ back the matching `criticalPath` / `slack` props: the prop visualizes what the
 utility computes, so you can also call the utility directly (e.g. to label or report
 the schedule).
 
-### Export (CSV)
+### Export (CSV / Excel)
 
 `toCSV(rows, options?)` serializes the tasks of your `rows` to an RFC-4180 CSV
 string — one line per task, with its owning row's id/name as leading columns. It's
@@ -786,6 +825,43 @@ const csv = toCSV(rows, {
 Default columns: `Row Id`, `Row`, `Task Id`, `Task`, `Type`, `Start`, `End`,
 `Progress`, `Dependencies`, `Deadline`. Options: `columns`, `delimiter` (`,`),
 `dateFormat` (`yyyy-MM-dd`), `locale`, `header` (`true`), `eol` (`\r\n`).
+
+`toExcel(rows, options?)` serializes the same tasks to a **SpreadsheetML 2003**
+workbook string — the `.xls` XML dialect Excel opens directly. It's pure,
+framework-free and **zero-dependency** (no `xlsx`/`exceljs`), and cells are
+typed: dates are real Excel dates (`ss:Type="DateTime"`) and progress is a
+`ss:Type="Number"` cell, so Excel sorts/filters them correctly instead of
+treating everything as text. `downloadExcel(rows, filename?, options?)` wraps
+it and triggers a browser download (`filename` defaults to `'gantt.xls'`, MIME
+`application/vnd.ms-excel`).
+
+```ts
+import { toExcel, downloadExcel } from '@dizzy_yakov/vue-gantt'
+
+downloadExcel(rows, 'schedule.xls')
+```
+
+```vue
+<button @click="downloadExcel(rows, 'schedule.xls')">Export to Excel</button>
+```
+
+```ts
+// Custom columns / sheet name — a Number/DateTime `type` drives the cell's
+// SpreadsheetML data type (defaults to 'String'):
+const xls = toExcel(rows, {
+  sheetName: 'Schedule',
+  columns: [
+    { header: 'ID', value: (task) => task.id },
+    { header: 'Start', type: 'DateTime', value: (task) => task.start },
+    { header: 'Progress %', type: 'Number', value: (task) => task.progress ?? 0 },
+  ],
+})
+```
+
+Default columns: same as CSV — `Row Id`, `Row`, `Task Id`, `Task`, `Type`,
+`Start` (`DateTime`), `End` (`DateTime`), `Progress` (`Number`),
+`Dependencies`, `Deadline` (`DateTime`). Options: `columns`, `sheetName`
+(`'Tasks'`), `header` (`true`).
 
 ## Row grouping
 
@@ -1356,6 +1432,7 @@ after this library's):
 | `--gantt-bar-font-size`   | `0.8em`   | Bar label font size.                            |
 | `--gantt-bar-text-shadow` | `none`    | Optional halo so the label reads over the fill. |
 | `--gantt-progress-bg`     | `#6366f1` | Progress fill colour.                           |
+| `--gantt-create-preview-bg` | bar bg (`#c7d2fe`) | Ghost preview background while drag-to-create is in progress (`cellCreatable`). |
 
 **Keyboard focus** (a11y layer — see [Keyboard & accessibility](#keyboard--accessibility))
 

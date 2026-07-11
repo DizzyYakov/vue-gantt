@@ -42,6 +42,7 @@ export const GANTT_DEFAULTS = {
   linkable: false,
   keyboard: false,
   ariaLabel: 'Gantt chart',
+  cellCreatable: false,
   snapToGrid: false,
   autoSchedule: false,
   timelineMode: 'fixed',
