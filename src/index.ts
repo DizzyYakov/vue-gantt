@@ -2,7 +2,6 @@
 // `vue-gantt/styles`. Bundled into a single `dist/gantt.css`.
 import './styles/gantt.css'
 
-// Components
 export { default as Gantt } from './components/Gantt.vue'
 export { default as GanttRoot } from './components/GanttRoot.vue'
 export { default as GanttView } from './components/GanttView.vue'
@@ -27,7 +26,6 @@ export { default as GanttWorkload } from './components/GanttWorkload.vue'
 export { default as GanttToday } from './components/GanttToday.vue'
 export { default as GanttZoom } from './components/GanttZoom.vue'
 
-// Composables
 export { useGanttContext } from './composables/useGanttContext'
 export { useGanttScale, type ScaleOptions } from './composables/useGanttScale'
 export { useGanttItem, type GanttItemProps } from './composables/useGanttItem'
@@ -44,7 +42,6 @@ export {
   type GanttHistoryOptions,
 } from './composables/useGanttHistory'
 
-// Context primitives + layout helpers
 export {
   GANTT_CONTEXT,
   GANTT_ROW,
@@ -64,7 +61,7 @@ export type {
   WorkloadOptions,
 } from './layout'
 
-// Zoom / view-mode presets — pass your own to the `zoomLevels` prop
+/** Zoom / view-mode presets — pass your own to the `zoomLevels` prop. */
 export { DEFAULT_ZOOM_LEVELS } from './zoom'
 
 // Dependency connector path builders — pass one (or your own) to `dependencyShape`
@@ -75,7 +72,6 @@ export type { DependencyPoint, DependencyPathBuilder } from './dependencyPaths'
 export { triangleArrow, openArrow, noArrow } from './arrowHeads'
 export type { ArrowHeadShape, ArrowHeadBuilder } from './arrowHeads'
 
-// Data utilities (pure helpers over `rows`/`tasks`)
 export {
   flattenTasks,
   findTask,
@@ -105,7 +101,6 @@ export {
   nonWorkingBands,
 } from './utils'
 
-// Data export (pure serializers + browser download helpers)
 export { toCSV, downloadCSV, type CSVColumn, type CSVOptions } from './export'
 export {
   toExcel,
@@ -115,7 +110,6 @@ export {
   type ExcelCellType,
 } from './export'
 
-// Types
 export type {
   GanttBand,
   GanttCellEvent,

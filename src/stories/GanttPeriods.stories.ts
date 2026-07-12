@@ -1,4 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/vue3-vite'
+import Gantt from '../components/Gantt.vue'
 import GanttDependencies from '../components/GanttDependencies.vue'
 import GanttGrid from '../components/GanttGrid.vue'
 import GanttPeriods from '../components/GanttPeriods.vue'
@@ -9,6 +10,7 @@ import GanttTaskList from '../components/GanttTaskList.vue'
 import GanttTimeline from '../components/GanttTimeline.vue'
 import type { GanttPeriod } from '../types'
 import { sprintPeriods } from '../utils'
+import { sampleRows } from './_shared'
 
 /**
  * Custom timeline **periods** (e.g. sprints) group the *time axis*, unlike
@@ -123,4 +125,57 @@ export const UnevenBands: Story = {
     { id: 'build', start: '2026-06-05', end: '2026-06-24', label: 'Build phase' },
     { id: 'hardening', start: '2026-06-24', end: '2026-07-02', label: 'Hardening' },
   ]),
+}
+
+const wrapperPeriods = sprintPeriods({ from: '2026-06-01', every: 2, unit: 'week', count: 4 })
+
+/**
+ * On the `<Gantt>` wrapper, replace each period's **header label** with the `period`
+ * slot (`{ period }`). You get the resolved period (`id`, `label`, `start`/`end`,
+ * `meta`); here it renders a runner icon before the sprint name. The background
+ * bands are untouched.
+ */
+export const HeaderSlot: Story = {
+  render: () => ({
+    components: { Gantt },
+    setup: () => ({ rows: sampleRows, periods: wrapperPeriods }),
+    template: `
+      <Gantt :rows="rows" :periods="periods" :tiers="['month','week','day']" :height="300">
+        <template #period="{ period }">
+          <span style="display:inline-flex;align-items:center;gap:4px;font-weight:700;color:#6366f1">
+            🏃 {{ period.label }}
+          </span>
+        </template>
+      </Gantt>`,
+  }),
+}
+
+/**
+ * Replace the whole body **band layer** with the `period-bands` slot (`{ periods }`).
+ * Each `ResolvedPeriod` carries pixel geometry (`x` / `width`) and an `index` for the
+ * alternating fill, so you can paint the bands yourself — here as tinted, alternating
+ * full-height columns behind the bars.
+ */
+export const BandsSlot: Story = {
+  render: () => ({
+    components: { Gantt },
+    setup: () => ({ rows: sampleRows, periods: wrapperPeriods }),
+    template: `
+      <Gantt :rows="rows" :periods="periods" :tiers="['month','week','day']" :height="300">
+        <template #period-bands="{ periods }">
+          <div style="position:absolute;inset:0;pointer-events:none">
+            <div
+              v-for="p in periods"
+              :key="p.id"
+              :style="{
+                position: 'absolute', top: 0, bottom: 0,
+                left: p.x + 'px', width: p.width + 'px',
+                background: p.index % 2 ? 'rgba(16,185,129,.10)' : 'rgba(99,102,241,.10)',
+                borderLeft: '1px dashed #cbd5e1',
+              }"
+            />
+          </div>
+        </template>
+      </Gantt>`,
+  }),
 }
