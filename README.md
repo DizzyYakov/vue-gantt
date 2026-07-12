@@ -1900,3 +1900,16 @@ bun test:coverage               # Vitest coverage (jsdom) with thresholds
 an intended visual change with `bunx playwright test -c playwright.visual.config.ts
 --update-snapshots`. `test:coverage` runs the jsdom suite with v8 coverage and floor
 thresholds; the default `bun test:unit` / CI run collects no coverage and stays fast.
+
+## Feedback & roadmap
+
+The library's direction is driven by what people actually build with it — feedback is
+very welcome:
+
+- 🐛 [Report a bug](https://github.com/DizzyYakov/vue-gantt/issues/new?template=bug_report.yml)
+- 💡 [Request a feature](https://github.com/DizzyYakov/vue-gantt/issues/new?template=feature_request.yml)
+  (tell us the **use case**)
+- 💬 [Discussions](https://github.com/DizzyYakov/vue-gantt/discussions) — questions, ideas, "what would you use this for?"
+- 🗺️ [Roadmap](ROADMAP.md) — what's shipped and what's being considered
+
+👍 reacting to an existing issue is the best way to signal demand.
