@@ -4,6 +4,13 @@ All notable changes to this project are documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [1.9.1](https://github.com/DizzyYakov/vue-gantt/compare/vue-gantt-v1.9.0...vue-gantt-v1.9.1) (2026-07-12)
+
+
+### Bug Fixes
+
+* repo link ([68a1962](https://github.com/DizzyYakov/vue-gantt/commit/68a19623b2045d209da88377deb7cb36541db63b))
+
 ## [1.9.0](https://github.com/DizzyYakov/vue-gantt/compare/vue-gantt-v1.8.0...vue-gantt-v1.9.0) (2026-07-12)
 
 
