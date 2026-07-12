@@ -60,7 +60,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   uncaught page error (shared `e2e/fixtures.ts` gate); the story sweep also runs a
   strict axe accessibility check (all rules) per story. Neither is part of the blocking
   CI — they're diagnostic. Dev-only deps `@axe-core/playwright` + `http-server`; new
-  `test:stories` / `test:e2e:install` scripts. Library code and public API unchanged.
+  `test:stories` / `test:e2e:install` scripts. `bun test:e2e` also drives multi-step
+  interaction flows against the demo with real pointer gestures — drag-move/resize,
+  drag-to-create, dependency linking, group collapse, keyboard move and undo (desktop
+  only). Library code and public API unchanged.
 
 - **Resource workload histogram.** A new pure `resourceWorkload(tasks, options?)`
   aggregates each resource's concurrent task load over time (a `conflictSegments`-style
