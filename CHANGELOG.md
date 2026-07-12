@@ -65,6 +65,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   up group summaries in a single bucketed pass (O(rows) instead of O(groups × rows)),
   measured ~2.6× faster at 10k tasks / 400 groups. No API/behavior changes.
 
+### Fixed
+
+- **Keyboard-scrollable chart viewport (a11y).** The scroll container now carries
+  `tabindex="0"`, so keyboard-only users can focus the timeline and scroll it with the
+  arrow keys (WCAG 2.1.1). Clears the axe `scrollable-region-focusable` violation.
+  Structural — applies regardless of the opt-in `keyboard` bar/row navigation.
+
 ### Added
 
 - **Resource workload histogram.** A new pure `resourceWorkload(tasks, options?)`
