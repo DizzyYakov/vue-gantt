@@ -52,6 +52,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Added
 
+- **Browser-mode unit tests (real Chromium/Firefox/WebKit).** New `*.browser.spec.ts`
+  suite, run via `bun test:browser` (Vitest's Playwright provider), covers behavior
+  jsdom can't: row/column virtualization against a measured viewport, frozen
+  `position: sticky` header/sidebar, and reading the `--gantt-dependency-handle-radius`
+  token via `getComputedStyle`. Separate config (`vitest.browser.config.ts`); excluded
+  from the default jsdom run and from the blocking CI. Dev-only deps `@vitest/browser`,
+  `@vitest/browser-playwright`, `vitest-browser-vue`. No library/API changes.
+
 - **Resource workload histogram.** A new pure `resourceWorkload(tasks, options?)`
   aggregates each resource's concurrent task load over time (a `conflictSegments`-style
   sweep-line → `{ resourceId, segments: { start, end, count }[], peak }[]`), and a

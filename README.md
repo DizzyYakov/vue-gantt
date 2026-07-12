@@ -1852,3 +1852,16 @@ bun lint
 
 The demo (`src/dev/`) is not part of the published package; the library entry is
 [`src/index.ts`](src/index.ts).
+
+### Browser-mode unit tests
+
+Some behavior needs a real browser — virtualization (measured viewport), frozen
+`position: sticky` header/sidebar, scroll metrics, and `getComputedStyle` token
+reads — which jsdom can't do. Those live in `*.browser.spec.ts` and run in real
+Chromium/Firefox/WebKit via Vitest's Playwright provider. They're **excluded** from
+the default `bun test:unit` run (and from CI, which has no browsers):
+
+```sh
+bunx playwright install     # one-time: chromium, firefox, webkit
+bun test:browser            # runs *.browser.spec.ts across the three engines
+```
