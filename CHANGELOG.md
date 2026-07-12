@@ -4,6 +4,36 @@ All notable changes to this project are documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [1.9.0](https://github.com/DizzyYakov/vue-gantt/compare/vue-gantt-v1.8.0...vue-gantt-v1.9.0) (2026-07-12)
+
+
+### Features
+
+* accessible keyboard-navigable sidebar (a11y slice 4) ([88fbfc5](https://github.com/DizzyYakov/vue-gantt/commit/88fbfc59fd9848a39eaec19ae8d55bc7ffe58ac0))
+* accessible keyboard-navigable sidebar (a11y slice 4) ([39199c8](https://github.com/DizzyYakov/vue-gantt/commit/39199c8a9a5423ff69cda579d812f4894259533b))
+* arrow-key roving navigation for keyboard a11y (slice 2) ([4bc7aed](https://github.com/DizzyYakov/vue-gantt/commit/4bc7aedff7d6052986dac08053d264a1a82715d0))
+* arrow-key roving navigation for keyboard a11y (slice 2) ([15ae096](https://github.com/DizzyYakov/vue-gantt/commit/15ae0966f480a2bd9f7a9efe0384c3039c94e675))
+* bracket-style summary bars for rolled-up rows ([5705c3f](https://github.com/DizzyYakov/vue-gantt/commit/5705c3f0eafbe8069901f48b55a75ba1cb819eb7))
+* bracket-style summary bars for rolled-up rows ([9605d71](https://github.com/DizzyYakov/vue-gantt/commit/9605d71137f4bd1aceaa0de999d57b1444335c32))
+* drag-to-create tasks on empty grid rows ([f5aacb1](https://github.com/DizzyYakov/vue-gantt/commit/f5aacb1c31e8faca93875f8650f5be5c539385e2))
+* drag-to-create tasks on empty grid rows ([467943d](https://github.com/DizzyYakov/vue-gantt/commit/467943d4295d63cd5894b0fcfc8fad3b30bea22f))
+* Excel export (SpreadsheetML 2003) ([3258a7e](https://github.com/DizzyYakov/vue-gantt/commit/3258a7efd4cfbc155eed2346131133b693b8dccf))
+* Excel export (SpreadsheetML 2003) ([dc7a27b](https://github.com/DizzyYakov/vue-gantt/commit/dc7a27bb085994022dc313187016838ecde2e5ed))
+* keyboard move/resize of the focused task (a11y slice 3) ([e60f98e](https://github.com/DizzyYakov/vue-gantt/commit/e60f98e46c6ee69b16e51cf29267137e4ab2d491))
+* keyboard move/resize of the focused task (a11y slice 3) ([716e3c4](https://github.com/DizzyYakov/vue-gantt/commit/716e3c4f17c22269625c912432dc5bff5e87320e))
+* opt-in keyboard & screen-reader accessibility (slice 1) ([e24612d](https://github.com/DizzyYakov/vue-gantt/commit/e24612dd11214bc47ca7088d398409f754a96bbb))
+* opt-in keyboard & screen-reader accessibility (slice 1) ([0dd85c6](https://github.com/DizzyYakov/vue-gantt/commit/0dd85c6f4b388cc7a418ed8bb9d9fe5b2f9faf96))
+* resource workload histogram ([960d940](https://github.com/DizzyYakov/vue-gantt/commit/960d94042cceac0d4ac67e4f8c8e179400372228))
+* resource workload histogram ([4af87bb](https://github.com/DizzyYakov/vue-gantt/commit/4af87bb6e6bb089413b2a14723e35cdf2d4b56fa))
+
+
+### Bug Fixes
+
+* make the chart scroll region keyboard-focusable ([cfd5da6](https://github.com/DizzyYakov/vue-gantt/commit/cfd5da6249ded0f45f21f061b5945709f7bc63e7))
+* make the chart scroll region keyboard-focusable ([7f06a78](https://github.com/DizzyYakov/vue-gantt/commit/7f06a781c6fb3e9c971d3677ccd07d5c216cfe27))
+* sidebar overlap, external theme overrides, milestone label clamping ([240434e](https://github.com/DizzyYakov/vue-gantt/commit/240434e1c3c757efecad8ebe7b7d3f6e888538ac))
+* sidebar overlap, external theme overrides, milestone label clamping ([704564c](https://github.com/DizzyYakov/vue-gantt/commit/704564c47fca4dc1350f0deaadba7351c680e46d))
+
 ## [1.8.0](https://github.com/LavaYasha/vue-gantt/compare/vue-gantt-v1.7.0...vue-gantt-v1.8.0) (2026-07-07)
 
 
