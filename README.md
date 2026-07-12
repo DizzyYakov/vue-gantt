@@ -1862,7 +1862,9 @@ browsers once, then run either suite:
 ```sh
 bun test:e2e:install            # one-time: install browsers (chromium, firefox, webkit)
 bun test:e2e                    # demo flows across chromium/firefox/webkit + Mobile Chrome/Safari;
-                                # fails on any console error
+                                # fails on any console error. Includes multi-step interaction
+                                # flows (drag-move/resize/create, dependency link, group collapse,
+                                # keyboard move, undo) driven with real pointer gestures — desktop only
 bun test:stories                # builds Storybook, then sweeps every story across the desktop
                                 # engines: console-error gate + strict axe a11y (all rules)
 ```

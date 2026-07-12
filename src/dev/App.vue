@@ -61,6 +61,8 @@ const resizable = ref(true)
 const progressDraggable = ref(true)
 const editable = ref(true)
 const linkable = ref(true)
+// Keyboard a11y (focusable bars + roving nav + Shift/Alt-arrow move/resize).
+const keyboard = ref(true)
 // Auto-scheduling (cascade successors on move/resize/link) — v-model:rows only.
 const autoSchedule = ref(true)
 
@@ -278,6 +280,10 @@ const onMoveGrouped = (e: GanttMoveEvent) => (groupedRows.value = applyMove(grou
         edit dependencies
       </label>
       <label class="control__item">
+        <input v-model="keyboard" type="checkbox" />
+        keyboard a11y
+      </label>
+      <label class="control__item">
         <input v-model="autoSchedule" type="checkbox" />
         auto-schedule (v-model only)
       </label>
@@ -292,6 +298,7 @@ const onMoveGrouped = (e: GanttMoveEvent) => (groupedRows.value = applyMove(grou
       <div class="card">
         <Gantt
           ref="mainGantt"
+          data-testid="chart-main"
           :rows="rows"
           :tiers="tiers"
           :column-width="columnWidth"
@@ -301,6 +308,7 @@ const onMoveGrouped = (e: GanttMoveEvent) => (groupedRows.value = applyMove(grou
           :resizable="resizable"
           :progress-draggable="progressDraggable"
           :linkable="linkable"
+          :keyboard="keyboard"
           :cell-creatable="true"
           :drag-label="dragLabel"
           @create="onCreateRows"
@@ -331,6 +339,7 @@ const onMoveGrouped = (e: GanttMoveEvent) => (groupedRows.value = applyMove(grou
       <div class="card">
         <Gantt
           v-model:rows="vmodelRows"
+          data-testid="chart-vmodel"
           :tiers="tiers"
           :column-width="columnWidth"
           :height="200"
@@ -403,6 +412,7 @@ const onMoveGrouped = (e: GanttMoveEvent) => (groupedRows.value = applyMove(grou
       </p>
       <div class="card">
         <Gantt
+          data-testid="chart-grouped"
           :rows="groupedRows"
           :groups="groups"
           :tiers="tiers"
