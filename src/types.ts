@@ -2,6 +2,7 @@ import type { Day, Locale } from 'date-fns'
 import type { ComputedRef } from 'vue'
 import type { ArrowHeadBuilder } from './arrowHeads'
 import type { DependencyPathBuilder } from './dependencyPaths'
+import type { NavDirection } from './keyboardNav'
 
 /**
  * A time-axis granularity / "time group". Used both as the pixel-density base
@@ -80,6 +81,14 @@ export interface GanttConstraint {
  * - `conflict` — keep full bars; hatch/flag the overlapping span.
  */
 export type GanttOverlapMode = 'lanes' | 'overlap' | 'cascade' | 'conflict'
+
+/**
+ * How rolled-up rows (WBS tree parents and row groups) draw their summary:
+ * - `bracket` — a thin span line with downward end caps toward the children
+ *   when expanded, and a filled accent bar (with progress) when collapsed;
+ * - `bar` — a plain filled bar with a progress fill in both states (legacy).
+ */
+export type GanttSummaryStyle = 'bracket' | 'bar'
 
 /**
  * How the timeline axis reacts at its horizontal edges:
@@ -463,6 +472,8 @@ export interface GanttRootProps {
   sidebarWidth?: number
   /** How tasks overlapping in time on the same row are displayed. */
   overlap?: GanttOverlapMode
+  /** How rolled-up rows (tree parents, groups) draw their summary. Defaults to `bracket`. */
+  summaryStyle?: GanttSummaryStyle
   /** Allow dragging bars along their row to change start/end. */
   draggable?: boolean
   /** Also allow dragging a task into another row (implies dragging). */
@@ -488,6 +499,17 @@ export interface GanttRootProps {
   slack?: boolean
   /** Allow creating/editing dependencies by dragging between tasks. */
   linkable?: boolean
+  /** Allow creating a task by dragging across an empty grid row (emits `create`). */
+  cellCreatable?: boolean
+  /**
+   * Make task bars and milestones keyboard-focusable and operable: each becomes a
+   * `role="button"` with `tabindex="0"`, a descriptive `aria-label`, a focus ring,
+   * and Enter/Space activation (fires the same `*-click` as a mouse click). The
+   * chart root also gets a labelled landmark. Off by default (no tab-order change).
+   */
+  keyboard?: boolean
+  /** Accessible name for the chart landmark (used when `keyboard` is on). Defaults to `'Gantt chart'`. */
+  ariaLabel?: string
   /**
    * Connector path builder `(tail, head) => string` (SVG `d`). Pass a built-in
    * (`elbowPath` / `straightPath` / `bezierPath`) or your own. Defaults to
@@ -594,6 +616,8 @@ export interface GanttConfig {
   sidebarWidth: number
   /** How tasks overlapping on the same row are displayed. */
   overlap: GanttOverlapMode
+  /** How rolled-up rows (tree parents, groups) draw their summary. */
+  summaryStyle: GanttSummaryStyle
   /** Whether bars can be dragged along their row. */
   draggable: boolean
   /** Whether bars can be dragged between rows. */
@@ -614,6 +638,12 @@ export interface GanttConfig {
   slack: boolean
   /** Whether dependencies can be created/edited by dragging. */
   linkable: boolean
+  /** Whether bars/milestones are keyboard-focusable and operable (a11y layer). */
+  keyboard: boolean
+  /** Accessible name for the chart landmark (used when `keyboard` is on). */
+  ariaLabel: string
+  /** Whether dragging across an empty grid row creates a task (emits `create`). */
+  cellCreatable: boolean
   /** Connector path builder `(tail, head) => string` (resolved, never undefined). */
   dependencyShape: DependencyPathBuilder
   /** Arrowhead builder `() => ArrowHeadShape | null` (resolved, never undefined). */
@@ -785,6 +815,17 @@ export interface GanttCellEvent {
   event: MouseEvent
 }
 
+/** Payload for a drag-to-create gesture on an empty body cell (`cellCreatable`). */
+export interface GanttCreateEvent {
+  /** The row the new task should belong to. */
+  row: ResolvedRow
+  /** Start of the dragged span (earlier edge). */
+  start: Date
+  /** End of the dragged span (later edge). */
+  end: Date
+  event: PointerEvent
+}
+
 /** Payload for pointer interactions on a timeline header column. */
 export interface GanttColumnEvent {
   column: GanttColumn
@@ -819,6 +860,7 @@ export interface GanttEventMap {
   'row-contextmenu': GanttRowEvent
   'cell-click': GanttCellEvent
   'cell-dblclick': GanttCellEvent
+  'create': GanttCreateEvent
   'column-click': GanttColumnEvent
   'dependency-click': GanttDependencyEvent
   'dependency-create': GanttDependencyChange
@@ -887,6 +929,8 @@ export interface GanttContext {
   config: ComputedRef<GanttConfig>
   /** All rows (from the `rows` prop or declarative registration), in render order. */
   rows: ComputedRef<ResolvedRow[]>
+  /** True when any row has a `parentId` (tree/WBS layout, not flat/group). */
+  isTree: ComputedRef<boolean>
   /** Rows intersecting the vertical viewport (all rows when unmeasured). */
   visibleRows: ComputedRef<ResolvedRow[]>
   /** All groups (header bands), in render order. Empty when nothing is grouped. */
@@ -995,8 +1039,16 @@ export interface GanttContext {
   scrollToDate: (date: Date | string | number, options?: GanttScrollOptions) => void
   /** Scroll to a task by id (horizontal to its start, vertical to its row). */
   scrollToTask: (id: string, options?: GanttScrollOptions) => void
+  /** Vertically scroll a row's band into view (used by keyboard sidebar nav). */
+  scrollToRow: (id: string, options?: GanttScrollOptions) => void
   /** Scroll to the current time (`today`). */
   scrollToToday: (options?: GanttScrollOptions) => void
+  /** Task holding roving keyboard focus (a11y `keyboard` layer), or `null`. */
+  keyboardActiveId: ComputedRef<string | null>
+  /** Make a task the roving keyboard-focus anchor (called on bar/marker `focus`). */
+  setKeyboardActive: (id: string) => void
+  /** Move roving keyboard focus in a direction (scrolls the target in + focuses it). */
+  moveKeyboardFocus: (direction: NavDirection) => void
   /** Available zoom levels (the `zoomLevels` prop or `DEFAULT_ZOOM_LEVELS`). */
   zoomLevels: ComputedRef<GanttZoomLevel[]>
   /** Id of the active zoom level, or `undefined` when no level is active. */

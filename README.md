@@ -25,11 +25,18 @@ design system. One runtime dependency (`date-fns`), fully typed.
 - 🏷️ **Row decoration** — an add-on `row-suffix` slot for badges, plus a
   `meta` → `data-*` passthrough for CSS-only row highlighting.
 - ✋ **Drag interactions** (all opt-in, controlled): move, resize an edge, set
-  progress, and create/edit dependencies — with a live, formattable tooltip and
-  edge **auto-scroll** to reach drop targets off-screen.
+  progress, create/edit dependencies, and drag out a new task on an empty row —
+  with a live, formattable tooltip and edge **auto-scroll** to reach drop
+  targets off-screen.
 - 🧊 Frozen header + sidebar, sticky period labels, **row/column
   virtualization** (kicks in whenever the scroll viewport is height-constrained —
-  by a `height` cap or a fixed-height parent).
+  by a `height` cap or a fixed-height parent). The scrolling body is its own
+  stacking context, so bars/dependency arrows never paint over the frozen
+  sidebar/header while scrolling.
+- ⌨️ **Keyboard & a11y** (opt-in via `keyboard`) — focusable bars/milestones with
+  ARIA labels, a visible focus ring, Enter/Space activation, roving arrow-key
+  navigation between bars, Shift/Alt+arrow keyboard move/resize, and an accessible
+  sidebar (`tree`/`list` roles, arrow-key row navigation, expand/collapse).
 - 🎨 **Themeable** through `--gantt-*` CSS variables; ships typed `.d.ts`.
 
 ## Install
@@ -174,15 +181,21 @@ free-float days by task id (empty unless `slack` is on).
 (`{ row, index, depth, collapsed, hasChildren, toggle }`), `row-suffix`
 (same scope minus `toggle` — an add-on rendered *after* the row name without
 replacing `row`; see [Row decoration](#row-decoration)), `group`
-(`{ group, collapsed, toggle }`), `groupBar` (`{ group }`), `summaryBar`
-(`{ row }` — a WBS parent row, see [row tree](#row-tree-wbs)), `column`
+(`{ group, collapsed, toggle }`), `groupBar` (`{ group, collapsed, left, width }`),
+`summaryBar` (`{ row, collapsed, left, width }` — a WBS parent row, see
+[row tree](#row-tree-wbs)), `column`
 (`{ column, tier }`), `period` (`{ period }`), `marker` (`{ marker }` — a
 `ResolvedMarker`, see [Reference markers](#reference-markers)), `bar`
-(`{ task, progress, resources }`), `milestone` (`{ task, resources }`),
-`tooltip` (`{ task }`), `rowEditor` (`{ row, value, commit, cancel }`) and
-`taskEditor` (`{ task, value, commit, cancel }`). `resources` is the task's
-assigned `ResolvedResource[]` (resolved from `resourceIds`, unknown ids dropped;
-empty unless `resources` is set) — see [Resources](#resources).
+(`{ task, progress, resources }`), `milestone`
+(`{ task, resources, labelMaxWidth }`), `tooltip` (`{ task }`), `rowEditor`
+(`{ row, value, commit, cancel }`) and `taskEditor`
+(`{ task, value, commit, cancel }`). `resources` is the task's assigned
+`ResolvedResource[]` (resolved from `resourceIds`, unknown ids dropped; empty
+unless `resources` is set) — see [Resources](#resources). `labelMaxWidth` is
+the adaptive gap in px to the next item on the same row — bind it as an inline
+style (`:style="{ maxWidth: labelMaxWidth + 'px' }"`) on a `.gantt-milestone__label`
+element rendered in the `milestone` slot to ellipsize a label instead of
+letting it overlap a neighbouring milestone.
 
 **Per-variant item slots.** Tag an item with a free-form `variant` and the
 prop-driven render picks a slot by it: a bar looks for `task-${variant}`
@@ -273,6 +286,7 @@ every [chart event](#events); the rest are the building blocks.
 | `<GanttBaselines>`    | — (default slot `{ task }`)                      | —                                                |
 | `<GanttPeriods>`      | — (default slot `{ period }`)                    | —                                                |
 | `<GanttMarkers>`      | — (default slot `{ marker }`)                    | —                                                |
+| `<GanttWorkload>`     | — (slots `label` `{ resource, workload }` · default `{ workload, peak, bars }`) | — |
 | `<GanttToday>`        | `interval?: number` (ms, default `1000`)         | —                                                |
 | `<GanttZoom>`         | — (reads context; default slot for custom UI)    | — (calls `setZoom`/`zoomIn`/`zoomOut` on root)   |
 
@@ -308,6 +322,7 @@ parent collapses to the content height and simply grows to fit (as before).
 | `groupHeaderHeight`     | `number`                                          | `36`            | Group header band height, px.                                                                                                                                                                                                                                 |
 | `sidebarWidth`          | `number`                                          | `200`           | Frozen task-list width, px.                                                                                                                                                                                                                                   |
 | `overlap`               | `'lanes' \| 'overlap' \| 'cascade' \| 'conflict'` | `'lanes'`       | How time-overlapping tasks in a row are shown.                                                                                                                                                                                                                |
+| `summaryStyle`          | `'bracket' \| 'bar'`                              | `'bracket'`     | How rolled-up rows (WBS tree parents, row groups) draw their summary. `bracket`: expanded → a thin span line with downward end caps (no progress fill); collapsed → a filled accent bar. `bar` (legacy): a filled progress bar in both states.                 |
 | `draggable`             | `boolean`                                         | `false`         | Drag bars along their row to change start/end.                                                                                                                                                                                                                |
 | `rowMovable`            | `boolean`                                         | `false`         | Drag a task into another row (implies `draggable`).                                                                                                                                                                                                           |
 | `resizable`             | `boolean`                                         | `false`         | Resize bars by dragging an edge (sides flip past each other).                                                                                                                                                                                                 |
@@ -318,6 +333,9 @@ parent collapses to the content height and simply grows to fit (as before).
 | `criticalPath`          | `boolean`                                         | `false`         | Highlight the tasks on the critical path (`data-critical` on their bars/markers; styled via `--gantt-critical-*`).                                                                                                                                            |
 | `slack`                 | `boolean`                                         | `false`         | Draw each task's free-float slack as a translucent bar after its end (the `<GanttSlack>` overlay; styled via `--gantt-slack-*`).                                                                                                                               |
 | `linkable`              | `boolean`                                         | `false`         | Create/edit dependencies by dragging between tasks.                                                                                                                                                                                                           |
+| `keyboard`              | `boolean`                                         | `false`         | Make task bars and milestones keyboard-operable via a roving tab stop: `role="button"`, a descriptive `aria-label`, a visible focus ring, Enter/Space activation (fires the same `task-click`/`milestone-click` as a mouse click), arrow-key navigation (Left/Right/Up/Down/Home/End) between bars, and Shift/Alt+Left/Right keyboard move/resize (gated by `draggable`/`resizable`). Also makes the sidebar an accessible `tree`/`list` with its own roving row navigation. The chart root also gets a labelled landmark. See [Keyboard & accessibility](#keyboard--accessibility).       |
+| `ariaLabel`             | `string`                                          | `'Gantt chart'` | Accessible name for the chart landmark (used when `keyboard` is on).                                                                                                                                                                                          |
+| `cellCreatable`         | `boolean`                                         | `false`         | Create a task by dragging across an empty grid row (emits `create`). Below the drag threshold a plain click still falls through to `cell-click`. Lives in the default `<GanttGrid>` — a custom `grid` slot takes over creation yourself.                     |
 | `dependencyShape`       | `(tail, head) => string`                          | `elbowPath`     | Connector path builder. Pass `elbowPath`/`straightPath`/`bezierPath` or your own.                                                                                                                                                                             |
 | `arrowHead`             | `() => ArrowHeadShape \| null`                    | `triangleArrow` | Arrowhead builder. Pass `triangleArrow`/`openArrow`/`noArrow` or your own (`null` = no head).                                                                                                                                                                 |
 | `snapToGrid`            | `boolean`                                         | `false`         | Snap dragged dates to the base unit (off = full precision).                                                                                                                                                                                                   |
@@ -404,6 +422,40 @@ are both exported. Style the split bits with the `--gantt-split-*`
 > target / draft arrow) keeps following the content, and scrolling stops on release.
 > This is automatic; there are no extra props.
 
+### Drag-to-create tasks
+
+With `cellCreatable`, dragging across an empty grid row (left mouse button) draws
+a translucent ghost preview and emits `create` on release — the chart stays
+controlled, so you add the task yourself (e.g. with the [`addTask`](#utilities)
+utility):
+
+```vue
+<script setup>
+import { ref } from 'vue'
+import { Gantt, addTask } from '@dizzy_yakov/vue-gantt'
+
+const rows = ref(initialRows)
+
+function onCreate({ row, start, end }) {
+  rows.value = addTask(rows.value, row.id, { id: crypto.randomUUID(), name: 'New task', start, end })
+}
+</script>
+
+<template>
+  <Gantt :rows="rows" cell-creatable @create="onCreate" />
+</template>
+```
+
+Below the drag threshold (same 3px mouse / 8px touch slop as `draggable`) the
+press is read as a plain click, so `cell-click` still fires as before. `snapToGrid`
+snaps the drafted `start`/`end` like any other drag. Style the ghost via
+`--gantt-create-preview-bg` (falls back to `--gantt-bar-bg`) plus the shared
+`--gantt-bar-height` / `--gantt-bar-radius` / `--gantt-ghost-opacity` tokens.
+
+> `cell-click`/`cell-dblclick` and drag-to-create both live in the default
+> `<GanttGrid>`; overriding the `grid` slot on `<GanttView>` / `<Gantt>` replaces
+> it entirely, so creation (and cell clicks) become your responsibility.
+
 ### Deadlines & constraints
 
 Give a task a `deadline` (a target date) or a scheduling `constraint` and the
@@ -471,6 +523,7 @@ your data (the [utilities](#utilities) make this one-liners).
 | `task-*` / `milestone-*`       | `GanttTaskEvent` `{ task, event }`           | `click` / `dblclick` / `contextmenu` on a bar/marker.  |
 | `row-*`                        | `GanttRowEvent` `{ row, event }`             | `click` / `dblclick` / `contextmenu` on a sidebar row. |
 | `cell-click` / `cell-dblclick` | `GanttCellEvent` `{ row, date, event }`      | an empty body cell is clicked.                         |
+| `create`                       | `GanttCreateEvent` `{ row, start, end, event }` | a new task is dragged out of an empty row (`cellCreatable`). |
 | `column-click`                 | `GanttColumnEvent` `{ column, tier, event }` | a timeline header cell is clicked.                     |
 | `dependency-click`             | `GanttDependencyEvent` `{ from, to, event }` | an arrow is clicked.                                   |
 
@@ -732,8 +785,11 @@ import {
   validateRows,
   sprintPeriods, // build a run of equal-length timeline periods (sprints; see SprintPeriodsOptions)
   nonWorkingBands, // compute non-working (weekend/holiday/off-period) bands over a range
+  resourceWorkload, // sweep-line concurrent-load histogram per resource (see Resource workload; types: WorkloadSegment, ResourceWorkload, WorkloadOptions)
   toCSV,
   downloadCSV, // serialize tasks to CSV / trigger a browser download (see Export)
+  toExcel,
+  downloadExcel, // serialize tasks to a SpreadsheetML (.xls) workbook / trigger a download (see Export)
 } from '@dizzy_yakov/vue-gantt'
 ```
 
@@ -745,7 +801,7 @@ back the matching `criticalPath` / `slack` props: the prop visualizes what the
 utility computes, so you can also call the utility directly (e.g. to label or report
 the schedule).
 
-### Export (CSV)
+### Export (CSV / Excel)
 
 `toCSV(rows, options?)` serializes the tasks of your `rows` to an RFC-4180 CSV
 string — one line per task, with its owning row's id/name as leading columns. It's
@@ -774,11 +830,50 @@ Default columns: `Row Id`, `Row`, `Task Id`, `Task`, `Type`, `Start`, `End`,
 `Progress`, `Dependencies`, `Deadline`. Options: `columns`, `delimiter` (`,`),
 `dateFormat` (`yyyy-MM-dd`), `locale`, `header` (`true`), `eol` (`\r\n`).
 
+`toExcel(rows, options?)` serializes the same tasks to a **SpreadsheetML 2003**
+workbook string — the `.xls` XML dialect Excel opens directly. It's pure,
+framework-free and **zero-dependency** (no `xlsx`/`exceljs`), and cells are
+typed: dates are real Excel dates (`ss:Type="DateTime"`) and progress is a
+`ss:Type="Number"` cell, so Excel sorts/filters them correctly instead of
+treating everything as text. `downloadExcel(rows, filename?, options?)` wraps
+it and triggers a browser download (`filename` defaults to `'gantt.xls'`, MIME
+`application/vnd.ms-excel`).
+
+```ts
+import { toExcel, downloadExcel } from '@dizzy_yakov/vue-gantt'
+
+downloadExcel(rows, 'schedule.xls')
+```
+
+```vue
+<button @click="downloadExcel(rows, 'schedule.xls')">Export to Excel</button>
+```
+
+```ts
+// Custom columns / sheet name — a Number/DateTime `type` drives the cell's
+// SpreadsheetML data type (defaults to 'String'):
+const xls = toExcel(rows, {
+  sheetName: 'Schedule',
+  columns: [
+    { header: 'ID', value: (task) => task.id },
+    { header: 'Start', type: 'DateTime', value: (task) => task.start },
+    { header: 'Progress %', type: 'Number', value: (task) => task.progress ?? 0 },
+  ],
+})
+```
+
+Default columns: same as CSV — `Row Id`, `Row`, `Task Id`, `Task`, `Type`,
+`Start` (`DateTime`), `End` (`DateTime`), `Progress` (`Number`),
+`Dependencies`, `Deadline` (`DateTime`). Options: `columns`, `sheetName`
+(`'Tasks'`), `header` (`true`).
+
 ## Row grouping
 
 Rows that reference the same `groupId` render under a collapsible header band
 with a rolled-up summary bar. Provide group labels via the `groups` prop (or the
-declarative `<GanttGroup>`).
+declarative `<GanttGroup>`). The `summaryStyle` root prop controls how that
+rollup renders — see [Row tree (WBS)](#row-tree-wbs) for details (it applies to
+both groups and tree parents).
 
 ![Row grouping](https://raw.githubusercontent.com/LavaYasha/vue-gantt/main/docs/grouping.png)
 
@@ -843,10 +938,19 @@ enclosing one (like `<GanttTask>` inherits its row):
 
 The rollup bar is rendered by `<GanttSummaryBar>` (auto-mounted by
 `<GanttView>` / `<Gantt>`; override it via the `summary-bars` section slot, or
-just its rollup content via the `summaryBar` leaf slot, `{ row }`). Customize
-the sidebar row itself — chevron, indent, name — via the `row` slot
+just its rollup content via the `summaryBar` leaf slot,
+`{ row, collapsed, left, width }`). Customize the sidebar row itself —
+chevron, indent, name — via the `row` slot
 (`{ row, index, depth, collapsed, hasChildren, toggle }`). Style with the
-`--gantt-row-indent` / `--gantt-summary-bar-*` [variables](#css-variables).
+`--gantt-row-indent` / `--gantt-summary-bar-*` / `--gantt-summary-bracket-*`
+[variables](#css-variables).
+
+The `summaryStyle` root prop (`'bracket'` default, or `'bar'` for the legacy
+look) controls how both this summary bar and `<GanttGroupBar>`'s group rollup
+render: `bracket` draws an **expanded** parent/group as a thin span line with
+downward end caps toward its children (no progress fill — the children carry
+the detail), and a **collapsed** one as a filled accent bar with progress,
+same as `bar` always renders in both states.
 
 ## Row decoration
 
@@ -1001,6 +1105,67 @@ assigns it via the presentational `<GanttTask :task>` / `<GanttMilestone :task>`
 mode rather than a dedicated prop. In the shared context, `ctx.resources` holds
 every resolved resource and `ctx.resourcesFor(task)` resolves one task's
 assignees (unknown ids dropped).
+
+## Resource workload
+
+`<GanttWorkload>` is a standalone, headless **load histogram** you mount BELOW
+the chart body — one row per resource showing how many of its assigned tasks run
+concurrently over time. It reads the shared context, so it must be a descendant
+of `GanttRoot`, but it is **not** part of `GanttView`'s layout (no dedicated slot
+there): place it as a sibling underneath, inside the same `GanttRoot`.
+
+```vue
+<script setup>
+import { GanttRoot, GanttView, GanttWorkload } from '@dizzy_yakov/vue-gantt'
+
+const resources = [
+  { id: 'alice', name: 'Alice', color: '#6366f1' },
+  { id: 'bob', name: 'Bob', color: '#f59e0b' },
+]
+
+const rows = [
+  {
+    id: 'dev',
+    name: 'Development',
+    tasks: [
+      { id: 'spec', name: 'Spec', start: '2026-06-01', end: '2026-06-12', resourceIds: ['alice'] },
+      { id: 'build', name: 'Build', start: '2026-06-08', end: '2026-06-20', resourceIds: ['alice', 'bob'] },
+    ],
+  },
+]
+</script>
+
+<template>
+  <GanttRoot :rows="rows" :resources="resources">
+    <GanttView height="240" />
+    <GanttWorkload />
+  </GanttRoot>
+</template>
+```
+
+Resources come from the `resources` prop + each task's `resourceIds` — same data
+as [Resources](#resources). Its label gutter is the same width as
+`--gantt-sidebar-width` and its track mirrors the chart body's horizontal scroll
+via `viewport.scrollLeft` (a `transform: translateX`), so bars stay aligned with
+the timeline above as you scroll — the sync is one-directional (the strip
+follows the chart, not the other way around); mount its container at the same
+width as the chart above it.
+
+Rendering is driven by the exported sweep-line helper `resourceWorkload(tasks,
+options?)` (in `src/layout.ts`): for each resource it returns a `{ resourceId,
+segments, peak }` where `segments` are the piecewise `{ start, end, count }`
+intervals where 1+ of its tasks overlap (milestones ignored) and `peak` is the
+highest concurrent count — used to scale every bar's height so rows are
+comparable. `WorkloadOptions.resourceIds` picks/orders which resources to
+report (defaults to every resource with tasks). Each bar uses its resource's own
+`color` when set, falling back to `--gantt-workload-bar-bg`.
+
+Two slots: `label` (`{ resource, workload }`) replaces the per-row label gutter;
+the default slot (`{ workload, peak, bars }`) replaces the whole bar track for a
+fully custom render. Each `bars` entry carries a pre-computed
+`{ segment, left, width, heightRatio }` (px `left`/`width` off the axis, `heightRatio`
+= `count / peak`), so a custom render positions its own bars without needing the
+chart context inside the slot.
 
 ## Non-working calendar
 
@@ -1199,6 +1364,94 @@ that:
 <Gantt :rows="rows" touch-targets draggable resizable editable tooltip />
 ```
 
+## Keyboard & accessibility
+
+Opt-in via `keyboard` (off by default — it doesn't change the tab order or add
+attributes unless enabled):
+
+- Every task bar (`.gantt-bar`) and milestone marker (`.gantt-milestone__marker`)
+  gets `role="button"` and a descriptive `aria-label` — a task reads as
+  `"<name>, <start>–<end>, <progress>% complete"`, a milestone as
+  `"<name>, <date> (milestone)"`.
+- A visible focus ring (`--gantt-focus-outline` / `--gantt-focus-outline-offset`,
+  see [CSS variables](#css-variables)) appears on `:focus-visible`.
+- **Enter** / **Space** activates the focused bar/marker, firing the same
+  `task-click` / `milestone-click` event a mouse click would.
+- The chart root (`.gantt-root`) gets `role="group"` and an `aria-label` (defaults
+  to `'Gantt chart'`, override with the `ariaLabel` prop) as a landmark.
+
+```vue
+<Gantt :rows="rows" keyboard aria-label="Project timeline" />
+```
+
+### Roving focus & arrow-key navigation
+
+Bars/milestones share a single **roving tab stop**: only one item at a time has
+`tabindex="0"` (the rest are `tabindex="-1"`), so Tab enters the chart once — at
+the first task of the first row — instead of stopping at every bar. Clicking or
+focusing a bar/marker makes it the new roving anchor. From the active item, the
+arrow keys move focus without leaving the tab order:
+
+| Key                     | Moves focus to                                                      |
+| ----------------------- | --------------------------------------------------------------------|
+| **ArrowLeft/ArrowRight**| Previous/next task in the same row, ordered by start time.           |
+| **ArrowUp/ArrowDown**   | Closest-by-start task in the nearest non-empty row above/below.      |
+| **Home / End**          | First / last task in the active row.                                 |
+
+The target auto-scrolls into view (rows/columns can be virtualized) and receives
+focus once it mounts.
+
+### Keyboard move & resize
+
+From the active (focused) bar, holding a modifier with the left/right arrows edits
+the task instead of moving focus — one base `unit` (the finest configured `tiers`
+step) per key press, preserving the library's controlled-component contract (the
+consumer applies the change, same as a mouse drag):
+
+| Key                              | Effect                                                                 | Requires    |
+| -------------------------------- | ----------------------------------------------------------------------| ----------- |
+| **Shift + ArrowLeft/ArrowRight**  | Move the whole task one unit earlier/later (duration unchanged); emits `move` (`GanttMoveEvent`). | `draggable` |
+| **Alt + ArrowLeft/ArrowRight**    | Resize the task's end by one unit; emits `resize` (`GanttResizeEvent`). Tasks only (not milestones), and never collapses/inverts past the start. | `resizable` |
+
+If the required prop (`draggable`/`resizable`) isn't set, the key press is a no-op —
+it doesn't fall back to moving focus.
+
+### Sidebar navigation
+
+The task list (`GanttTaskList`) also becomes keyboard-navigable under `keyboard`.
+Its container takes the ARIA role that matches the current row shape — `tree`
+when any row has a `parentId` (WBS layout), otherwise `list` — and each row gets
+the matching item role, plus a state describing its position:
+
+| Attribute        | Set on            | Meaning                                                                 |
+| ----------------- | ------------------ | ------------------------------------------------------------------------ |
+| `role="tree"` / `"list"`         | Sidebar container | `tree` for WBS/parent-child rows, `list` for flat or grouped rows.      |
+| `role="treeitem"` / `"listitem"` | Each row           | Matches the container role.                                             |
+| `aria-level`                     | Each row (tree only) | `depth + 1` (1 for a root row, 2 for its children, …).                |
+| `aria-expanded`                  | Rows with children | `true`/`false` — reflects the row's collapsed state.                    |
+| `aria-selected`                  | Every row          | `true` on the row currently holding roving focus.                       |
+
+Rows share the same single roving tab stop as bars/milestones (one `tabindex="0"`,
+the rest `-1`) and the same visible focus ring (`--gantt-focus-*`). From the
+focused row:
+
+| Key                      | Action                                                              |
+| ------------------------- | -------------------------------------------------------------------- |
+| **ArrowUp / ArrowDown**   | Move focus to the previous/next visible row (auto-scrolls it into view). |
+| **ArrowRight**            | Expand a collapsed parent row (WBS) or group.                        |
+| **ArrowLeft**             | Collapse an expanded parent row (WBS) or group.                      |
+| **Enter / Space**         | Activate the row, firing the same `row-click` event a click would.   |
+| **Home / End**            | Jump to the first/last visible row.                                  |
+
+> **Accessibility scope (complete).** Bars/milestones (roving focus + ARIA labels +
+> activation), arrow-key navigation between bars, keyboard move/resize (Shift/Alt +
+> arrows), and this accessible sidebar (tree/list roles + row navigation) together
+> cover the library's keyboard/screen-reader layer. `role="grid"`/`gridcell` on the
+> timeline body is a deliberate non-goal, not a gap: bars already expose a
+> `role="button"` landmark model, and layering grid/gridcell semantics on top of
+> free-form, overlapping time bars would misrepresent their structure to assistive
+> tech rather than clarify it.
+
 ## Localization (i18n)
 
 Date labels — the timeline **column headers**, the live **drag labels** and the
@@ -1254,7 +1507,9 @@ localized prefix isn't what you want.
 ![Custom theme via CSS variables](https://raw.githubusercontent.com/LavaYasha/vue-gantt/main/docs/theming.png)
 
 Override any `--gantt-*` property on `.gantt-root` **or any ancestor** (defaults
-live on `:root`, so the nearest override wins):
+live on `:where(:root)` — zero-specificity, so a plain `:root { --gantt-* }`
+override always wins regardless of whether your stylesheet loads before or
+after this library's):
 
 ```css
 .gantt-root,
@@ -1263,9 +1518,13 @@ live on `:root`, so the nearest override wins):
   --gantt-progress-bg: #10b981;
   --gantt-milestone-bg: #8b5cf6;
   --gantt-today-color: #0ea5e9;
-  --gantt-row-height: 44px;
 }
 ```
+
+> Layout variables (`--gantt-sidebar-width`, `--gantt-row-height`,
+> `--gantt-column-width`, `--gantt-header-*`, `--gantt-content-*`) are set
+> inline per-instance by `GanttRoot` from its props — control them via props
+> (e.g. `row-height`), not by overriding the CSS variable.
 
 ### CSS variables
 
@@ -1300,6 +1559,14 @@ live on `:root`, so the nearest override wins):
 | `--gantt-bar-font-size`   | `0.8em`   | Bar label font size.                            |
 | `--gantt-bar-text-shadow` | `none`    | Optional halo so the label reads over the fill. |
 | `--gantt-progress-bg`     | `#6366f1` | Progress fill colour.                           |
+| `--gantt-create-preview-bg` | bar bg (`#c7d2fe`) | Ghost preview background while drag-to-create is in progress (`cellCreatable`). |
+
+**Keyboard focus** (a11y layer — see [Keyboard & accessibility](#keyboard--accessibility))
+
+| Variable                          | Default                 | Purpose                                    |
+| ---------------------------------- | ------------------------ | ------------------------------------------- |
+| `--gantt-focus-outline`           | `2px solid` progress bg | Focus ring on a keyboard-focused bar/marker (`keyboard` prop). |
+| `--gantt-focus-outline-offset`    | `2px`                    | Offset of the focus ring from the bar/marker edge. |
 
 **Inline editing** (row/task name inputs — see [inline editing](#inline-editing))
 
@@ -1332,11 +1599,12 @@ live on `:root`, so the nearest override wins):
 
 **Milestones**
 
-| Variable                   | Default   | Purpose                |
-| -------------------------- | --------- | ---------------------- |
-| `--gantt-milestone-size`   | `14px`    | Diamond size (grows on touch). |
-| `--gantt-milestone-bg`     | `#f59e0b` | Diamond colour.        |
-| `--gantt-milestone-radius` | `2px`     | Diamond corner radius. |
+| Variable                             | Default   | Purpose                |
+| ------------------------------------ | --------- | ---------------------- |
+| `--gantt-milestone-size`             | `14px`    | Diamond size (grows on touch). |
+| `--gantt-milestone-bg`               | `#f59e0b` | Diamond colour.        |
+| `--gantt-milestone-radius`           | `2px`     | Diamond corner radius. |
+| `--gantt-milestone-label-max-width`  | `none`    | Clamp width for the `.gantt-milestone__label` helper class (used to ellipsize a consumer-rendered label in the `milestone` slot; `none` = no clamp). |
 
 **Dependencies**
 
@@ -1395,6 +1663,9 @@ default slot (`<slot :links>`).
 | `--gantt-group-bar-progress-bg`    | `#94a3b8` | Rollup bar progress fill.            |
 | `--gantt-group-bar-height`         | `40%`     | Rollup bar height.                   |
 | `--gantt-group-bar-radius`         | `3px`     | Rollup bar radius.                   |
+| `--gantt-group-bracket-color`      | group bar progress bg | Expanded-group bracket line colour (`summaryStyle: 'bracket'`). |
+| `--gantt-group-bracket-thickness`  | `2px`     | Bracket line thickness.              |
+| `--gantt-group-bracket-cap`        | `6px`     | Height of the bracket's downward end caps. |
 
 **Row tree (WBS)** — see [Row tree](#row-tree-wbs)
 
@@ -1405,6 +1676,9 @@ default slot (`<slot :links>`).
 | `--gantt-summary-bar-progress-bg`  | `#94a3b8` | Parent-row rollup bar progress fill.       |
 | `--gantt-summary-bar-height`       | `40%`     | Rollup bar height.                         |
 | `--gantt-summary-bar-radius`       | `3px`     | Rollup bar radius.                         |
+| `--gantt-summary-bracket-color`    | summary bar progress bg | Expanded-parent bracket line colour (`summaryStyle: 'bracket'`). |
+| `--gantt-summary-bracket-thickness` | `2px`    | Bracket line thickness.                    |
+| `--gantt-summary-bracket-cap`      | `6px`     | Height of the bracket's downward end caps. |
 
 **Overlap modes**
 
@@ -1466,6 +1740,19 @@ hatched look.
 | `--gantt-period-color`        | `inherit`            | Header period label colour.                     |
 | `--gantt-period-font-weight`  | `600`                | Header period label weight.                     |
 | `--gantt-period-font-size`    | header font size     | Header period label size.                       |
+
+**Resource workload** (`GanttWorkload`) — see [Resource workload](#resource-workload)
+
+| Variable                             | Default   | Purpose                                                     |
+| ------------------------------------- | --------- | ------------------------------------------------------------- |
+| `--gantt-workload-row-height`         | `44px`    | Height of one resource's histogram row.                       |
+| `--gantt-workload-bar-bg`             | `#6366f1` | Bar background (a resource's own `color` takes priority).     |
+| `--gantt-workload-bar-radius`         | `2px 2px 0 0` | Bar corner radius.                                         |
+| `--gantt-workload-bar-opacity`        | `0.85`    | Bar opacity.                                                   |
+| `--gantt-workload-label-font-size`    | `0.8em`   | Label gutter font size.                                        |
+
+`<GanttWorkload>` also reads an un-defaulted hook, `--gantt-workload-bg` (falls
+back to `--gantt-surface`), for the whole widget's background.
 
 **Non-working calendar**
 

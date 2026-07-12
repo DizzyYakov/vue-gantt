@@ -3,6 +3,7 @@ import { computed, ref, useSlots } from 'vue'
 import type {
   GanttCellEvent,
   GanttColumnEvent,
+  GanttCreateEvent,
   GanttDependencyChange,
   GanttDependencyEvent,
   GanttDependencyUpdate,
@@ -57,6 +58,7 @@ const emit = defineEmits<{
   'row-contextmenu': [event: GanttRowEvent]
   'cell-click': [event: GanttCellEvent]
   'cell-dblclick': [event: GanttCellEvent]
+  'create': [event: GanttCreateEvent]
   'column-click': [event: GanttColumnEvent]
   'dependency-click': [event: GanttDependencyEvent]
 }>()
@@ -92,9 +94,9 @@ defineSlots<{
     cancel: () => void
   }) => unknown
   group?: (props: { group: unknown; collapsed: boolean; toggle: () => void }) => unknown
-  groupBar?: (props: { group: unknown }) => unknown
+  groupBar?: (props: { group: unknown; collapsed: boolean; left: number; width: number }) => unknown
   'group-bars'?: (props: { groups: unknown }) => unknown
-  summaryBar?: (props: { row: unknown }) => unknown
+  summaryBar?: (props: { row: unknown; collapsed: boolean; left: number; width: number }) => unknown
   'summary-bars'?: (props: { rows: unknown }) => unknown
   baselines?: (props: { tasks: unknown }) => unknown
   corner?: (props: { config: unknown }) => unknown
@@ -104,7 +106,7 @@ defineSlots<{
   period?: (props: { period: unknown }) => unknown
   'non-working'?: (props: { bands: unknown }) => unknown
   bar?: (props: { task: unknown; progress: number; resources: unknown }) => unknown
-  milestone?: (props: { task: unknown; resources: unknown }) => unknown
+  milestone?: (props: { task: unknown; resources: unknown; labelMaxWidth?: number }) => unknown
   tooltip?: (props: { task: unknown }) => unknown
   bars?: (props: { tasks: unknown }) => unknown
   grid?: (props: { columns: unknown; rows: unknown }) => unknown
@@ -122,7 +124,11 @@ defineSlots<{
   /** Per-variant bar slot: used for a task whose `variant` matches (falls back to `bar`). */
   [name: `task-${string}`]: (props: { task: unknown; progress: number; resources: unknown }) => unknown
   /** Per-variant marker slot: used for a milestone whose `variant` matches (falls back to `milestone`). */
-  [name: `milestone-${string}`]: (props: { task: unknown; resources: unknown }) => unknown
+  [name: `milestone-${string}`]: (props: {
+    task: unknown
+    resources: unknown
+    labelMaxWidth?: number
+  }) => unknown
 }>()
 
 // Consumer-provided per-variant item slots (`task-*` / `milestone-*`) — forwarded
@@ -185,6 +191,7 @@ defineExpose({
     @row-contextmenu="emit('row-contextmenu', $event)"
     @cell-click="emit('cell-click', $event)"
     @cell-dblclick="emit('cell-dblclick', $event)"
+    @create="emit('create', $event)"
     @column-click="emit('column-click', $event)"
     @dependency-click="emit('dependency-click', $event)"
   >

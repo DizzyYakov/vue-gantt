@@ -134,7 +134,7 @@ describe('row grouping — collapse / expand', () => {
 describe('row grouping — summary bar', () => {
   it('draws one rollup bar per group spanning its task extent', () => {
     const { wrapper, ctx } = mountInRoot(GanttGroupBar, {
-      rootProps: { rows, groups, unit: 'day', columnWidth: 40 },
+      rootProps: { rows, groups, unit: 'day', columnWidth: 40, summaryStyle: 'bar' },
     })
     const bars = wrapper.findAll('.gantt-group-bar')
     expect(bars.map(b => b.attributes('data-id'))).toEqual(['be', 'fe'])
@@ -172,6 +172,59 @@ describe('row grouping — summary bar', () => {
       },
     })
     expect(wrapper.findAll('.gb').map(g => g.text())).toEqual(['Backend', 'Frontend'])
+  })
+})
+
+describe('row grouping — summary style (bracket vs bar)', () => {
+  it('draws a bracket line for an expanded group by default (no track/progress)', () => {
+    const { wrapper, ctx } = mountInRoot(GanttGroupBar, {
+      rootProps: { rows, groups, unit: 'day', columnWidth: 40 },
+    })
+    const bar = wrapper.find('.gantt-group-bar[data-id="be"]')
+    expect(bar.attributes('data-collapsed')).toBeUndefined()
+    expect(bar.find('.gantt-group-bar__bracket').exists()).toBe(true)
+    expect(bar.find('.gantt-group-bar__track').exists()).toBe(false)
+    expect(bar.find('.gantt-group-bar__progress').exists()).toBe(false)
+
+    // Bracket geometry matches the scale, same as the track would.
+    const be = ctx().groups.value.find(g => g.id === 'be')!
+    const bracket = bar.find('.gantt-group-bar__bracket')
+    expect(bracket.attributes('style')).toContain(`left: ${ctx().dateToX(be.start)}px`)
+    expect(bracket.attributes('style')).toContain(`width: ${ctx().widthBetween(be.start, be.end)}px`)
+  })
+
+  it('draws a filled track + progress (no bracket) for a collapsed group by default', () => {
+    const { wrapper } = mountInRoot(GanttGroupBar, {
+      rootProps: { rows, groups: [{ id: 'be', collapsed: true }, { id: 'fe' }], unit: 'day' },
+    })
+    const bar = wrapper.find('.gantt-group-bar[data-id="be"]')
+    expect(bar.attributes('data-collapsed')).toBe('true')
+    expect(bar.find('.gantt-group-bar__track').exists()).toBe(true)
+    expect(bar.find('.gantt-group-bar__progress').exists()).toBe(true)
+    expect(bar.find('.gantt-group-bar__bracket').exists()).toBe(false)
+  })
+
+  it('always draws a filled track for summaryStyle="bar", expanded or collapsed', () => {
+    const { wrapper: expanded } = mountInRoot(GanttGroupBar, {
+      rootProps: { rows, groups, unit: 'day', summaryStyle: 'bar' },
+    })
+    const expandedBar = expanded.find('.gantt-group-bar[data-id="be"]')
+    expect(expandedBar.find('.gantt-group-bar__track').exists()).toBe(true)
+    expect(expandedBar.find('.gantt-group-bar__progress').exists()).toBe(true)
+    expect(expandedBar.find('.gantt-group-bar__bracket').exists()).toBe(false)
+
+    const { wrapper: collapsed } = mountInRoot(GanttGroupBar, {
+      rootProps: {
+        rows,
+        groups: [{ id: 'be', collapsed: true }, { id: 'fe' }],
+        unit: 'day',
+        summaryStyle: 'bar',
+      },
+    })
+    const collapsedBar = collapsed.find('.gantt-group-bar[data-id="be"]')
+    expect(collapsedBar.find('.gantt-group-bar__track').exists()).toBe(true)
+    expect(collapsedBar.find('.gantt-group-bar__progress').exists()).toBe(true)
+    expect(collapsedBar.find('.gantt-group-bar__bracket').exists()).toBe(false)
   })
 })
 

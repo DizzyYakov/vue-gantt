@@ -7,6 +7,7 @@ import { useGanttRows } from '../composables/useGanttRows'
 import { useGanttLink } from '../composables/useGanttLink'
 import { useGanttScale } from '../composables/useGanttScale'
 import { useGanttScrollApi } from '../composables/useGanttScrollApi'
+import { useGanttKeyboardNav } from '../composables/useGanttKeyboardNav'
 import { useGanttTimelineEdges } from '../composables/useGanttTimelineEdges'
 import { useGanttZoom } from '../composables/useGanttZoom'
 import { useGanttRegistry } from '../composables/useTaskRegistry'
@@ -30,6 +31,7 @@ import { DEFAULT_ZOOM_LEVELS } from '../zoom'
 import type {
   GanttBand,
   GanttCellEvent,
+  GanttCreateEvent,
   GanttColumn,
   GanttColumnEvent,
   GanttConfig,
@@ -75,6 +77,7 @@ const props = withDefaults(defineProps<GanttRootProps>(), {
   groupHeaderHeight: GANTT_DEFAULTS.groupHeaderHeight,
   sidebarWidth: GANTT_DEFAULTS.sidebarWidth,
   overlap: GANTT_DEFAULTS.overlap,
+  summaryStyle: GANTT_DEFAULTS.summaryStyle,
   draggable: GANTT_DEFAULTS.draggable,
   rowMovable: GANTT_DEFAULTS.rowMovable,
   resizable: GANTT_DEFAULTS.resizable,
@@ -85,6 +88,9 @@ const props = withDefaults(defineProps<GanttRootProps>(), {
   criticalPath: GANTT_DEFAULTS.criticalPath,
   slack: GANTT_DEFAULTS.slack,
   linkable: GANTT_DEFAULTS.linkable,
+  keyboard: GANTT_DEFAULTS.keyboard,
+  ariaLabel: GANTT_DEFAULTS.ariaLabel,
+  cellCreatable: GANTT_DEFAULTS.cellCreatable,
   dependencyShape: elbowPath,
   arrowHead: triangleArrow,
   snapToGrid: GANTT_DEFAULTS.snapToGrid,
@@ -134,6 +140,7 @@ const emit = defineEmits<{
   'row-contextmenu': [event: GanttRowEvent]
   'cell-click': [event: GanttCellEvent]
   'cell-dblclick': [event: GanttCellEvent]
+  'create': [event: GanttCreateEvent]
   'column-click': [event: GanttColumnEvent]
   'dependency-click': [event: GanttDependencyEvent]
 }>()
@@ -164,7 +171,6 @@ const emitEvent = emit as unknown as <K extends keyof GanttEventMap>(
 // via the context so prop-driven `<Gantt>` consumers can listen at the root.
 function dispatch<K extends keyof GanttEventMap>(name: K, payload: GanttEventMap[K]): void {
   emitEvent(name, payload)
-  // Mirror dependency edits into `v-model:rows`.
   if (name === 'dependency-create') {
     const change = payload as GanttDependencyChange
     emitModelUpdate(rows => maybeAutoSchedule(addDependency(rows, change.from, change.to), change.from))
@@ -366,6 +372,7 @@ const config = computed<GanttConfig>(() => ({
   groupHeaderHeight: props.groupHeaderHeight,
   sidebarWidth: props.sidebarWidth,
   overlap: props.overlap,
+  summaryStyle: props.summaryStyle,
   draggable: props.draggable || props.rowMovable,
   rowMovable: props.rowMovable,
   resizable: props.resizable,
@@ -376,6 +383,9 @@ const config = computed<GanttConfig>(() => ({
   criticalPath: props.criticalPath,
   slack: props.slack,
   linkable: props.linkable,
+  keyboard: props.keyboard,
+  ariaLabel: props.ariaLabel,
+  cellCreatable: props.cellCreatable,
   dependencyShape: props.dependencyShape,
   arrowHead: props.arrowHead,
   snapToGrid: props.snapToGrid,
@@ -412,10 +422,9 @@ function taskBand(task: ResolvedTask): GanttBand {
   return { top, height }
 }
 
-// --- Viewport + virtualization -------------------------------------------
-// The scroll container (the `Gantt` wrapper / a consumer) reports its metrics
-// here. Until measured (width/height 0) nothing is virtualized, so primitives
-// used without a scroll container still render everything.
+// The scroll container (the `Gantt` wrapper / a consumer) reports its viewport
+// metrics here. Until measured (width/height 0) nothing is virtualized, so
+// primitives used without a scroll container still render everything.
 const OVERSCAN = 240 // px rendered beyond the viewport on each axis
 const MARKER_PAD = 24 // px slack so edge milestones aren't clipped
 
@@ -501,9 +510,15 @@ const headerHeight = computed(
   () => (tiers.value.length + (periods.value.length ? 1 : 0)) * props.headerRowHeight,
 )
 
-// --- Imperative scroll API ------------------------------------------------
-const { scrollerEl, setScroller, applyScroll, scrollToDate, scrollToTask, scrollToToday } =
-  useGanttScrollApi({
+const {
+  scrollerEl,
+  setScroller,
+  applyScroll,
+  scrollToDate,
+  scrollToTask,
+  scrollToRow,
+  scrollToToday,
+} = useGanttScrollApi({
     dateToX: scale.dateToX,
     sidebarWidth: () => props.sidebarWidth,
     rowHeight: () => props.rowHeight,
@@ -511,6 +526,14 @@ const { scrollerEl, setScroller, applyScroll, scrollToDate, scrollToTask, scroll
     rows: () => rows.value,
     today: () => today.value,
   })
+
+// Roving keyboard focus across bars/milestones (a11y `keyboard` layer).
+const { keyboardActiveId, setKeyboardActive, moveKeyboardFocus } = useGanttKeyboardNav({
+  rows,
+  tasks,
+  scrollToTask,
+  scrollerEl,
+})
 
 // Edge auto-scroll during a drag (move/resize/link): scrolls the viewport toward
 // whichever edge the pointer approaches so off-screen destinations are reachable.
@@ -639,6 +662,7 @@ useGanttTimelineEdges({
 const context: GanttContext = {
   config,
   rows,
+  isTree,
   visibleRows,
   groups,
   visibleGroups,
@@ -702,7 +726,11 @@ const context: GanttContext = {
   setScroller,
   scrollToDate,
   scrollToTask,
+  scrollToRow,
   scrollToToday,
+  keyboardActiveId,
+  setKeyboardActive,
+  moveKeyboardFocus,
   zoomLevels,
   activeZoom,
   canZoomIn,
@@ -747,6 +775,8 @@ defineExpose({
     class="gantt-root"
     :data-unit="config.unit"
     :data-touch="config.touchTargets || undefined"
+    :role="config.keyboard ? 'group' : undefined"
+    :aria-label="config.keyboard ? config.ariaLabel : undefined"
     :style="rootStyle"
   >
     <slot :rows="rows" :tasks="tasks" :columns="scale.columns.value" :config="config" />

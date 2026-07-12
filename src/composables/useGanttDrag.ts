@@ -252,7 +252,7 @@ export function useGanttDrag(options: DragOptions) {
     try {
       capturedEl?.releasePointerCapture(capturedId)
     } catch {
-      // ignore
+      // releasePointerCapture throws if the pointer was never captured (e.g. jsdom).
     }
     capturedEl = null
     window.removeEventListener('pointermove', onPointerMove)

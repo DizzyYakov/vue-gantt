@@ -1,11 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/vue3-vite'
-import { de } from 'date-fns/locale'
-import { ref } from 'vue'
 import Gantt from '../components/Gantt.vue'
-import GanttZoom from '../components/GanttZoom.vue'
-import { downloadCSV } from '../export'
-import type { GanttMoveEvent, GanttRow } from '../types'
-import { sprintPeriods } from '../utils'
 import { sampleRows } from './_shared'
 
 /**
@@ -13,6 +7,11 @@ import { sampleRows } from './_shared'
  * tasks) and it renders the full chart — frozen header/sidebar, multi-tier
  * timeline, grid, dependency arrows and the live "today" line — with row/column
  * virtualization when `height` is set. Named slots override any part.
+ *
+ * This page is the controllable playground for the wrapper and its full prop
+ * surface. Individual features have their own pages — see the **Guides/** section
+ * (interactions, grouping, theming, critical path, export, accessibility, …) and
+ * the per-component **Components/** pages.
  */
 const meta: Meta<typeof Gantt> = {
   title: 'Components/Gantt',
@@ -53,6 +52,14 @@ const meta: Meta<typeof Gantt> = {
       options: ['lanes', 'overlap', 'cascade', 'conflict'],
       description: 'How tasks overlapping on the same row are displayed.',
     },
+    summaryStyle: {
+      control: 'inline-radio',
+      options: ['bracket', 'bar'],
+      description:
+        'How rolled-up rows (WBS tree parents, row groups) draw their summary when ' +
+        'expanded: `bracket` (default) is a thin span line, `bar` (legacy) a filled ' +
+        'progress bar. Collapsed rows are always a filled bar. See Guides/Row grouping.',
+    },
     columnWidth: { control: { type: 'number', min: 4, max: 200 } },
     rowHeight: { control: { type: 'number', min: 16, max: 80 } },
     headerRowHeight: { control: { type: 'number', min: 16, max: 60 } },
@@ -74,6 +81,25 @@ const meta: Meta<typeof Gantt> = {
     linkable: {
       control: 'boolean',
       description: 'Create/edit dependencies by dragging between tasks.',
+    },
+    keyboard: {
+      control: 'boolean',
+      description:
+        'Make bars/milestones keyboard-focusable (`role="button"`, `tabindex="0"`, ' +
+        'a descriptive `aria-label`, a focus ring), operable with Enter/Space, and ' +
+        'arrow-key navigable (roving focus). With `draggable`/`resizable`, ' +
+        'Shift/Alt+Left/Right also move/resize the focused task. ' +
+        'Also labels the chart root as a landmark. See Guides/Accessibility.',
+    },
+    ariaLabel: {
+      control: 'text',
+      description: 'Accessible name for the chart landmark (used when `keyboard` is on).',
+    },
+    cellCreatable: {
+      control: 'boolean',
+      description:
+        'Drag across an empty grid row to create a task (emits `create`); a plain ' +
+        'click below the drag threshold still fires `cell-click`.',
     },
     tooltip: {
       control: 'boolean',
@@ -143,6 +169,7 @@ const meta: Meta<typeof Gantt> = {
     'onRow-contextmenu': { action: 'row-contextmenu', table: { category: 'events' } },
     'onCell-click': { action: 'cell-click', table: { category: 'events' } },
     'onCell-dblclick': { action: 'cell-dblclick', table: { category: 'events' } },
+    onCreate: { action: 'create', table: { category: 'events' } },
     'onColumn-click': { action: 'column-click', table: { category: 'events' } },
     'onDependency-click': { action: 'dependency-click', table: { category: 'events' } },
   },
@@ -259,245 +286,6 @@ export const HourTier: Story = {
 }
 
 /**
- * Drag bars to reschedule (full precision, with a live time label + ghost) and,
- * with `rowMovable`, drop a task into another row. `move` is controlled — apply
- * it to your data.
- */
-export const DragAndDrop: Story = {
-  args: { draggable: true, rowMovable: true },
-  render: args => ({
-    components: { Gantt },
-    setup() {
-      // Own a local copy so the drag actually moves tasks in this demo.
-      const rows = ref<GanttRow[]>(JSON.parse(JSON.stringify(sampleRows)))
-      function onMove(e: GanttMoveEvent) {
-        for (const row of rows.value) row.tasks = (row.tasks ?? []).filter(t => t.id !== e.id)
-        const target = rows.value.find(r => r.id === e.toRowId)
-        if (target)
-          target.tasks = [...(target.tasks ?? []), { id: e.id, start: e.start, end: e.end }]
-      }
-      return { args, rows, onMove }
-    },
-    template: `<Gantt v-bind="args" :rows="rows" @move="onMove" />`,
-  }),
-}
-
-/**
- * `v-model:rows` is a convenience layer over the controlled events: drag, resize,
- * progress and dependency edits are applied to your data for you — no manual
- * `@move`/`@resize`/… handlers. (The controlled events still fire if you want them.)
- */
-export const VModelRows: Story = {
-  args: {
-    draggable: true,
-    rowMovable: true,
-    resizable: true,
-    progressDraggable: true,
-    linkable: true,
-  },
-  render: args => ({
-    components: { Gantt },
-    setup() {
-      const rows = ref<GanttRow[]>(JSON.parse(JSON.stringify(sampleRows)))
-      return { args, rows }
-    },
-    template: `<Gantt v-bind="args" v-model:rows="rows" />`,
-  }),
-}
-
-/** Big dataset with a fixed `height` → row & column virtualization kick in. */
-export const Virtualized: Story = {
-  args: {
-    height: 360,
-    rows: Array.from({ length: 40 }, (_, r) => ({
-      id: `row-${r}`,
-      name: `Team ${r + 1}`,
-      tasks: Array.from({ length: 1 + (r % 3) }, (_, k) => {
-        const startDay = 1 + ((r * 3 + k * 7) % 24)
-        return {
-          id: `t-${r}-${k}`,
-          name: `Task ${r + 1}.${k + 1}`,
-          start: `2026-06-${String(startDay).padStart(2, '0')}`,
-          end: `2026-06-${String(Math.min(30, startDay + 2 + (k % 4))).padStart(2, '0')}`,
-          progress: (r * 13 + k * 29) % 101,
-        }
-      }),
-    })),
-  },
-}
-
-/** Everything is themed via `--gantt-*` custom properties — no prop changes. */
-export const Theming: Story = {
-  render: args => ({
-    components: { Gantt },
-    setup: () => ({ args }),
-    template: `
-      <div :style="{
-        '--gantt-bar-bg': '#d1fae5',
-        '--gantt-progress-bg': '#10b981',
-        '--gantt-bar-color': '#064e3b',
-        '--gantt-bar-radius': '999px',
-        '--gantt-milestone-bg': '#8b5cf6',
-        '--gantt-today-color': '#0ea5e9',
-        '--gantt-grid-color': '#eef2ff',
-      }">
-        <Gantt v-bind="args" />
-      </div>`,
-  }),
-}
-
-/**
- * Organize rows into collapsible groups: each row references a `groupId` and the
- * `groups` prop carries the labels (+ initial `collapsed`). Click a header to
- * collapse — member rows + bars hide while a rollup summary bar remains.
- * `group-toggle` fires on every toggle.
- */
-export const Grouping: Story = {
-  args: {
-    groups: [
-      { id: 'g-be', name: 'Backend' },
-      { id: 'g-fe', name: 'Frontend', collapsed: true },
-    ],
-    rows: [
-      {
-        id: 'gr-api',
-        name: 'API',
-        groupId: 'g-be',
-        tasks: [{ id: 'g-api', name: 'API', start: '2026-06-01', end: '2026-06-10', progress: 80 }],
-      },
-      {
-        id: 'gr-db',
-        name: 'Database',
-        groupId: 'g-be',
-        tasks: [
-          { id: 'g-db', name: 'Schema', start: '2026-06-06', end: '2026-06-14', progress: 40 },
-        ],
-      },
-      {
-        id: 'gr-ui',
-        name: 'UI',
-        groupId: 'g-fe',
-        tasks: [
-          { id: 'g-ui', name: 'Components', start: '2026-06-10', end: '2026-06-20', progress: 20 },
-        ],
-      },
-      {
-        id: 'gr-ux',
-        name: 'UX',
-        groupId: 'g-fe',
-        tasks: [{ id: 'g-ux', name: 'Flows', start: '2026-06-12', end: '2026-06-18' }],
-      },
-    ],
-    tiers: ['month', 'week', 'day'],
-    height: 300,
-  },
-}
-
-/**
- * Custom timeline **periods** (e.g. sprints): each renders a faint background band
- * over the chart body + a labelled row in the header. Group the *time axis*, not
- * the rows. Pass your own `periods` list (uneven spans, custom labels) or build a
- * regular cadence with the exported `sprintPeriods` helper. Customize via the
- * `period-bands` / `period` slots and the `--gantt-period-*` tokens — see
- * `Components/GanttPeriods` for the full API.
- */
-const sprintArgs: Story['args'] = {
-  periods: sprintPeriods({ from: '2026-06-01', every: 2, unit: 'week', count: 4 }),
-  tiers: ['month', 'week', 'day'],
-  height: 300,
-}
-
-export const Sprints: Story = {
-  args: { ...sprintArgs },
-}
-
-/**
- * Replace each period's **header label** with the `period` slot (`{ period }`).
- * You get the resolved period (`id`, `label`, `start`/`end`, `meta`); here it renders
- * a runner icon before the sprint name. The background bands are untouched.
- */
-export const SprintsHeaderSlot: Story = {
-  args: { ...sprintArgs },
-  render: args => ({
-    components: { Gantt },
-    setup: () => ({ args }),
-    template: `
-      <Gantt v-bind="args">
-        <template #period="{ period }">
-          <span style="display:inline-flex;align-items:center;gap:4px;font-weight:700;color:#6366f1">
-            🏃 {{ period.label }}
-          </span>
-        </template>
-      </Gantt>`,
-  }),
-}
-
-/**
- * Replace the whole body **band layer** with the `period-bands` slot (`{ periods }`).
- * Each `ResolvedPeriod` carries pixel geometry (`x` / `width`) and an `index` for the
- * alternating fill, so you can paint the bands yourself — here as tinted, alternating
- * full-height columns behind the bars.
- */
-export const SprintsBandSlot: Story = {
-  args: { ...sprintArgs },
-  render: args => ({
-    components: { Gantt },
-    setup: () => ({ args }),
-    template: `
-      <Gantt v-bind="args">
-        <template #period-bands="{ periods }">
-          <div style="position:absolute;inset:0;pointer-events:none">
-            <div
-              v-for="p in periods"
-              :key="p.id"
-              :style="{
-                position: 'absolute', top: 0, bottom: 0,
-                left: p.x + 'px', width: p.width + 'px',
-                background: p.index % 2 ? 'rgba(16,185,129,.10)' : 'rgba(99,102,241,.10)',
-                borderLeft: '1px dashed #cbd5e1',
-              }"
-            />
-          </div>
-        </template>
-      </Gantt>`,
-  }),
-}
-
-/**
- * A **working calendar**: shade non-working time (weekends, holidays, custom off
- * spans) as a faint background band. `true` shades Saturday/Sunday; pass a
- * `NonWorkingCalendar` (`weekends`, `holidays`, `periods`) for full control. Unlike
- * `periods` above, it's purely decorative — it never adds a header row and never
- * extends the auto date range, it only tints time already on the chart. Here the
- * default weekends are shaded plus a single holiday (Jun 19). Override via the
- * `non-working` slot; theme with `--gantt-nonworking-bg` — see
- * `Components/GanttNonWorking` for the full API.
- */
-export const NonWorkingCalendar: Story = {
-  args: {
-    nonWorking: { holidays: ['2026-06-19'] },
-    tiers: ['month', 'week', 'day'],
-    height: 300,
-  },
-}
-
-/**
- * Localize every date label — column headers, drag labels and tooltips — by passing
- * a date-fns `Locale`. Import the locale yourself (locales are not bundled), e.g.
- * `import { de } from 'date-fns/locale'`, then `<Gantt :locale="de" …>`. Here the
- * month/week headers render in German. Pair it with `labelFormat` for locale-aware
- * custom formats. (RTL layout is not part of this — a separate concern.)
- */
-export const Localized: Story = {
-  args: {
-    locale: de,
-    tiers: ['month', 'week', 'day'],
-    tooltip: true,
-    height: 300,
-  },
-}
-
-/**
  * Opt in to the hover tooltip with the `tooltip` prop: hover any bar or
  * milestone to see a floating summary. The default content is the name plus
  * `start – end` and `progress%` for a bar, or the name plus the date for a
@@ -525,30 +313,6 @@ export const CustomTooltipSlot: Story = {
   }),
 }
 
-/**
- * A zoom level is a view-mode preset (a named `tiers` + `columnWidth` bundle).
- * Drop the headless `<GanttZoom>` control into the `corner` slot and bind the
- * active level id with `v-model:zoom`: the − / select / + control switches
- * presets (`DEFAULT_ZOOM_LEVELS` by default), overriding the `tiers`/`columnWidth`
- * props. `zoom-change` fires on every switch.
- */
-export const Zoom: Story = {
-  args: { height: 300 },
-  render: args => ({
-    components: { Gantt, GanttZoom },
-    setup() {
-      const zoom = ref('week')
-      return { args, zoom }
-    },
-    template: `
-      <Gantt v-bind="args" v-model:zoom="zoom">
-        <template #corner>
-          <GanttZoom />
-        </template>
-      </Gantt>`,
-  }),
-}
-
 /** Override a bar's content with the `bar` slot. */
 export const CustomBarSlot: Story = {
   render: args => ({
@@ -562,220 +326,5 @@ export const CustomBarSlot: Story = {
           </span>
         </template>
       </Gantt>`,
-  }),
-}
-
-/**
- * Tag items with a free-form `variant` to render each category differently.
- * The prop-driven render looks for a `task-${variant}` slot for a bar (and a
- * `milestone-${variant}` slot for a marker); if none is provided it falls back
- * to the generic `bar` / `milestone` slot, then to the built-in default. Here
- * `design` and `dev` bars get their own look, `release` milestones get a labeled
- * flag, and an un-tagged bar (`variant` omitted) falls through to `#bar`.
- */
-export const TypedItemSlots: Story = {
-  render: () => ({
-    components: { Gantt },
-    setup: () => ({
-      rows: [
-        {
-          id: 'r1',
-          name: 'Design',
-          tasks: [{ id: 'a', name: 'Wireframes', start: '2026-01-01', end: '2026-01-06', variant: 'design' }],
-        },
-        {
-          id: 'r2',
-          name: 'Build',
-          tasks: [
-            { id: 'b', name: 'API', start: '2026-01-04', end: '2026-01-12', variant: 'dev' },
-            { id: 'c', name: 'Chore', start: '2026-01-13', end: '2026-01-16' },
-          ],
-        },
-        {
-          id: 'r3',
-          name: 'Ship',
-          tasks: [{ id: 'm', name: 'v1.0', type: 'milestone', start: '2026-01-18', variant: 'release' }],
-        },
-      ],
-    }),
-    template: `
-      <Gantt :rows="rows" unit="day">
-        <template #task-design="{ task }">
-          <span style="padding:0 8px;font-size:.72em;font-weight:600;color:#7c3aed">🎨 {{ task.name }}</span>
-        </template>
-        <template #task-dev="{ task, progress }">
-          <span style="padding:0 8px;font-size:.72em;font-weight:600;color:#0369a1">⚙️ {{ task.name }} · {{ progress }}%</span>
-        </template>
-        <template #milestone-release="{ task }">
-          <span style="display:inline-block;padding:1px 6px;font-size:.68em;font-weight:700;white-space:nowrap;color:#fff;background:#16a34a;border-radius:4px;transform:translateX(-50%)">🚀 {{ task.name }}</span>
-        </template>
-        <template #bar="{ task }">
-          <span style="padding:0 8px;font-size:.72em;opacity:.75">{{ task.name }}</span>
-        </template>
-      </Gantt>`,
-  }),
-}
-
-/**
- * Section slots are scoped — they hand you the same data the default renderer
- * uses. The `today` slot replaces the built-in `<GanttToday>` line and receives
- * `{ today, dateToX }`: the configured reference `Date` and a positioning helper
- * `(date) => number`. Here it draws a custom labelled marker at "today".
- */
-export const CustomTodaySlot: Story = {
-  render: args => ({
-    components: { Gantt },
-    setup: () => ({ args }),
-    template: `
-      <Gantt v-bind="args">
-        <template #today="{ today, dateToX }">
-          <div :style="{
-            position: 'absolute', top: 0, bottom: 0, zIndex: 4,
-            left: dateToX(today) + 'px',
-            width: '2px', background: '#0ea5e9',
-          }">
-            <span :style="{
-              position: 'absolute', top: 0, left: '4px',
-              padding: '1px 6px', fontSize: '.66em', fontWeight: 600,
-              color: '#fff', background: '#0ea5e9', borderRadius: '4px',
-              whiteSpace: 'nowrap',
-            }">Today</span>
-          </div>
-        </template>
-      </Gantt>`,
-  }),
-}
-
-/**
- * Two opt-in schedule overlays. `critical-path` highlights the longest
- * finish-to-start chain (`spec → design → build → ship`) — those bars/markers get
- * `data-critical`, styled via `--gantt-critical-*`. `slack` draws each task's free
- * float (the gap to its nearest successor's start) as a translucent bar, styled via
- * `--gantt-slack-*`: here `spec` and `qa` finish well before their successors begin,
- * so a slack bar trails them; the critical-path tasks are back-to-back, so they have
- * none. The `criticalPath` / `slack` utilities expose the same numbers headless.
- */
-export const CriticalPathAndSlack: Story = {
-  args: {
-    criticalPath: true,
-    slack: true,
-    tiers: ['month', 'week', 'day'],
-    columnWidth: 40,
-    height: 300,
-    rows: [
-      {
-        id: 'planning',
-        name: 'Planning',
-        tasks: [
-          // Finishes Jun-08 but `design` only starts Jun-12 → 4 days of slack.
-          { id: 'spec', name: 'Spec', start: '2026-06-01', end: '2026-06-08', progress: 100 },
-        ],
-      },
-      {
-        id: 'design',
-        name: 'Design',
-        tasks: [
-          {
-            id: 'design',
-            name: 'Design',
-            start: '2026-06-12',
-            end: '2026-06-20',
-            progress: 60,
-            dependencies: ['spec'],
-          },
-        ],
-      },
-      {
-        id: 'dev',
-        name: 'Development',
-        tasks: [
-          {
-            id: 'build',
-            name: 'Implementation',
-            start: '2026-06-20',
-            end: '2026-06-30',
-            progress: 30,
-            dependencies: ['design'],
-          },
-        ],
-      },
-      {
-        id: 'qa',
-        name: 'QA',
-        tasks: [
-          // Off the critical path; finishes Jun-18 but `ship` waits → slack.
-          {
-            id: 'qa',
-            name: 'Testing',
-            start: '2026-06-12',
-            end: '2026-06-18',
-            progress: 20,
-            dependencies: ['spec'],
-          },
-        ],
-      },
-      {
-        id: 'release',
-        name: 'Release',
-        tasks: [
-          {
-            id: 'ship',
-            name: 'Ship',
-            type: 'milestone',
-            start: '2026-06-30',
-            dependencies: ['build', 'qa'],
-          },
-        ],
-      },
-    ],
-  },
-}
-
-/**
- * `critical-path` on its own: only the longest finish-to-start chain
- * (`spec → design → build → review`) is highlighted via `data-critical` (styled with
- * `--gantt-critical-*`); no slack overlay. The `criticalPath(rows)` utility returns
- * the same ids headless.
- */
-export const CriticalPath: Story = {
-  args: {
-    criticalPath: true,
-    tiers: ['month', 'week', 'day'],
-    height: 260,
-  },
-}
-
-/**
- * `timeline-mode="infinite"`: scroll to either horizontal edge and the axis extends by
- * one screenful of dates so you can pan indefinitely. Prepending dates on the left
- * corrects the scroll so the view stays anchored. A `range-change` event fires on
- * every edge reach (watch the Actions panel) — in `infinite` mode the bounds are
- * already applied; in `fixed` mode you'd use it to widen `startDate`/`endDate`
- * yourself. Column virtualization keeps the DOM bounded however far you scroll.
- */
-export const InfiniteTimeline: Story = {
-  args: {
-    timelineMode: 'infinite',
-    tiers: ['month', 'week', 'day'],
-    columnWidth: 36,
-    height: 260,
-  },
-}
-
-/**
- * `downloadCSV(rows)` serializes the tasks to an RFC-4180 CSV file and triggers a
- * browser download (one line per task, with its row's id/name as leading columns).
- * `toCSV(rows, options)` returns the string for custom handling — override the
- * `columns`, `delimiter`, `dateFormat`, etc.
- */
-export const ExportCsv: Story = {
-  render: (args) => ({
-    components: { Gantt },
-    setup: () => ({ args, exportCsv: () => downloadCSV(args.rows ?? [], 'gantt.csv') }),
-    template: `
-      <div>
-        <button type="button" style="margin-bottom:8px" @click="exportCsv">Export CSV</button>
-        <Gantt v-bind="args" />
-      </div>`,
   }),
 }

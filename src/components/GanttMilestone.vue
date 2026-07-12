@@ -27,6 +27,9 @@ const {
   previewLabel,
   hidden,
   resources,
+  keyboard,
+  tabIndex,
+  onItemKeydown,
 } = useGanttItem(props, { type: 'milestone' })
 
 // Click fires after a drag's pointerup; skip it so a drag isn't read as a click.
@@ -49,8 +52,29 @@ function onContextmenu(event: MouseEvent): void {
 
 const overlapMode = computed(() => ctx.config.value.overlap)
 const markerStyle = computed(() => ({ left: `${left.value}px` }))
-// Tooltip date formatter, localized via the `locale` config.
+
+// Adaptive max width for a consumer-rendered label (exposed in the default slot):
+// the horizontal gap to the next item on the same row, so labels of nearby
+// milestones don't overlap. Falls back to the remaining content width when this
+// is the last item on its row.
+const LABEL_GUTTER = 8
+const labelMaxWidth = computed(() => {
+  const self = resolved.value
+  const selfX = left.value
+  // Only this milestone's own row can crowd its label (rows are indexed by
+  // `order`); scanning the whole `tasks` list would be O(all tasks) per marker.
+  const rowTasks = ctx.rows.value[self.order]?.tasks ?? []
+  let nextX = ctx.contentWidth.value
+  for (const task of rowTasks) {
+    if (task.id === self.id) continue
+    const x = ctx.dateToX(task.start)
+    if (x > selfX && x < nextX) nextX = x
+  }
+  return Math.max(0, nextX - selfX - LABEL_GUTTER)
+})
 const fmtDate = (d: Date): string => format(d, 'd MMM yyyy', { locale: ctx.config.value.locale })
+// Screen-reader label for the marker: name, date and that it's a milestone.
+const ariaLabel = computed(() => `${resolved.value.name}, ${fmtDate(resolved.value.start)} (milestone)`)
 // Highlight while a dependency drag hovers this milestone as a drop target.
 const linkTarget = computed(() => ctx.linkDraft.value?.over === resolved.value.id)
 // Whether this milestone is on the critical path (only when `criticalPath` is on).
@@ -95,10 +119,17 @@ function onMarkerUp(event: PointerEvent): void {
     <div
       ref="anchor"
       class="gantt-milestone__marker"
+      :data-id="resolved.id"
       :data-draggable="draggable || undefined"
       :data-link-target="linkTarget || undefined"
       :data-critical="critical || undefined"
+      :role="keyboard ? 'button' : undefined"
+      :tabindex="tabIndex"
+      :aria-label="keyboard ? ariaLabel : undefined"
+      :data-gantt-focusable="keyboard ? '' : undefined"
       :style="markerStyle"
+      @keydown="onItemKeydown"
+      @focus="keyboard && ctx.setKeyboardActive(resolved.id)"
       @pointerdown="onPointerDown"
       @pointerenter="onPointerEnter"
       @pointerleave="onPointerLeave"
@@ -107,7 +138,7 @@ function onMarkerUp(event: PointerEvent): void {
       @dblclick="onDblclick"
       @contextmenu="onContextmenu"
     >
-      <slot :task="resolved" :resources="resources">
+      <slot :task="resolved" :resources="resources" :label-max-width="labelMaxWidth">
         <div class="gantt-milestone__diamond" />
       </slot>
     </div>
@@ -163,6 +194,11 @@ function onMarkerUp(event: PointerEvent): void {
   pointer-events: auto;
 }
 
+.gantt-milestone__marker:focus-visible {
+  outline: var(--gantt-focus-outline, 2px solid var(--gantt-progress-bg, #6366f1));
+  outline-offset: var(--gantt-focus-outline-offset, 2px);
+}
+
 .gantt-milestone__marker[data-draggable] {
   cursor: grab;
   touch-action: none;
@@ -185,13 +221,11 @@ function onMarkerUp(event: PointerEvent): void {
   border-radius: var(--gantt-milestone-radius, 2px);
 }
 
-/* Drop-target affordance while a dependency is being dragged onto this marker. */
 .gantt-milestone__marker[data-link-target] .gantt-milestone__diamond {
   outline: var(--gantt-link-target-outline, 2px solid var(--gantt-progress-bg, #6366f1));
   outline-offset: 2px;
 }
 
-/* Critical-path highlight. */
 .gantt-milestone__marker[data-critical] .gantt-milestone__diamond {
   outline: var(--gantt-critical-outline, 2px solid var(--gantt-critical-color, #dc2626));
   outline-offset: 2px;
@@ -211,7 +245,6 @@ function onMarkerUp(event: PointerEvent): void {
   border-radius: var(--gantt-drag-label-radius, 4px);
 }
 
-/* Opt-in hover tooltip, floating just above the marker (defaults mirror the drag label). */
 .gantt-tooltip {
   position: absolute;
   top: 0;

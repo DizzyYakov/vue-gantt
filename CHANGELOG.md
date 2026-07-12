@@ -164,6 +164,21 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Changed
 
+- **Docs: flattened feature stories out of the `Components/Gantt` page.** Feature
+  demos that were buried as sub-stories of the `Gantt` page now live on their own
+  Storybook pages with fuller descriptions — new `Guides/` for Interactions, Theming,
+  Accessibility, Critical path & slack, Data export, Typed item slots and Infinite
+  timeline; the custom-`today`-slot demo moved to `Components/GanttToday` and the sprint
+  header/band slot demos to `Components/GanttPeriods`. Demos that merely duplicated an
+  existing dedicated page (grouping, sprints, non-working, localization, zoom,
+  virtualization) were removed in favor of that page, leaving `Components/Gantt` as the
+  controllable prop playground. Docs only — no API/behavior changes.
+
+- **Internal: comment cleanup.** Dropped section-divider and code-restating comments
+  (CSS section labels, `// Components`/`// Composables` re-export dividers, ASCII rule
+  lines) across the components and `index.ts`, keeping JSDoc field/function docs and the
+  non-obvious "why" rationale. Purely internal.
+
 - **Internal: `GanttRoot` readability cleanup.** Non-deeply-reactive refs (`now`,
   the infinite-scroll extents, the scroll-container element) use `shallowRef`, cryptic
   local names were spelled out, and a redundant `rowByOrder` computed alias was dropped.
@@ -184,7 +199,85 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   up group summaries in a single bucketed pass (O(rows) instead of O(groups × rows)),
   measured ~2.6× faster at 10k tasks / 400 groups. No API/behavior changes.
 
+### Fixed
+
+- **Keyboard-scrollable chart viewport (a11y).** The scroll container now carries
+  `tabindex="0"`, so keyboard-only users can focus the timeline and scroll it with the
+  arrow keys (WCAG 2.1.1). Clears the axe `scrollable-region-focusable` violation.
+  Structural — applies regardless of the opt-in `keyboard` bar/row navigation.
+
 ### Added
+
+- **Resource workload histogram.** A new pure `resourceWorkload(tasks, options?)`
+  aggregates each resource's concurrent task load over time (a `conflictSegments`-style
+  sweep-line → `{ resourceId, segments: { start, end, count }[], peak }[]`), and a
+  headless `GanttWorkload` component renders it as a per-resource histogram strip
+  meant to sit below the chart. It shares the chart context and mirrors the body's
+  horizontal scroll (via `viewport.scrollLeft`) to stay axis-aligned — a standalone
+  overlay, not a `GanttView` footer. Themed via `--gantt-workload-*` tokens (bars use
+  `resource.color` when set); `#label`/default slots customize the render.
+  `resourceWorkload`/`GanttWorkload` and `WorkloadSegment`/`ResourceWorkload`/
+  `WorkloadOptions` are exported from the package root.
+
+- **Keyboard & screen-reader accessibility (opt-in `keyboard`).** A new `keyboard`
+  prop makes task bars and milestones focusable and operable: each becomes a
+  `role="button"` with `tabindex="0"`, a descriptive `aria-label` (task: name,
+  span, progress; milestone: name, date), a visible focus ring
+  (`--gantt-focus-outline` / `--gantt-focus-outline-offset` tokens), and Enter/Space
+  activation firing the same `task-click`/`milestone-click` as a mouse click. The
+  chart root becomes a labelled landmark (`role="group"` + `aria-label`, configurable
+  via the new `ariaLabel` prop, default `'Gantt chart'`). Off by default (no
+  tab-order change). Arrow-key roving navigation: with `keyboard` on the chart is a
+  single tab stop, and Arrow Left/Right step through tasks by time within a row,
+  Arrow Up/Down jump to the nearest task (by start) in the adjacent row, and
+  Home/End go to the row's first/last task — the target scrolls into view and
+  focuses. Keyboard editing: on the focused task, Shift + Arrow Left/Right nudge it
+  one base unit earlier/later (emits `move`, needs `draggable`) and Alt + Arrow
+  Left/Right resize its end (emits `resize`, needs `resizable`, tasks only) — the
+  library stays controlled. Accessible sidebar: with `keyboard` the row list is a
+  `tree`/`list` of `treeitem`/`listitem` rows
+  (`aria-level`/`aria-expanded`/`aria-selected`) with roving focus — Arrow Up/Down
+  move between rows, Arrow Left/Right expand/collapse a branch, Enter/Space activate
+  (`row-click`), Home/End jump. (The time body keeps bars as `role="button"` in the
+  labelled landmark rather than forcing a `role="grid"` mapping over time-positioned
+  bars.)
+
+- **Drag-to-create.** New opt-in `cellCreatable` prop: dragging across an empty
+  grid row draws a ghost bar and, on release past the drag threshold, emits a
+  `create` event (`GanttCreateEvent { row, start, end, event }`) — the consumer
+  applies it (e.g. via the `addTask` helper), keeping the library controlled. A
+  below-threshold press still fires `cell-click`. Honors `snapToGrid`, auto-scrolls
+  at the viewport edges, and themes the preview via `--gantt-create-preview-bg`.
+  `GanttCreateEvent` is exported from the package root. (Lives in the default
+  `GanttGrid`; a custom `#grid` slot owns creation itself.)
+
+- **Excel export.** New pure, zero-dependency `toExcel(rows, options?)` serializer
+  emitting a **SpreadsheetML 2003** workbook (the `.xls` XML dialect Excel opens
+  directly), mirroring `toCSV`: one row per task with typed cells (dates as real
+  Excel dates, progress as a number). Ships a `downloadExcel(rows, filename?,
+  options?)` browser helper (`application/vnd.ms-excel`), an `ExcelColumn` /
+  `ExcelOptions` (`columns` / `sheetName` / `header`) API and `ExcelCellType`,
+  all exported from the package root.
+
+- **Headless milestone-label clamping.** The `#milestone` slot now also receives
+  `labelMaxWidth` — the adaptive horizontal gap (px) to the next item on the same
+  row — so a consumer-rendered label can bind `:style="{ maxWidth: labelMaxWidth +
+  'px' }"` and never overlap a neighbouring milestone. Ships a
+  `--gantt-milestone-label-max-width` token (default `none`) and a global
+  `.gantt-milestone__label` helper class (max-width + ellipsis) for a pure-CSS
+  clamp.
+
+- **`summaryStyle` prop for rolled-up rows (`'bracket' | 'bar'`, default
+  `'bracket'`).** WBS tree parents (`GanttSummaryBar`) and row groups
+  (`GanttGroupBar`) now render a meaningful summary instead of a plain full-width
+  bar. In the new default `bracket` style an **expanded** rollup row draws a thin
+  span line with downward end caps bracketing its children (no progress fill,
+  since the children carry the detail), while a **collapsed** row keeps a filled
+  accent bar with progress. Pass `summaryStyle="bar"` for the previous plain-bar
+  look. New theming tokens `--gantt-summary-bracket-*` / `--gantt-group-bracket-*`
+  (`-color` / `-thickness` / `-cap`). The `#summaryBar` / `#groupBar` slots now
+  also receive `collapsed`, `left` and `width`. **Note:** this changes the default
+  appearance of summary/group bars.
 
 - **Resources & task assignment.** A new `resources` prop (`GanttResource[]` —
   `{ id, name?, color?, meta? }`) declares a flat table of people/equipment, and
@@ -381,6 +474,16 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   and `GanttZoomEvent` types are exported.
 
 ### Fixed
+
+- **Dependency arrows / bars no longer paint over the frozen sidebar.** The chart
+  body now forms its own stacking context (`isolation: isolate`), so the
+  full-width dependency SVG and any bars/tooltips (which use local `z-index` up to
+  6) stay beneath the sticky sidebar and header when scrolled horizontally.
+- **Theme tokens are reliably overridable from an outer `:root`/ancestor.** The
+  default `--gantt-*` declarations are now zero-specificity (`:where(:root)` and
+  `:where(.gantt-root…)` for the touch overrides), so a consumer override wins
+  regardless of stylesheet load order — no need to bump selector specificity.
+  (Layout vars like `--gantt-sidebar-width` remain prop-driven, set inline.)
 
 - Hover tooltip / milestone interaction polish:
   - A dependency arrow crossing a milestone marker no longer swallows the marker's

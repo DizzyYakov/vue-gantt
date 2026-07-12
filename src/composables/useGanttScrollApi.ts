@@ -31,6 +31,7 @@ export interface GanttScrollApi {
   applyScroll: ApplyScrollFn
   scrollToDate: (date: Date | string | number, options?: ScrollToOptions) => void
   scrollToTask: (id: string, options?: ScrollToOptions) => void
+  scrollToRow: (id: string, options?: ScrollToOptions) => void
   scrollToToday: (options?: ScrollToOptions) => void
 }
 
@@ -89,9 +90,25 @@ export function useGanttScrollApi(options: ScrollApiOptions): GanttScrollApi {
     )
   }
 
+  function scrollToRow(id: string, scrollOptions: ScrollToOptions = {}): void {
+    const row = options.rows().find(r => r.id === id)
+    if (!row) return
+    // Vertical only — bring the row's band into view (its `top` already accounts
+    // for group header bands / tree layout).
+    applyScroll(undefined, row.top, scrollOptions.behavior ?? 'smooth')
+  }
+
   function scrollToToday(scrollOptions: ScrollToOptions = {}): void {
     scrollToDate(options.today(), scrollOptions)
   }
 
-  return { scrollerEl, setScroller, applyScroll, scrollToDate, scrollToTask, scrollToToday }
+  return {
+    scrollerEl,
+    setScroller,
+    applyScroll,
+    scrollToDate,
+    scrollToTask,
+    scrollToRow,
+    scrollToToday,
+  }
 }

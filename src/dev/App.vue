@@ -3,6 +3,7 @@ import { computed, ref } from 'vue'
 import { format } from 'date-fns'
 import {
   addDependency,
+  addTask,
   applyMove,
   Gantt,
   GanttDependencies,
@@ -22,6 +23,7 @@ import {
   type GanttDependencyUpdate,
   type GanttDragLabelInfo,
   type GanttGroupData,
+  type GanttCreateEvent,
   type GanttGroupToggleEvent,
   type GanttMoveEvent,
   type GanttProgressEvent,
@@ -168,6 +170,12 @@ const {
 } = useGanttHistory(vmodelRows)
 
 // Apply a completed drag with the library's `applyMove` helper (controlled data).
+// Drag-to-create: append a fresh task to the dragged row (controlled data).
+let createdCount = 0
+const onCreateRows = (e: GanttCreateEvent) => {
+  const task = { id: `new-${++createdCount}`, name: 'New task', start: e.start, end: e.end }
+  rows.value = addTask(rows.value, e.row.id, task)
+}
 const onMoveRows = (e: GanttMoveEvent) => (rows.value = applyMove(rows.value, e))
 const onMoveMany = (e: GanttMoveEvent) => (manyRows.value = applyMove(manyRows.value, e))
 
@@ -293,7 +301,9 @@ const onMoveGrouped = (e: GanttMoveEvent) => (groupedRows.value = applyMove(grou
           :resizable="resizable"
           :progress-draggable="progressDraggable"
           :linkable="linkable"
+          :cell-creatable="true"
           :drag-label="dragLabel"
+          @create="onCreateRows"
           @move="onMoveRows"
           @resize="onResizeRows"
           @progress="onProgressRows"

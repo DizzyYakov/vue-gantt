@@ -94,7 +94,9 @@ const scrollStyle = computed(() => {
 </script>
 
 <template>
-  <div ref="scroller" class="gantt" :style="scrollStyle">
+  <!-- `tabindex="0"` makes the scroll region keyboard-reachable (arrow-key scroll,
+       WCAG 2.1.1). Structural — independent of the opt-in `keyboard` roving nav. -->
+  <div ref="scroller" class="gantt" tabindex="0" :style="scrollStyle">
     <!-- Frozen header: sticky to the top while scrolling vertically. -->
     <div class="gantt__head">
       <div class="gantt__corner">
@@ -278,6 +280,11 @@ const scrollStyle = computed(() => {
 
 .gantt__body {
   position: relative;
+  /* Own stacking context (stays at z-auto, below the sticky sidebar's z-index:2
+     and header's z-index:3) so the body's contents — the full-width dependency
+     SVG and bars/tooltips with local z-index up to 6 — can't paint over the
+     frozen sidebar when scrolled horizontally. */
+  isolation: isolate;
   flex: none;
   width: var(--gantt-content-width);
   height: var(--gantt-content-height);

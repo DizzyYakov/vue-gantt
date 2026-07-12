@@ -1,9 +1,22 @@
 import { computed, inject } from 'vue'
 import { GANTT_ROW, normalizeTask } from '../context'
+import { addUnits } from '../dateUnits'
+import { keyToNavDirection } from '../keyboardNav'
 import type { GanttConstraint, GanttSegment, GanttTask, ResolvedTask } from '../types'
 import { useGanttContext } from './useGanttContext'
 import { useGanttDrag } from './useGanttDrag'
 import { useRegisteredTask } from './useTaskRegistry'
+
+/**
+ * Enter/Space activate a keyboard-focused item like a click, by re-dispatching a
+ * real click on the focused element (so the existing `onClick` path runs). Shared
+ * by `GanttTask` and `GanttMilestone`.
+ */
+export function onActivateKey(event: KeyboardEvent): void {
+  if (event.key !== 'Enter' && event.key !== ' ') return
+  event.preventDefault()
+  if (event.currentTarget instanceof HTMLElement) event.currentTarget.click()
+}
 
 /** Props shared by `GanttTask` and `GanttMilestone` (both data modes). */
 export interface GanttItemProps {
@@ -180,6 +193,62 @@ export function useGanttItem(props: GanttItemProps, overrides: Partial<GanttTask
     }
   })
 
+  // Keyboard a11y layer (opt-in via `keyboard`), shared by GanttTask/GanttMilestone.
+  const keyboard = computed(() => ctx.config.value.keyboard)
+  // Roving tabindex: only the active item is a tab stop (0); the rest are -1.
+  const tabIndex = computed<number | undefined>(() => {
+    if (!keyboard.value) return undefined
+    return ctx.keyboardActiveId.value === resolved.value.id ? 0 : -1
+  })
+  // Nudge the task one base unit earlier/later, preserving its duration (emits
+  // `move` — the consumer applies it). Gated by `draggable` at the call site.
+  function nudgeMove(amount: number): void {
+    const task = resolved.value
+    const unit = ctx.config.value.unit
+    ctx.moveTask({
+      id: task.id,
+      start: addUnits(task.start, unit, amount),
+      end: addUnits(task.end, unit, amount),
+      fromRowId: task.rowId,
+      toRowId: task.rowId,
+      task,
+    })
+  }
+  // Resize the task's end by one base unit (emits `resize`); never collapse/invert
+  // past its start. Gated by `resizable` (and not a milestone) at the call site.
+  function nudgeResize(amount: number): void {
+    const task = resolved.value
+    const end = addUnits(task.end, ctx.config.value.unit, amount)
+    if (end <= task.start) return
+    ctx.resizeTask({ id: task.id, start: task.start, end, task })
+  }
+  // Keyboard handling on a focused bar/marker (gated by `keyboard`):
+  // - Enter/Space activate;
+  // - Shift + Arrow Left/Right nudge-move (with `draggable`);
+  // - Alt + Arrow Left/Right resize the end (with `resizable`, tasks only);
+  // - a plain Arrow/Home/End moves roving focus.
+  function onItemKeydown(event: KeyboardEvent): void {
+    if (!keyboard.value) return
+    onActivateKey(event)
+    const direction = keyToNavDirection(event.key)
+    if (!direction) return
+    event.preventDefault()
+    const config = ctx.config.value
+    const horizontal = direction === 'left' || direction === 'right'
+    const amount = direction === 'right' ? 1 : -1
+    if (event.shiftKey && horizontal) {
+      if (config.draggable) nudgeMove(amount)
+      return
+    }
+    if (event.altKey && horizontal) {
+      if (config.resizable && resolved.value.type !== 'milestone') nudgeResize(amount)
+      return
+    }
+    // A held modifier without an applicable edit shouldn't also move focus.
+    if (event.shiftKey || event.altKey) return
+    ctx.moveKeyboardFocus(direction)
+  }
+
   return {
     ctx,
     resolved,
@@ -199,5 +268,8 @@ export function useGanttItem(props: GanttItemProps, overrides: Partial<GanttTask
     overlapping,
     hidden,
     resources,
+    keyboard,
+    tabIndex,
+    onItemKeydown,
   }
 }

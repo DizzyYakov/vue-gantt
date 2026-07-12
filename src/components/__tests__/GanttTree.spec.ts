@@ -109,6 +109,56 @@ describe('row tree (WBS) — summary bar', () => {
   })
 })
 
+describe('row tree (WBS) — summary style (bracket vs bar)', () => {
+  it('draws a bracket line for an expanded parent by default (no track/progress)', () => {
+    const { wrapper, ctx } = mountInRoot(GanttSummaryBar, {
+      rootProps: { rows, unit: 'day', columnWidth: 40 },
+    })
+    const bar = wrapper.find('.gantt-summary-bar[data-id="p"]')
+    expect(bar.attributes('data-collapsed')).toBeUndefined()
+    expect(bar.find('.gantt-summary-bar__bracket').exists()).toBe(true)
+    expect(bar.find('.gantt-summary-bar__track').exists()).toBe(false)
+    expect(bar.find('.gantt-summary-bar__progress').exists()).toBe(false)
+
+    // Bracket geometry matches the scale, same as the track would.
+    const parent = ctx().rows.value.find(r => r.id === 'p')!
+    const bracket = bar.find('.gantt-summary-bar__bracket')
+    expect(bracket.attributes('style')).toContain(`left: ${ctx().dateToX(parent.rollup!.start)}px`)
+    expect(bracket.attributes('style')).toContain(
+      `width: ${ctx().widthBetween(parent.rollup!.start, parent.rollup!.end)}px`,
+    )
+  })
+
+  it('draws a filled track + progress (no bracket) for a collapsed parent by default', () => {
+    const collapsedRows = [{ ...rows[0]!, collapsed: true }, rows[1]!, rows[2]!]
+    const { wrapper } = mountInRoot(GanttSummaryBar, { rootProps: { rows: collapsedRows, unit: 'day' } })
+    const bar = wrapper.find('.gantt-summary-bar[data-id="p"]')
+    expect(bar.attributes('data-collapsed')).toBe('true')
+    expect(bar.find('.gantt-summary-bar__track').exists()).toBe(true)
+    expect(bar.find('.gantt-summary-bar__progress').exists()).toBe(true)
+    expect(bar.find('.gantt-summary-bar__bracket').exists()).toBe(false)
+  })
+
+  it('always draws a filled track for summaryStyle="bar", expanded or collapsed', () => {
+    const { wrapper: expanded } = mountInRoot(GanttSummaryBar, {
+      rootProps: { rows, unit: 'day', summaryStyle: 'bar' },
+    })
+    const expandedBar = expanded.find('.gantt-summary-bar[data-id="p"]')
+    expect(expandedBar.find('.gantt-summary-bar__track').exists()).toBe(true)
+    expect(expandedBar.find('.gantt-summary-bar__progress').exists()).toBe(true)
+    expect(expandedBar.find('.gantt-summary-bar__bracket').exists()).toBe(false)
+
+    const collapsedRows = [{ ...rows[0]!, collapsed: true }, rows[1]!, rows[2]!]
+    const { wrapper: collapsed } = mountInRoot(GanttSummaryBar, {
+      rootProps: { rows: collapsedRows, unit: 'day', summaryStyle: 'bar' },
+    })
+    const collapsedBar = collapsed.find('.gantt-summary-bar[data-id="p"]')
+    expect(collapsedBar.find('.gantt-summary-bar__track').exists()).toBe(true)
+    expect(collapsedBar.find('.gantt-summary-bar__progress').exists()).toBe(true)
+    expect(collapsedBar.find('.gantt-summary-bar__bracket').exists()).toBe(false)
+  })
+})
+
 describe('row tree (WBS) — declarative nesting', () => {
   it('nested <GanttRow> inherit the parent id and depth', async () => {
     const wrapper = mount({
