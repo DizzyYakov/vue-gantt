@@ -52,6 +52,16 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Added
 
+- **Browser & accessibility test layer (Playwright).** Self-managed, one-shot e2e
+  checks that run in real browsers and start/stop their own server (no long-lived dev
+  server to babysit). Two suites: `bun test:e2e` drives the demo across
+  chromium/firefox/webkit + Mobile Chrome/Safari, and `bun test:stories` sweeps every
+  Storybook story across the three desktop engines. Both fail on any `console.error` /
+  uncaught page error (shared `e2e/fixtures.ts` gate); the story sweep also runs a
+  strict axe accessibility check (all rules) per story. Neither is part of the blocking
+  CI — they're diagnostic. Dev-only deps `@axe-core/playwright` + `http-server`; new
+  `test:stories` / `test:e2e:install` scripts. Library code and public API unchanged.
+
 - **Resource workload histogram.** A new pure `resourceWorkload(tasks, options?)`
   aggregates each resource's concurrent task load over time (a `conflictSegments`-style
   sweep-line → `{ resourceId, segments: { start, end, count }[], peak }[]`), and a

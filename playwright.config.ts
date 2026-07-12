@@ -11,7 +11,7 @@ import { defineConfig, devices } from '@playwright/test'
  * See https://playwright.dev/docs/test-configuration.
  */
 export default defineConfig({
-  testDir: './e2e',
+  testDir: './e2e/demo',
   /* Maximum time one test can run for. */
   timeout: 30 * 1000,
   expect: {
@@ -33,8 +33,9 @@ export default defineConfig({
   use: {
     /* Maximum time each action such as `click()` can take. Defaults to 0 (no limit). */
     actionTimeout: 0,
-    /* Base URL to use in actions like `await page.goto('/')`. */
-    baseURL: process.env.CI ? 'http://localhost:4173' : 'http://localhost:5173',
+    /* Base URL to use in actions like `await page.goto('/')`. Matches the single
+       dev server below (used for both local and CI). */
+    baseURL: 'http://localhost:5173',
 
     /* Collect trace when retrying the failed test. See https://playwright.dev/docs/trace-viewer */
     trace: 'on-first-retry',
@@ -64,19 +65,19 @@ export default defineConfig({
       },
     },
 
-    /* Test against mobile viewports. */
-    // {
-    //   name: 'Mobile Chrome',
-    //   use: {
-    //     ...devices['Pixel 5'],
-    //   },
-    // },
-    // {
-    //   name: 'Mobile Safari',
-    //   use: {
-    //     ...devices['iPhone 12'],
-    //   },
-    // },
+    /* Mobile viewports — exercise the touch / coarse-pointer path (`touchTargets`). */
+    {
+      name: 'Mobile Chrome',
+      use: {
+        ...devices['Pixel 5'],
+      },
+    },
+    {
+      name: 'Mobile Safari',
+      use: {
+        ...devices['iPhone 12'],
+      },
+    },
 
     /* Test against branded browsers. */
     // {
@@ -96,15 +97,15 @@ export default defineConfig({
   /* Folder for test artifacts such as screenshots, videos, traces, etc. */
   // outputDir: 'test-results/',
 
-  /* Run your local dev server before starting the tests */
+  /**
+   * Self-managed dev server: Playwright starts `vite` (the demo playground) and
+   * tears it down. The library is built in lib mode, so `vite preview` can't serve
+   * the demo — the dev server is the only app entry, used for both local and CI.
+   * Playwright reuses an already-running server locally.
+   */
   webServer: {
-    /**
-     * Use the dev server by default for faster feedback loop.
-     * Use the preview server on CI for more realistic testing.
-     * Playwright will re-use the local server if there is already a dev-server running.
-     */
-    command: process.env.CI ? 'npm run preview' : 'npm run dev',
-    port: process.env.CI ? 4173 : 5173,
+    command: 'bun run dev',
+    url: 'http://localhost:5173',
     reuseExistingServer: !process.env.CI,
   },
 })
