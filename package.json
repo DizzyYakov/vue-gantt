@@ -15,11 +15,11 @@
   ],
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/LavaYasha/vue-gantt.git"
+    "url": "git+https://github.com/DizzyYakov/vue-gantt.git"
   },
-  "homepage": "https://github.com/LavaYasha/vue-gantt#readme",
+  "homepage": "https://github.com/DizzyYakov/vue-gantt#readme",
   "bugs": {
-    "url": "https://github.com/LavaYasha/vue-gantt/issues"
+    "url": "https://github.com/DizzyYakov/vue-gantt/issues"
   },
   "publishConfig": {
     "access": "public"
