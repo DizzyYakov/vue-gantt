@@ -74,6 +74,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Added
 
+- **Visual regression + coverage gate (local).** `bun test:visual` screenshots every
+  Storybook story on chromium (clock frozen via `page.clock` so the live "today" line
+  is deterministic) and diffs against committed baselines — catching CSS/layout
+  regressions. `bun test:coverage` runs the jsdom suite with v8 coverage and floor
+  thresholds. Both are local/diagnostic (not in the blocking CI); the default
+  `vitest run` collects no coverage and stays fast. New `playwright.visual.config.ts`
+  + `test:visual` / `test:coverage` scripts. No library/API changes.
+
 - **Browser-mode unit tests (real Chromium/Firefox/WebKit).** New `*.browser.spec.ts`
   suite, run via `bun test:browser` (Vitest's Playwright provider), covers behavior
   jsdom can't: row/column virtualization against a measured viewport, frozen
