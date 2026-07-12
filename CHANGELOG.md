@@ -30,6 +30,21 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Changed
 
+- **Docs: flattened feature stories out of the `Components/Gantt` page.** Feature
+  demos that were buried as sub-stories of the `Gantt` page now live on their own
+  Storybook pages with fuller descriptions — new `Guides/` for Interactions, Theming,
+  Accessibility, Critical path & slack, Data export, Typed item slots and Infinite
+  timeline; the custom-`today`-slot demo moved to `Components/GanttToday` and the sprint
+  header/band slot demos to `Components/GanttPeriods`. Demos that merely duplicated an
+  existing dedicated page (grouping, sprints, non-working, localization, zoom,
+  virtualization) were removed in favor of that page, leaving `Components/Gantt` as the
+  controllable prop playground. Docs only — no API/behavior changes.
+
+- **Internal: comment cleanup.** Dropped section-divider and code-restating comments
+  (CSS section labels, `// Components`/`// Composables` re-export dividers, ASCII rule
+  lines) across the components and `index.ts`, keeping JSDoc field/function docs and the
+  non-obvious "why" rationale. Purely internal.
+
 - **Internal: `GanttRoot` readability cleanup.** Non-deeply-reactive refs (`now`,
   the infinite-scroll extents, the scroll-container element) use `shallowRef`, cryptic
   local names were spelled out, and a redundant `rowByOrder` computed alias was dropped.

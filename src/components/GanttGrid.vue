@@ -111,7 +111,6 @@ function onCellDblclick(row: ResolvedRow, event: MouseEvent): void {
   border-bottom: var(--gantt-grid-border, 1px solid var(--gantt-grid-color, #e5e7eb));
 }
 
-/* Ghost bar for the in-progress drag-to-create gesture (mirrors a real bar). */
 .gantt-create-preview {
   position: absolute;
   box-sizing: border-box;

@@ -97,10 +97,10 @@ function onRowContextmenu(row: ResolvedRow, event: MouseEvent): void {
   dispatch('row-contextmenu', { row, event })
 }
 
-// ── Keyboard-accessible sidebar (opt-in via `keyboard`) ──────────────────────
-// The sidebar becomes a `tree` (WBS) / `list` of focusable rows with roving
-// tabindex: Up/Down move between rows (scrolling the target in), Left/Right
-// expand/collapse a branch, Enter/Space activate (`row-click`), Home/End jump.
+// Keyboard-accessible sidebar (opt-in via `keyboard`): the sidebar becomes a
+// `tree` (WBS) / `list` of focusable rows with roving tabindex: Up/Down move
+// between rows (scrolling the target in), Left/Right expand/collapse a branch,
+// Enter/Space activate (`row-click`), Home/End jump.
 const keyboard = computed(() => config.value.keyboard)
 
 const listEl = ref<HTMLElement | null>(null)
@@ -273,18 +273,15 @@ function onRowKeydown(row: ResolvedRow, event: KeyboardEvent): void {
   border-bottom: var(--gantt-grid-border, 1px solid var(--gantt-grid-color, #e5e7eb));
 }
 
-/* Keyboard focus ring (a11y layer, `keyboard` prop). */
 .gantt-task-list__row:focus-visible {
   outline: var(--gantt-focus-outline, 2px solid var(--gantt-progress-bg, #6366f1));
   outline-offset: calc(-1 * var(--gantt-focus-outline-offset, 2px));
 }
 
-/* Member rows are indented under their group header. */
 .gantt-task-list__row[data-group] {
   padding-left: var(--gantt-group-indent, 16px);
 }
 
-/* Tree row collapse toggle: a compact button wrapping the chevron. */
 .gantt-task-list__row-toggle {
   display: flex;
   align-items: center;
@@ -310,7 +307,6 @@ function onRowKeydown(row: ResolvedRow, event: KeyboardEvent): void {
   overflow: hidden;
 }
 
-/* Inline editor: an input styled to sit in the same cell as the name. */
 .gantt-edit-input {
   flex: 1;
   min-width: 0;

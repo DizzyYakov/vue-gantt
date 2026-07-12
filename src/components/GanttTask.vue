@@ -44,7 +44,6 @@ const resizable = computed(() => ctx.config.value.resizable)
 const progressDraggable = computed(() => ctx.config.value.progressDraggable)
 const linkable = computed(() => ctx.config.value.linkable)
 const editable = computed(() => ctx.config.value.editable)
-// Tooltip date formatter, localized via the `locale` config.
 const fmtDate = (d: Date): string => format(d, 'd MMM yyyy', { locale: ctx.config.value.locale })
 
 // Screen-reader label for the bar: name, span and progress.
@@ -295,7 +294,6 @@ function onBarUp(event: PointerEvent): void {
   pointer-events: none;
 }
 
-/* Lift the row above its neighbours while dragging. */
 .gantt-task[data-dragging] {
   z-index: 5;
 }
@@ -313,13 +311,11 @@ function onBarUp(event: PointerEvent): void {
   pointer-events: auto;
 }
 
-/* Keyboard focus ring (a11y layer, `keyboard` prop). */
 .gantt-bar:focus-visible {
   outline: var(--gantt-focus-outline, 2px solid var(--gantt-progress-bg, #6366f1));
   outline-offset: var(--gantt-focus-outline-offset, 2px);
 }
 
-/* Edge resize handles: thin strips at the bar's sides. */
 .gantt-bar__resize {
   position: absolute;
   top: 0;
@@ -339,7 +335,6 @@ function onBarUp(event: PointerEvent): void {
   background: var(--gantt-resize-handle-bg, rgb(0 0 0 / 12%));
 }
 
-/* Progress handle: a draggable grip at the progress boundary. */
 .gantt-bar__progress-handle {
   position: absolute;
   top: 0;
@@ -363,7 +358,6 @@ function onBarUp(event: PointerEvent): void {
   box-shadow: 0 0 0 1px rgb(0 0 0 / 15%);
 }
 
-/* Connector dot to drag out a new dependency from the bar's finish. */
 .gantt-bar__connector {
   position: absolute;
   top: 50%;
@@ -379,19 +373,16 @@ function onBarUp(event: PointerEvent): void {
   z-index: 2;
 }
 
-/* Drop-target affordance while a dependency is being dragged onto this bar. */
 .gantt-bar[data-link-target] {
   outline: var(--gantt-link-target-outline, 2px solid var(--gantt-progress-bg, #6366f1));
   outline-offset: 1px;
 }
 
-/* Critical-path highlight. */
 .gantt-bar[data-critical] {
   outline: var(--gantt-critical-outline, 2px solid var(--gantt-critical-color, #dc2626));
   outline-offset: 1px;
 }
 
-/* Bar finishes past its deadline. */
 .gantt-bar[data-overdue] {
   outline: var(--gantt-overdue-outline, 1.5px solid var(--gantt-deadline-color, #dc2626));
   outline-offset: 1px;
@@ -401,7 +392,6 @@ function onBarUp(event: PointerEvent): void {
   );
 }
 
-/* Bar breaches an upper-bound scheduling constraint. */
 .gantt-bar[data-constraint-violation] {
   outline: var(--gantt-constraint-outline, 1.5px dashed var(--gantt-constraint-color, #f59e0b));
   outline-offset: 1px;
@@ -426,7 +416,6 @@ function onBarUp(event: PointerEvent): void {
   cursor: grabbing;
 }
 
-/* The drag preview: a translucent copy that follows the pointer with precision. */
 .gantt-bar--ghost {
   opacity: var(--gantt-ghost-opacity, 0.55);
   pointer-events: none;
@@ -486,7 +475,6 @@ function onBarUp(event: PointerEvent): void {
   font-size: var(--gantt-bar-font-size, 0.8em);
 }
 
-/* Inline editor: an input over the bar label (opt-in via `editable`). */
 .gantt-edit-input {
   position: relative;
   z-index: 3;
@@ -502,7 +490,6 @@ function onBarUp(event: PointerEvent): void {
   border-radius: var(--gantt-edit-radius, 3px);
 }
 
-/* Floating label showing the precise new time during a drag. */
 .gantt-drag-label {
   position: absolute;
   top: 0;
@@ -516,7 +503,6 @@ function onBarUp(event: PointerEvent): void {
   border-radius: var(--gantt-drag-label-radius, 4px);
 }
 
-/* Opt-in hover tooltip, floating just above the bar (defaults mirror the drag label). */
 .gantt-tooltip {
   position: absolute;
   top: 0;

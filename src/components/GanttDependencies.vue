@@ -231,7 +231,6 @@ const draftPath = computed<string | null>(() => {
   pointer-events: none;
 }
 
-/* Invisible, wider click/tap target laid over each drawn line. */
 .gantt-dependency-hit {
   fill: none;
   stroke: transparent;

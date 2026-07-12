@@ -72,7 +72,6 @@ const labelMaxWidth = computed(() => {
   }
   return Math.max(0, nextX - selfX - LABEL_GUTTER)
 })
-// Tooltip date formatter, localized via the `locale` config.
 const fmtDate = (d: Date): string => format(d, 'd MMM yyyy', { locale: ctx.config.value.locale })
 // Screen-reader label for the marker: name, date and that it's a milestone.
 const ariaLabel = computed(() => `${resolved.value.name}, ${fmtDate(resolved.value.start)} (milestone)`)
@@ -195,7 +194,6 @@ function onMarkerUp(event: PointerEvent): void {
   pointer-events: auto;
 }
 
-/* Keyboard focus ring (a11y layer, `keyboard` prop). */
 .gantt-milestone__marker:focus-visible {
   outline: var(--gantt-focus-outline, 2px solid var(--gantt-progress-bg, #6366f1));
   outline-offset: var(--gantt-focus-outline-offset, 2px);
@@ -223,13 +221,11 @@ function onMarkerUp(event: PointerEvent): void {
   border-radius: var(--gantt-milestone-radius, 2px);
 }
 
-/* Drop-target affordance while a dependency is being dragged onto this marker. */
 .gantt-milestone__marker[data-link-target] .gantt-milestone__diamond {
   outline: var(--gantt-link-target-outline, 2px solid var(--gantt-progress-bg, #6366f1));
   outline-offset: 2px;
 }
 
-/* Critical-path highlight. */
 .gantt-milestone__marker[data-critical] .gantt-milestone__diamond {
   outline: var(--gantt-critical-outline, 2px solid var(--gantt-critical-color, #dc2626));
   outline-offset: 2px;
@@ -249,7 +245,6 @@ function onMarkerUp(event: PointerEvent): void {
   border-radius: var(--gantt-drag-label-radius, 4px);
 }
 
-/* Opt-in hover tooltip, floating just above the marker (defaults mirror the drag label). */
 .gantt-tooltip {
   position: absolute;
   top: 0;
