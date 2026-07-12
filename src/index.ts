@@ -23,6 +23,7 @@ export { default as GanttDeadlines } from './components/GanttDeadlines.vue'
 export { default as GanttBaselines } from './components/GanttBaselines.vue'
 export { default as GanttPeriods } from './components/GanttPeriods.vue'
 export { default as GanttMarkers } from './components/GanttMarkers.vue'
+export { default as GanttWorkload } from './components/GanttWorkload.vue'
 export { default as GanttToday } from './components/GanttToday.vue'
 export { default as GanttZoom } from './components/GanttZoom.vue'
 
@@ -53,8 +54,15 @@ export {
   normalizeTask,
   toDate,
 } from './context'
-export { assignLanes, layoutRows, layoutGroups, conflictSegments } from './layout'
-export type { GroupMeta, GroupedLayout, LayoutGroupsOptions } from './layout'
+export { assignLanes, layoutRows, layoutGroups, conflictSegments, resourceWorkload } from './layout'
+export type {
+  GroupMeta,
+  GroupedLayout,
+  LayoutGroupsOptions,
+  WorkloadSegment,
+  ResourceWorkload,
+  WorkloadOptions,
+} from './layout'
 
 // Zoom / view-mode presets — pass your own to the `zoomLevels` prop
 export { DEFAULT_ZOOM_LEVELS } from './zoom'
