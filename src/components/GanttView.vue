@@ -94,7 +94,9 @@ const scrollStyle = computed(() => {
 </script>
 
 <template>
-  <div ref="scroller" class="gantt" :style="scrollStyle">
+  <!-- `tabindex="0"` makes the scroll region keyboard-reachable (arrow-key scroll,
+       WCAG 2.1.1). Structural — independent of the opt-in `keyboard` roving nav. -->
+  <div ref="scroller" class="gantt" tabindex="0" :style="scrollStyle">
     <!-- Frozen header: sticky to the top while scrolling vertically. -->
     <div class="gantt__head">
       <div class="gantt__corner">
