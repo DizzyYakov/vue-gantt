@@ -51,6 +51,15 @@ function tabIndexById(wrapper: ReturnType<typeof mountNavChart>): Record<string,
   return out
 }
 
+describe('scroll region is keyboard-reachable (structural, always on)', () => {
+  it('gives the scroll container tabindex=0 regardless of the `keyboard` prop', () => {
+    // WCAG 2.1.1: a scrollable region must be reachable/scrollable by keyboard.
+    // This is independent of the opt-in `keyboard` roving nav over the bars.
+    expect(mountChart().find('.gantt').attributes('tabindex')).toBe('0')
+    expect(mountChart({ keyboard: true }).find('.gantt').attributes('tabindex')).toBe('0')
+  })
+})
+
 describe('accessibility (opt-in via `keyboard`)', () => {
   describe('keyboard: true', () => {
     it('gives the task bar a button role, tabindex and a descriptive aria-label', () => {

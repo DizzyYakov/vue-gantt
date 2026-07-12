@@ -1865,3 +1865,24 @@ the default `bun test:unit` run (and from CI, which has no browsers):
 bunx playwright install     # one-time: chromium, firefox, webkit
 bun test:browser            # runs *.browser.spec.ts across the three engines
 ```
+
+### Browser & accessibility checks (Playwright)
+
+These run in a real browser and are **not part of the blocking CI** — they're
+diagnostic and self-managed (Playwright starts/stops the server itself). Install the
+browsers once, then run either suite:
+
+```sh
+bun test:e2e:install            # one-time: install browsers (chromium, firefox, webkit)
+bun test:e2e                    # demo flows across chromium/firefox/webkit + Mobile Chrome/Safari;
+                                # fails on any console error. Includes multi-step interaction
+                                # flows (drag-move/resize/create, dependency link, group collapse,
+                                # keyboard move, undo) driven with real pointer gestures — desktop only
+bun test:stories                # builds Storybook, then sweeps every story across the desktop
+                                # engines: console-error gate + strict axe a11y (all rules)
+```
+
+`test:stories` is strict on purpose — it surfaces real a11y issues, including
+`color-contrast` on the stories' placeholder demo colors (not the library's own
+theming contract). Heavy stories (`Guides/Performance`) are skipped. HTML reports
+land in `playwright-report/` and `playwright-report-stories/`.

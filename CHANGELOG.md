@@ -30,6 +30,21 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Changed
 
+- **Docs: flattened feature stories out of the `Components/Gantt` page.** Feature
+  demos that were buried as sub-stories of the `Gantt` page now live on their own
+  Storybook pages with fuller descriptions — new `Guides/` for Interactions, Theming,
+  Accessibility, Critical path & slack, Data export, Typed item slots and Infinite
+  timeline; the custom-`today`-slot demo moved to `Components/GanttToday` and the sprint
+  header/band slot demos to `Components/GanttPeriods`. Demos that merely duplicated an
+  existing dedicated page (grouping, sprints, non-working, localization, zoom,
+  virtualization) were removed in favor of that page, leaving `Components/Gantt` as the
+  controllable prop playground. Docs only — no API/behavior changes.
+
+- **Internal: comment cleanup.** Dropped section-divider and code-restating comments
+  (CSS section labels, `// Components`/`// Composables` re-export dividers, ASCII rule
+  lines) across the components and `index.ts`, keeping JSDoc field/function docs and the
+  non-obvious "why" rationale. Purely internal.
+
 - **Internal: `GanttRoot` readability cleanup.** Non-deeply-reactive refs (`now`,
   the infinite-scroll extents, the scroll-container element) use `shallowRef`, cryptic
   local names were spelled out, and a redundant `rowByOrder` computed alias was dropped.
@@ -50,6 +65,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   up group summaries in a single bucketed pass (O(rows) instead of O(groups × rows)),
   measured ~2.6× faster at 10k tasks / 400 groups. No API/behavior changes.
 
+### Fixed
+
+- **Keyboard-scrollable chart viewport (a11y).** The scroll container now carries
+  `tabindex="0"`, so keyboard-only users can focus the timeline and scroll it with the
+  arrow keys (WCAG 2.1.1). Clears the axe `scrollable-region-focusable` violation.
+  Structural — applies regardless of the opt-in `keyboard` bar/row navigation.
+
 ### Added
 
 - **Browser-mode unit tests (real Chromium/Firefox/WebKit).** New `*.browser.spec.ts`
@@ -59,6 +81,19 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   token via `getComputedStyle`. Separate config (`vitest.browser.config.ts`); excluded
   from the default jsdom run and from the blocking CI. Dev-only deps `@vitest/browser`,
   `@vitest/browser-playwright`, `vitest-browser-vue`. No library/API changes.
+
+- **Browser & accessibility test layer (Playwright).** Self-managed, one-shot e2e
+  checks that run in real browsers and start/stop their own server (no long-lived dev
+  server to babysit). Two suites: `bun test:e2e` drives the demo across
+  chromium/firefox/webkit + Mobile Chrome/Safari, and `bun test:stories` sweeps every
+  Storybook story across the three desktop engines. Both fail on any `console.error` /
+  uncaught page error (shared `e2e/fixtures.ts` gate); the story sweep also runs a
+  strict axe accessibility check (all rules) per story. Neither is part of the blocking
+  CI — they're diagnostic. Dev-only deps `@axe-core/playwright` + `http-server`; new
+  `test:stories` / `test:e2e:install` scripts. `bun test:e2e` also drives multi-step
+  interaction flows against the demo with real pointer gestures — drag-move/resize,
+  drag-to-create, dependency linking, group collapse, keyboard move and undo (desktop
+  only). Library code and public API unchanged.
 
 - **Resource workload histogram.** A new pure `resourceWorkload(tasks, options?)`
   aggregates each resource's concurrent task load over time (a `conflictSegments`-style

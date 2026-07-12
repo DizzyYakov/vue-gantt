@@ -171,7 +171,6 @@ const emitEvent = emit as unknown as <K extends keyof GanttEventMap>(
 // via the context so prop-driven `<Gantt>` consumers can listen at the root.
 function dispatch<K extends keyof GanttEventMap>(name: K, payload: GanttEventMap[K]): void {
   emitEvent(name, payload)
-  // Mirror dependency edits into `v-model:rows`.
   if (name === 'dependency-create') {
     const change = payload as GanttDependencyChange
     emitModelUpdate(rows => maybeAutoSchedule(addDependency(rows, change.from, change.to), change.from))
@@ -423,10 +422,9 @@ function taskBand(task: ResolvedTask): GanttBand {
   return { top, height }
 }
 
-// --- Viewport + virtualization -------------------------------------------
-// The scroll container (the `Gantt` wrapper / a consumer) reports its metrics
-// here. Until measured (width/height 0) nothing is virtualized, so primitives
-// used without a scroll container still render everything.
+// The scroll container (the `Gantt` wrapper / a consumer) reports its viewport
+// metrics here. Until measured (width/height 0) nothing is virtualized, so
+// primitives used without a scroll container still render everything.
 const OVERSCAN = 240 // px rendered beyond the viewport on each axis
 const MARKER_PAD = 24 // px slack so edge milestones aren't clipped
 
@@ -512,7 +510,6 @@ const headerHeight = computed(
   () => (tiers.value.length + (periods.value.length ? 1 : 0)) * props.headerRowHeight,
 )
 
-// --- Imperative scroll API ------------------------------------------------
 const {
   scrollerEl,
   setScroller,
