@@ -1,4 +1,10 @@
 {
   "extends": "@tsconfig/node24/tsconfig.json",
+  "compilerOptions": {
+    "module": "preserve",
+    "moduleResolution": "bundler",
+    "noEmit": true,
+    "types": ["node"]
+  },
   "include": ["./**/*"]
 }
