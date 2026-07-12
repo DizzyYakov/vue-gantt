@@ -40,6 +40,11 @@ __screenshots__/
 
 test-results/
 playwright-report/
+playwright-report-stories/
+playwright-report-visual/
+
+# Coverage
+coverage/
 
 # Storybook
 *storybook.log

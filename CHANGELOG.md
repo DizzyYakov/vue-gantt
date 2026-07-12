@@ -238,6 +238,35 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Added
 
+- **Visual regression + coverage gate (local).** `bun test:visual` screenshots every
+  Storybook story on chromium (clock frozen via `page.clock` so the live "today" line
+  is deterministic) and diffs against committed baselines — catching CSS/layout
+  regressions. `bun test:coverage` runs the jsdom suite with v8 coverage and floor
+  thresholds. Both are local/diagnostic (not in the blocking CI); the default
+  `vitest run` collects no coverage and stays fast. New `playwright.visual.config.ts`
+  + `test:visual` / `test:coverage` scripts. No library/API changes.
+
+- **Browser-mode unit tests (real Chromium/Firefox/WebKit).** New `*.browser.spec.ts`
+  suite, run via `bun test:browser` (Vitest's Playwright provider), covers behavior
+  jsdom can't: row/column virtualization against a measured viewport, frozen
+  `position: sticky` header/sidebar, and reading the `--gantt-dependency-handle-radius`
+  token via `getComputedStyle`. Separate config (`vitest.browser.config.ts`); excluded
+  from the default jsdom run and from the blocking CI. Dev-only deps `@vitest/browser`,
+  `@vitest/browser-playwright`, `vitest-browser-vue`. No library/API changes.
+
+- **Browser & accessibility test layer (Playwright).** Self-managed, one-shot e2e
+  checks that run in real browsers and start/stop their own server (no long-lived dev
+  server to babysit). Two suites: `bun test:e2e` drives the demo across
+  chromium/firefox/webkit + Mobile Chrome/Safari, and `bun test:stories` sweeps every
+  Storybook story across the three desktop engines. Both fail on any `console.error` /
+  uncaught page error (shared `e2e/fixtures.ts` gate); the story sweep also runs a
+  strict axe accessibility check (all rules) per story. Neither is part of the blocking
+  CI — they're diagnostic. Dev-only deps `@axe-core/playwright` + `http-server`; new
+  `test:stories` / `test:e2e:install` scripts. `bun test:e2e` also drives multi-step
+  interaction flows against the demo with real pointer gestures — drag-move/resize,
+  drag-to-create, dependency linking, group collapse, keyboard move and undo (desktop
+  only). Library code and public API unchanged.
+
 - **Resource workload histogram.** A new pure `resourceWorkload(tasks, options?)`
   aggregates each resource's concurrent task load over time (a `conflictSegments`-style
   sweep-line → `{ resourceId, segments: { start, end, count }[], peak }[]`), and a
