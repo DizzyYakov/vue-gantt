@@ -1,0 +1,11 @@
+blank_issues_enabled: false
+contact_links:
+  - name: 💬 Questions & help
+    url: https://github.com/DizzyYakov/vue-gantt/discussions
+    about: Ask how to do something with vue-gantt (GitHub Discussions).
+  - name: 🧭 Ideas & feedback
+    url: https://github.com/DizzyYakov/vue-gantt/discussions
+    about: Share what you'd build with it, or weigh in on the roadmap.
+  - name: 🗺️ Roadmap
+    url: https://github.com/DizzyYakov/vue-gantt/blob/main/ROADMAP.md
+    about: See what's shipped and what's being considered.
