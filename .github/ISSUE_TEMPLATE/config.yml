@@ -1,5 +1,8 @@
 blank_issues_enabled: false
 contact_links:
+  - name: 📖 Live docs & demo
+    url: https://dizzyyakov.github.io/vue-gantt/
+    about: Explore every component and feature in Storybook before filing.
   - name: 💬 Questions & help
     url: https://github.com/DizzyYakov/vue-gantt/discussions
     about: Ask how to do something with vue-gantt (GitHub Discussions).
