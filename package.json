@@ -60,9 +60,12 @@
     "storybook": "storybook dev -p 6006",
     "build-storybook": "storybook build",
     "test:browser": "vitest run -c vitest.browser.config.ts",
+    "test:coverage": "vitest run --coverage",
     "test:e2e:install": "playwright install",
     "test:stories": "run-s build-storybook test:stories:run",
-    "test:stories:run": "playwright test -c playwright.stories.config.ts"
+    "test:stories:run": "playwright test -c playwright.stories.config.ts",
+    "test:visual": "run-s build-storybook test:visual:run",
+    "test:visual:run": "playwright test -c playwright.visual.config.ts"
   },
   "peerDependencies": {
     "vue": "^3.5.0"
