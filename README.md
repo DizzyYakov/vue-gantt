@@ -1886,3 +1886,17 @@ bun test:stories                # builds Storybook, then sweeps every story acro
 `color-contrast` on the stories' placeholder demo colors (not the library's own
 theming contract). Heavy stories (`Guides/Performance`) are skipped. HTML reports
 land in `playwright-report/` and `playwright-report-stories/`.
+
+### Visual regression & coverage
+
+```sh
+bun test:visual                 # screenshots every story (chromium) vs committed baselines
+bun test:coverage               # Vitest coverage (jsdom) with thresholds
+```
+
+`test:visual` snapshots each Storybook story on **chromium** with the clock frozen
+(so the live "today" line is deterministic) and diffs against committed baselines in
+`e2e/visual/**-snapshots/`. Baselines are chromium/platform-specific — regenerate after
+an intended visual change with `bunx playwright test -c playwright.visual.config.ts
+--update-snapshots`. `test:coverage` runs the jsdom suite with v8 coverage and floor
+thresholds; the default `bun test:unit` / CI run collects no coverage and stays fast.
