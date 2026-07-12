@@ -6,10 +6,14 @@
 [![minzipped size](https://img.shields.io/bundlephobia/minzip/@dizzy_yakov/vue-gantt)](https://bundlephobia.com/package/@dizzy_yakov/vue-gantt)
 [![types](https://img.shields.io/npm/types/@dizzy_yakov/vue-gantt.svg)](https://www.npmjs.com/package/@dizzy_yakov/vue-gantt)
 [![license](https://img.shields.io/npm/l/@dizzy_yakov/vue-gantt.svg)](./LICENSE)
+[![Storybook](https://img.shields.io/badge/docs-Storybook-ff4785?logo=storybook&logoColor=white)](https://dizzyyakov.github.io/vue-gantt/)
 
 A **headless, composable Gantt chart for Vue 3**. It ships only structural
 layout — every colour, size and font is a CSS variable — so it drops into any
 design system. One runtime dependency (`date-fns`), fully typed.
+
+**📖 [Live docs & interactive demo →](https://dizzyyakov.github.io/vue-gantt/)** — every
+component and feature, explorable in Storybook.
 
 ![vue-gantt](https://raw.githubusercontent.com/LavaYasha/vue-gantt/main/docs/hero.png)
 
