@@ -74,6 +74,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Added
 
+- **Browser-mode unit tests (real Chromium/Firefox/WebKit).** New `*.browser.spec.ts`
+  suite, run via `bun test:browser` (Vitest's Playwright provider), covers behavior
+  jsdom can't: row/column virtualization against a measured viewport, frozen
+  `position: sticky` header/sidebar, and reading the `--gantt-dependency-handle-radius`
+  token via `getComputedStyle`. Separate config (`vitest.browser.config.ts`); excluded
+  from the default jsdom run and from the blocking CI. Dev-only deps `@vitest/browser`,
+  `@vitest/browser-playwright`, `vitest-browser-vue`. No library/API changes.
+
 - **Browser & accessibility test layer (Playwright).** Self-managed, one-shot e2e
   checks that run in real browsers and start/stop their own server (no long-lived dev
   server to babysit). Two suites: `bun test:e2e` drives the demo across

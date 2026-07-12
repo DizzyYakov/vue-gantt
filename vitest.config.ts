@@ -7,7 +7,9 @@ export default mergeConfig(
   defineConfig({
     test: {
       environment: 'jsdom',
-      exclude: [...configDefaults.exclude, 'e2e/**'],
+      // Browser-mode specs run in a real browser via `vitest.browser.config.ts`;
+      // keep them out of the default jsdom run (they'd fail without real layout).
+      exclude: [...configDefaults.exclude, 'e2e/**', '**/*.browser.spec.ts'],
       root: fileURLToPath(new URL('./', import.meta.url)),
     },
   }),
