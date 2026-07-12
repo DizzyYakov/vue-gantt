@@ -1,0 +1,33 @@
+name: 💡 Feature request
+description: Suggest a capability or improvement
+labels: [enhancement]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        We prioritise by **use case** — the concrete thing you're trying to build matters
+        more than a specific API. 👍 existing requests instead of opening duplicates.
+  - type: textarea
+    id: usecase
+    attributes:
+      label: What's your use case?
+      description: The real scenario you're building and where the library falls short today.
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed solution
+      description: Optional — how you imagine it working (a prop / slot / event / utility).
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives / workarounds
+      description: What you tried or how you work around it now.
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Before submitting
+      options:
+        - label: I searched existing issues and discussions for a similar request
+          required: true

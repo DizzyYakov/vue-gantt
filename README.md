@@ -1886,3 +1886,16 @@ bun test:stories                # builds Storybook, then sweeps every story acro
 `color-contrast` on the stories' placeholder demo colors (not the library's own
 theming contract). Heavy stories (`Guides/Performance`) are skipped. HTML reports
 land in `playwright-report/` and `playwright-report-stories/`.
+
+## Feedback & roadmap
+
+The library's direction is driven by what people actually build with it — feedback is
+very welcome:
+
+- 🐛 [Report a bug](https://github.com/DizzyYakov/vue-gantt/issues/new?template=bug_report.yml)
+- 💡 [Request a feature](https://github.com/DizzyYakov/vue-gantt/issues/new?template=feature_request.yml)
+  (tell us the **use case**)
+- 💬 [Discussions](https://github.com/DizzyYakov/vue-gantt/discussions) — questions, ideas, "what would you use this for?"
+- 🗺️ [Roadmap](ROADMAP.md) — what's shipped and what's being considered
+
+👍 reacting to an existing issue is the best way to signal demand.
