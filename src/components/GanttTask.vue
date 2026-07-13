@@ -32,6 +32,7 @@ const {
   segmentBars,
   ghost,
   previewLabel,
+  labelBelow,
   overlapping,
   hidden,
   resources,
@@ -267,10 +268,24 @@ function onBarUp(event: PointerEvent): void {
     </div>
 
     <!-- Live tooltip for any drag (move / resize / progress). -->
-    <div v-if="showTooltip" class="gantt-drag-label" :style="tooltipStyle">{{ previewLabel }}</div>
+    <div
+      v-if="showTooltip"
+      class="gantt-drag-label"
+      :class="{ 'gantt-drag-label--below': labelBelow }"
+      :style="tooltipStyle"
+    >
+      {{ previewLabel }}
+    </div>
 
     <!-- Opt-in hover tooltip (default content or the `tooltip` slot). -->
-    <div v-if="showHoverTip" ref="tip" class="gantt-tooltip" :style="hoverTipStyle" role="tooltip">
+    <div
+      v-if="showHoverTip"
+      ref="tip"
+      class="gantt-tooltip"
+      :class="{ 'gantt-tooltip--below': labelBelow }"
+      :style="hoverTipStyle"
+      role="tooltip"
+    >
       <slot name="tooltip" :task="resolved">
         <span class="gantt-tooltip__name">{{ resolved.name }}</span>
         <span class="gantt-tooltip__dates">
@@ -503,6 +518,12 @@ function onBarUp(event: PointerEvent): void {
   border-radius: var(--gantt-drag-label-radius, 4px);
 }
 
+/* Near the top edge, flip below the bar so the sticky header can't cover it. */
+.gantt-drag-label--below {
+  top: 100%;
+  margin-top: 4px;
+}
+
 .gantt-tooltip {
   position: absolute;
   top: 0;
@@ -520,6 +541,12 @@ function onBarUp(event: PointerEvent): void {
   background: var(--gantt-tooltip-bg, var(--gantt-drag-label-bg, #1e293b));
   border-radius: var(--gantt-tooltip-radius, var(--gantt-drag-label-radius, 4px));
   box-shadow: var(--gantt-tooltip-shadow, 0 2px 8px rgb(0 0 0 / 25%));
+}
+
+/* Near the top edge, flip below the bar so the sticky header can't cover it. */
+.gantt-tooltip--below {
+  top: 100%;
+  margin-top: 4px;
 }
 .gantt-tooltip__name {
   font-weight: 600;

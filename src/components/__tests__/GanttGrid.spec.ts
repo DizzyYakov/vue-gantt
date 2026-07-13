@@ -53,3 +53,42 @@ describe('GanttGrid', () => {
     expect(wrapper.find('.gantt-grid__col[data-today]').exists()).toBe(true)
   })
 })
+
+describe('GanttGrid ("drag to create" hint, cellCreatable)', () => {
+  const hintRows: GanttRow[] = [
+    { id: 'empty', tasks: [] },
+    { id: 'withTask', tasks: [{ id: 'a', start: '2026-01-01', end: '2026-01-05' }] },
+    { id: 'parent', tasks: [] },
+    { id: 'child', parentId: 'parent', tasks: [] },
+  ]
+
+  it('renders the hint only in empty leaf rows, with the default text', () => {
+    const { wrapper } = mountInRoot(GanttGrid, {
+      rootProps: { rows: hintRows, unit: 'day', cellCreatable: true },
+    })
+    const hints = wrapper.findAll('.gantt-grid__create-hint')
+    // "empty" and "child" are leaf rows with no tasks; "withTask" has a task,
+    // and "parent" has children (its own `tasks` is empty but it isn't a leaf).
+    expect(hints).toHaveLength(2)
+    expect(wrapper.find('.gantt-grid__create-hint-label').text()).toBe('Drag to create')
+  })
+
+  it('does not render the hint at all when cellCreatable is off', () => {
+    const { wrapper } = mountInRoot(GanttGrid, {
+      rootProps: { rows: hintRows, unit: 'day', cellCreatable: false },
+    })
+    expect(wrapper.find('.gantt-grid__create-hint').exists()).toBe(false)
+  })
+
+  it('lets the create-hint slot override the default content', () => {
+    const { wrapper } = mountInRoot(GanttGrid, {
+      rootProps: { rows: [{ id: 'empty', tasks: [] }], unit: 'day', cellCreatable: true },
+      slots: {
+        'create-hint': ({ row }: { row: { id: string } }) => `custom:${row.id}`,
+      },
+    })
+    const hint = wrapper.find('.gantt-grid__create-hint')
+    expect(hint.text()).toBe('custom:empty')
+    expect(hint.find('.gantt-grid__create-hint-label').exists()).toBe(false)
+  })
+})

@@ -1,3 +1,4 @@
+import { format } from 'date-fns'
 import { nextTick } from 'vue'
 import { describe, expect, it } from 'vitest'
 import GanttGrid from '../GanttGrid.vue'
@@ -156,5 +157,62 @@ describe('drag-to-create (useGanttCreate + GanttGrid)', () => {
     const payload = wrapper.emitted('create')![0]![0] as GanttCreateEvent
     expect(payload.start.getTime()).toBe(ctx().xToDate(80).getTime())
     expect(payload.end.getTime()).toBe(ctx().xToDate(320).getTime())
+  })
+})
+
+describe('drag-to-create live label', () => {
+  it('shows a "start → end" label tracking the live draft span', async () => {
+    const { wrapper, ctx } = mountGrid()
+    const band = wrapper.find('.gantt-grid__row[style*="top: 0px"]')
+
+    fire(band.element, 'pointerdown', { button: 0, clientX: 0, clientY: 0, pointerId: 1, offsetX: 80 })
+    fire(window, 'pointermove', { clientX: 240, clientY: 0 }) // currentX = 80 + 240 = 320
+    await nextTick()
+
+    const label = wrapper.find('.gantt-create-preview__label')
+    expect(label.exists()).toBe(true)
+    // Exact text uses date-fns with the configured `dragLabelFormat` — assert via the same formatter.
+    const fmt = ctx().config.value.dragLabelFormat
+    expect(label.text()).toBe(`${format(ctx().xToDate(80), fmt)} → ${format(ctx().xToDate(320), fmt)}`)
+
+    fire(window, 'pointerup', {})
+    await nextTick()
+  })
+
+  it('is empty (no ghost) once the draft is gone', async () => {
+    const { wrapper } = mountGrid()
+    expect(wrapper.find('.gantt-create-preview__label').exists()).toBe(false)
+  })
+
+  it('flips the label below the ghost on the top row (near the sticky header)', async () => {
+    const { wrapper } = mountGrid()
+    const band = wrapper.find('.gantt-grid__row[style*="top: 0px"]')
+
+    fire(band.element, 'pointerdown', { button: 0, clientX: 0, clientY: 0, pointerId: 1, offsetX: 80 })
+    fire(window, 'pointermove', { clientX: 240, clientY: 0 })
+    await nextTick()
+
+    const label = wrapper.find('.gantt-create-preview__label')
+    expect(label.classes()).toContain('gantt-create-preview__label--below')
+
+    fire(window, 'pointerup', {})
+    await nextTick()
+  })
+
+  it('does not flip the label for a row further down the chart', async () => {
+    const { wrapper } = mountGrid({ rowHeight: 36 })
+    // r2 is the second row (top = 36px, clear of the sticky-header clearance).
+    const band = wrapper.find('.gantt-grid__row[style*="top: 36px"]')
+
+    fire(band.element, 'pointerdown', { button: 0, clientX: 0, clientY: 0, pointerId: 1, offsetX: 80 })
+    fire(window, 'pointermove', { clientX: 240, clientY: 0 })
+    await nextTick()
+
+    const label = wrapper.find('.gantt-create-preview__label')
+    expect(label.exists()).toBe(true)
+    expect(label.classes()).not.toContain('gantt-create-preview__label--below')
+
+    fire(window, 'pointerup', {})
+    await nextTick()
   })
 })
