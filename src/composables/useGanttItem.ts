@@ -18,6 +18,17 @@ export function onActivateKey(event: KeyboardEvent): void {
   if (event.currentTarget instanceof HTMLElement) event.currentTarget.click()
 }
 
+/**
+ * A floating label placed above a bar (≈ one line high) at this body-local `top`
+ * would slip under the sticky timeline header — so it should flip below instead.
+ * Shared by the task/milestone drag label + hover tooltip and the grid's
+ * drag-to-create label so the clearance lives in one place.
+ */
+export const FLOATING_LABEL_CLEARANCE = 24
+export function isNearStickyHeader(top: number): boolean {
+  return top < FLOATING_LABEL_CLEARANCE
+}
+
 /** Props shared by `GanttTask` and `GanttMilestone` (both data modes). */
 export interface GanttItemProps {
   /** Presentational mode: render this already-resolved task without registering it. */
@@ -193,6 +204,16 @@ export function useGanttItem(props: GanttItemProps, overrides: Partial<GanttTask
     }
   })
 
+  // Floating labels above the bar (the drag label and the hover tooltip) slip
+  // under the sticky timeline header near the body's top edge, so flip them below
+  // the bar there. Effective top = band top + ghost offset (0 when idle, so this
+  // also holds for the hover tooltip).
+  const labelBelow = computed(() => {
+    const bandTop = ctx.taskBand(resolved.value).top
+    const ghostOffset = ghost.value?.translateY ?? 0
+    return isNearStickyHeader(bandTop + ghostOffset)
+  })
+
   // Keyboard a11y layer (opt-in via `keyboard`), shared by GanttTask/GanttMilestone.
   const keyboard = computed(() => ctx.config.value.keyboard)
   // Roving tabindex: only the active item is a tab stop (0); the rest are -1.
@@ -265,6 +286,7 @@ export function useGanttItem(props: GanttItemProps, overrides: Partial<GanttTask
     segmentBars,
     ghost,
     previewLabel,
+    labelBelow,
     overlapping,
     hidden,
     resources,

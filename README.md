@@ -229,7 +229,10 @@ bars and milestones; providing it also **enables** the tooltip (you don't need
 the `tooltip` prop too). Its `task` is the resolved task under the pointer. When
 the tooltip is enabled without the slot, the default content is the name plus
 `start – end` (and `progress%`) for a bar, or the name plus the date for a
-milestone. The tooltip is hidden while a drag is in progress.
+milestone. The tooltip is hidden while a drag is in progress. Both the hover
+tooltip and the live drag label flip to sit *below* the bar/milestone instead of
+above it when there isn't enough room above — e.g. a task on the first row,
+where "above" would slide under the sticky timeline header.
 
 ```vue
 <Gantt :rows="rows" :tiers="['month', 'week', 'day']" :height="480">
@@ -281,7 +284,7 @@ every [chart event](#events); the rest are the building blocks.
 | `<GanttSummaryBar>`   | —                                                | —                                                |
 | `<GanttTask>`         | `GanttItemProps`                                 | `click` · `dblclick` · `contextmenu`             |
 | `<GanttMilestone>`    | `GanttItemProps`                                 | `click` · `dblclick` · `contextmenu`             |
-| `<GanttGrid>`         | `tier?: GanttUnit`                               | `cell-click` · `cell-dblclick`                   |
+| `<GanttGrid>`         | `tier?: GanttUnit` (slot `create-hint` `{ row }`, see [drag-to-create](#drag-to-create-tasks)) | `cell-click` · `cell-dblclick` |
 | `<GanttNonWorking>`   | — (default slot `{ band }`)                      | —                                                |
 | `<GanttDependencies>` | —                                                | `dependency-click`                               |
 | `<GanttConflicts>`    | —                                                | —                                                |
@@ -429,9 +432,12 @@ are both exported. Style the split bits with the `--gantt-split-*`
 ### Drag-to-create tasks
 
 With `cellCreatable`, dragging across an empty grid row (left mouse button) draws
-a translucent ghost preview and emits `create` on release — the chart stays
-controlled, so you add the task yourself (e.g. with the [`addTask`](#utilities)
-utility):
+a translucent ghost preview with a live **start → end** label (formatted via
+`dragLabelFormat`/`locale`, same as a move/resize drag) and emits `create` on
+release — the chart stays controlled, so you add the task yourself (e.g. with the
+[`addTask`](#utilities) utility). Since an empty row has no bar to grab, `<GanttGrid>`
+also renders a "Drag to create" hint across each empty leaf row's band as an
+affordance; customize or replace it via the `create-hint` slot (`{ row }`):
 
 ```vue
 <script setup>
@@ -454,7 +460,9 @@ Below the drag threshold (same 3px mouse / 8px touch slop as `draggable`) the
 press is read as a plain click, so `cell-click` still fires as before. `snapToGrid`
 snaps the drafted `start`/`end` like any other drag. Style the ghost via
 `--gantt-create-preview-bg` (falls back to `--gantt-bar-bg`) plus the shared
-`--gantt-bar-height` / `--gantt-bar-radius` / `--gantt-ghost-opacity` tokens.
+`--gantt-bar-height` / `--gantt-bar-radius` / `--gantt-ghost-opacity` tokens; style
+the hint via `--gantt-create-hint-color` / `--gantt-create-hint-border` /
+`--gantt-create-hint-opacity`.
 
 > `cell-click`/`cell-dblclick` and drag-to-create both live in the default
 > `<GanttGrid>`; overriding the `grid` slot on `<GanttView>` / `<Gantt>` replaces
@@ -1564,6 +1572,9 @@ after this library's):
 | `--gantt-bar-text-shadow` | `none`    | Optional halo so the label reads over the fill. |
 | `--gantt-progress-bg`     | `#6366f1` | Progress fill colour.                           |
 | `--gantt-create-preview-bg` | bar bg (`#c7d2fe`) | Ghost preview background while drag-to-create is in progress (`cellCreatable`). |
+| `--gantt-create-hint-color` | `#94a3b8` | Text/border colour of the "Drag to create" hint in empty rows (`cellCreatable`). |
+| `--gantt-create-hint-border` | `1px dashed currentColor` | Border of the "Drag to create" hint. |
+| `--gantt-create-hint-opacity` | `0.75` | Opacity of the "Drag to create" hint. |
 
 **Keyboard focus** (a11y layer — see [Keyboard & accessibility](#keyboard--accessibility))
 

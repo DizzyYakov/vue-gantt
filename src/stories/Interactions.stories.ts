@@ -70,27 +70,47 @@ export const DragAndDrop: Story = {
  * With `cellCreatable`, dragging across an empty row band draws a ghost preview
  * and emits `create` on release (below the drag threshold it's still read as a
  * plain `cell-click`). The chart stays controlled — this demo applies the intent
- * with the `addTask` utility. Try it in the empty band below the last task of any
- * row.
+ * with the `addTask` utility.
+ *
+ * **Try it:** drag horizontally across the empty **“QA (empty — drag here)”** band
+ * at the bottom — a ghost bar follows the pointer with a live **start → end label**
+ * so you see the span you're drawing, and a task lands on release; the “Created
+ * tasks” counter below confirms it. `snapToGrid` is **on** here, so the new task
+ * snaps to whole days — flip it off in the controls to draw at full precision.
  */
 export const CellCreatable: Story = {
-  args: { cellCreatable: true },
+  args: { cellCreatable: true, snapToGrid: true, height: 320 },
   render: args => ({
     components: { Gantt },
     setup() {
-      const rows = ref<GanttRow[]>(JSON.parse(JSON.stringify(sampleRows)))
-      let nextId = 0
+      const rows = ref<GanttRow[]>([
+        ...JSON.parse(JSON.stringify(sampleRows)),
+        { id: 'qa', name: 'QA (empty — drag here)', tasks: [] },
+      ])
+      const createdCount = ref(0)
       function onCreate(e: GanttCreateEvent) {
         rows.value = addTask(rows.value, e.row.id, {
-          id: `created-${nextId++}`,
+          id: `created-${createdCount.value++}`,
           name: 'New task',
           start: e.start,
           end: e.end,
         })
       }
-      return { args, rows, onCreate }
+      return { args, rows, createdCount, onCreate }
     },
-    template: `<Gantt v-bind="args" :rows="rows" @create="onCreate" />`,
+    template: `
+      <div>
+        <p style="margin:0 0 8px;font:14px/1.4 system-ui,sans-serif;opacity:.75">
+          Drag across the empty <strong>QA</strong> band to create a task — a live
+          start&nbsp;→&nbsp;end label follows the pointer. Toggle <code>snapToGrid</code>
+          in the controls to switch between day-snapped and full-precision spans.
+        </p>
+        <Gantt v-bind="args" :rows="rows" @create="onCreate" />
+        <p style="margin-top:8px;font:14px/1.4 system-ui,sans-serif" aria-live="polite">
+          Created tasks: <strong>{{ createdCount }}</strong>
+        </p>
+      </div>
+    `,
   }),
 }
 

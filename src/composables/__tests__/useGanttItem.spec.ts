@@ -2,9 +2,21 @@ import { mount } from '@vue/test-utils'
 import { describe, expect, it } from 'vitest'
 import { defineComponent, h, nextTick } from 'vue'
 import GanttRoot from '../../components/GanttRoot.vue'
-import { useGanttItem, type GanttItemProps } from '../useGanttItem'
+import { FLOATING_LABEL_CLEARANCE, isNearStickyHeader, useGanttItem, type GanttItemProps } from '../useGanttItem'
 import { useGanttContext } from '../useGanttContext'
 import type { GanttRootProps, ResolvedTask } from '../../types'
+
+describe('isNearStickyHeader', () => {
+  it('flags a top strictly below the clearance', () => {
+    expect(isNearStickyHeader(0)).toBe(true)
+    expect(isNearStickyHeader(FLOATING_LABEL_CLEARANCE - 1)).toBe(true)
+  })
+
+  it('does not flag a top at or past the clearance', () => {
+    expect(isNearStickyHeader(FLOATING_LABEL_CLEARANCE)).toBe(false)
+    expect(isNearStickyHeader(100)).toBe(false)
+  })
+})
 
 /** Mount a harness that runs `useGanttItem` and exposes its return for assertions. */
 function run(itemProps: GanttItemProps, rootProps: Partial<GanttRootProps>) {
