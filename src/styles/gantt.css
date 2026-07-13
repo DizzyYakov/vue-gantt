@@ -68,6 +68,10 @@
   --gantt-bar-font-size: 0.8em;
   /* Ghost bar shown while dragging out a new task (cellCreatable). */
   --gantt-create-preview-bg: var(--gantt-bar-bg, #c7d2fe);
+  /* "Drag to create" hint in empty rows (cellCreatable affordance). */
+  --gantt-create-hint-color: #94a3b8;
+  --gantt-create-hint-border: 1px dashed currentColor;
+  --gantt-create-hint-opacity: 0.75;
 
   /* Baselines (planned vs actual) */
   --gantt-baseline-bg: #cbd5e1;

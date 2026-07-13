@@ -1,7 +1,9 @@
 <script setup lang="ts">
+import { format } from 'date-fns'
 import { computed } from 'vue'
 import { useGanttContext } from '../composables/useGanttContext'
 import { useGanttCreate } from '../composables/useGanttCreate'
+import { isNearStickyHeader } from '../composables/useGanttItem'
 import type { GanttCellEvent, GanttUnit, ResolvedRow } from '../types'
 
 const props = defineProps<{
@@ -24,6 +26,27 @@ const emit = defineEmits<{
 
 const tier = computed(() => props.tier ?? config.value.unit)
 const columns = computed(() => visibleColumnsFor(tier.value))
+
+// When drag-to-create is on, empty leaf rows carry no bar to grab, so surface a
+// hint in their band that the empty strip is draggable. Skip parent rows (they
+// show a summary bar) and any row that already has tasks.
+const createHintRows = computed<ResolvedRow[]>(() => {
+  if (!config.value.cellCreatable) return []
+  return visibleRows.value.filter(row => row.tasks.length === 0 && !row.hasChildren)
+})
+
+// Live "start → end" label for the create ghost, so the user sees the span they
+// are drawing (mirrors the drag preview label; honours `dragLabelFormat`/`locale`).
+const createPreviewLabel = computed(() => {
+  const draft = createDraft.value
+  if (!draft) return ''
+  const fmt = config.value.dragLabelFormat
+  const locale = config.value.locale
+  return `${format(draft.start, fmt, { locale })} → ${format(draft.end, fmt, { locale })}`
+})
+
+// On the top row the label would sit under the sticky header — flip it below.
+const createLabelBelow = computed(() => isNearStickyHeader(createDraft.value?.row.top ?? 0))
 
 // The row band spans the full content width from the body origin, so the
 // pointer's offsetX maps straight to a chart date.
@@ -65,6 +88,17 @@ function onCellDblclick(row: ResolvedRow, event: MouseEvent): void {
       class="gantt-grid__group"
       :style="{ top: `${group.top}px`, height: `${group.height}px` }"
     />
+    <!-- Affordance for cellCreatable: empty rows have no bar to grab. -->
+    <div
+      v-for="row in createHintRows"
+      :key="`hint-${row.id}`"
+      class="gantt-grid__create-hint"
+      :style="{ top: `${row.top}px`, height: `${row.height}px` }"
+    >
+      <slot name="create-hint" :row="row">
+        <span class="gantt-grid__create-hint-label">Drag to create</span>
+      </slot>
+    </div>
     <!-- Ghost bar shown while dragging out a new task (cellCreatable). -->
     <div
       v-if="createDraft"
@@ -77,6 +111,12 @@ function onCellDblclick(row: ResolvedRow, event: MouseEvent): void {
       }"
     >
       <div class="gantt-create-preview__bar" />
+      <div
+        class="gantt-drag-label gantt-create-preview__label"
+        :class="{ 'gantt-create-preview__label--below': createLabelBelow }"
+      >
+        {{ createPreviewLabel }}
+      </div>
     </div>
   </div>
 </template>
@@ -126,6 +166,51 @@ function onCellDblclick(row: ResolvedRow, event: MouseEvent): void {
   border-radius: var(--gantt-bar-radius, 4px);
   background: var(--gantt-create-preview-bg, var(--gantt-bar-bg, #c7d2fe));
   opacity: var(--gantt-ghost-opacity, 0.55);
+}
+
+/* Live start → end label above the create ghost (matches the drag label). */
+.gantt-create-preview__label {
+  position: absolute;
+  top: 0;
+  left: 0;
+  margin-top: -1.7em;
+  padding: 1px 6px;
+  white-space: nowrap;
+  pointer-events: none;
+  font-size: var(--gantt-drag-label-font-size, 0.72em);
+  color: var(--gantt-drag-label-color, #fff);
+  background: var(--gantt-drag-label-bg, #1e293b);
+  border-radius: var(--gantt-drag-label-radius, 4px);
+}
+
+/* On the top row, flip below the ghost so the sticky header can't cover it. */
+.gantt-create-preview__label--below {
+  top: 100%;
+  margin-top: 4px;
+}
+
+/* Hint pinned to the left edge of the empty band (cellCreatable affordance).
+   Sticky so it stays visible past the frozen sidebar as the body scrolls. */
+.gantt-grid__create-hint {
+  position: absolute;
+  left: 0;
+  right: 0;
+  display: flex;
+  align-items: center;
+  pointer-events: none;
+}
+
+.gantt-grid__create-hint-label {
+  position: sticky;
+  left: var(--gantt-label-sticky-left, 8px);
+  margin-left: 8px;
+  padding: 2px 8px;
+  border: var(--gantt-create-hint-border, 1px dashed currentColor);
+  border-radius: var(--gantt-bar-radius, 4px);
+  font: var(--gantt-create-hint-font, 12px / 1 system-ui, sans-serif);
+  color: var(--gantt-create-hint-color, #94a3b8);
+  opacity: var(--gantt-create-hint-opacity, 0.75);
+  white-space: nowrap;
 }
 
 /* Tint the group header band across the body so it reads as one strip. */
