@@ -4,6 +4,14 @@ All notable changes to this project are documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [1.10.0](https://github.com/DizzyYakov/vue-gantt/compare/vue-gantt-v1.9.1...vue-gantt-v1.10.0) (2026-07-13)
+
+
+### Features
+
+* drag-to-create affordance with a live label + Storybook fixes ([c4b8cf5](https://github.com/DizzyYakov/vue-gantt/commit/c4b8cf5c2a673b1b2abd81725d4148700e5be47f))
+* surface drag-to-create affordance with a live label ([d6f7cc2](https://github.com/DizzyYakov/vue-gantt/commit/d6f7cc2ed3e6cd7960f65ce621bebe1fafc21fcb))
+
 ## [1.9.1](https://github.com/DizzyYakov/vue-gantt/compare/vue-gantt-v1.9.0...vue-gantt-v1.9.1) (2026-07-12)
 
 
